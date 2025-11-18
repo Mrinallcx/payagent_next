@@ -2,9 +2,13 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { AppNavbar } from "@/components/AppNavbar";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowUpRight, ArrowDownLeft, Clock, CheckCircle2, XCircle } from "lucide-react";
-import { useState } from "react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
+import { ArrowUpRight, ArrowDownLeft, Download } from "lucide-react";
+import { useState, useMemo } from "react";
+import { useToast } from "@/hooks/use-toast";
 
 interface Transaction {
   id: string;
@@ -80,7 +84,62 @@ const mockTransactions: Transaction[] = [
 ];
 
 const Transactions = () => {
+  const { toast } = useToast();
   const [transactions] = useState<Transaction[]>(mockTransactions);
+  const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  // Filter transactions
+  const filteredTransactions = useMemo(() => {
+    return transactions.filter((transaction) => {
+      const matchesType = typeFilter === "all" || transaction.type === typeFilter;
+      const matchesStatus = statusFilter === "all" || transaction.status === statusFilter;
+      return matchesType && matchesStatus;
+    });
+  }, [transactions, typeFilter, statusFilter]);
+
+  // Paginate transactions
+  const totalPages = Math.ceil(filteredTransactions.length / itemsPerPage);
+  const paginatedTransactions = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return filteredTransactions.slice(startIndex, endIndex);
+  }, [filteredTransactions, currentPage]);
+
+  // Export to CSV
+  const handleExport = () => {
+    const headers = ["Type", "From", "Recipient", "Date", "Amount", "Status"];
+    const csvData = filteredTransactions.map((t) => [
+      t.type,
+      t.from,
+      t.recipient,
+      t.date,
+      `${t.type === "sent" ? "-" : "+"}$${t.amount}`,
+      statusConfig[t.status].label,
+    ]);
+
+    const csvContent = [
+      headers.join(","),
+      ...csvData.map((row) => row.join(",")),
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv" });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `transactions-${new Date().toISOString().split("T")[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+
+    toast({
+      title: "Export successful",
+      description: "Your transactions have been exported to CSV.",
+    });
+  };
 
   return (
     <SidebarProvider>
@@ -97,6 +156,41 @@ const Transactions = () => {
                 <p className="text-sm text-muted-foreground">View all your payment transactions</p>
               </div>
 
+              {/* Filters and Export */}
+              <div className="flex flex-col sm:flex-row gap-3 mb-4">
+                <Select value={typeFilter} onValueChange={setTypeFilter}>
+                  <SelectTrigger className="w-full sm:w-[180px]">
+                    <SelectValue placeholder="Filter by type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Types</SelectItem>
+                    <SelectItem value="sent">Sent</SelectItem>
+                    <SelectItem value="received">Received</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="w-full sm:w-[180px]">
+                    <SelectValue placeholder="Filter by status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="success">Success</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="failed">Failed</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Button
+                  onClick={handleExport}
+                  variant="outline"
+                  className="ml-auto"
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Export CSV
+                </Button>
+              </div>
+
               <div className="bg-card border border-border rounded-lg overflow-hidden">
                 <div className="overflow-x-auto">
                   <Table>
@@ -111,7 +205,7 @@ const Transactions = () => {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {transactions.map((transaction) => {
+                      {paginatedTransactions.map((transaction) => {
                         const TypeIcon = transaction.type === "sent" ? ArrowUpRight : ArrowDownLeft;
                         
                         return (
@@ -153,9 +247,44 @@ const Transactions = () => {
                 </div>
               </div>
 
-              {transactions.length === 0 && (
+              {/* Pagination */}
+              {filteredTransactions.length > itemsPerPage && (
+                <div className="mt-4">
+                  <Pagination>
+                    <PaginationContent>
+                      <PaginationItem>
+                        <PaginationPrevious
+                          onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                          className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                        />
+                      </PaginationItem>
+                      
+                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                        <PaginationItem key={page}>
+                          <PaginationLink
+                            onClick={() => setCurrentPage(page)}
+                            isActive={currentPage === page}
+                            className="cursor-pointer"
+                          >
+                            {page}
+                          </PaginationLink>
+                        </PaginationItem>
+                      ))}
+
+                      <PaginationItem>
+                        <PaginationNext
+                          onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                          className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                        />
+                      </PaginationItem>
+                    </PaginationContent>
+                  </Pagination>
+                </div>
+              )}
+
+              {filteredTransactions.length === 0 && (
                 <div className="text-center py-12">
-                  <p className="text-muted-foreground">No transactions yet</p>
+                  <p className="text-muted-foreground">No transactions found</p>
                 </div>
               )}
             </div>
