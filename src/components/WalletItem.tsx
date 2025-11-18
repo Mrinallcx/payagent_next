@@ -41,10 +41,12 @@ export function WalletItem({
     <div className="p-2 bg-muted rounded-lg">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Wallet className="h-3 w-3 text-primary" />
+          <div className="p-2 rounded-lg bg-primary/10">
+            <Wallet className="h-4 w-4 text-primary" />
+          </div>
           <div>
-            <p className="text-xs font-medium text-foreground">{name}</p>
-            <p className="text-[10px] text-muted-foreground">{address}</p>
+            <p className="text-sm font-medium text-foreground">{name}</p>
+            <p className="text-xs text-muted-foreground">{address}</p>
           </div>
         </div>
         <DropdownMenu>
@@ -65,9 +67,8 @@ export function WalletItem({
         </DropdownMenu>
       </div>
       
-      <div className="mt-1.5 pl-5">
-        <p className="text-base font-bold text-foreground">${balance}</p>
-        <p className="text-[10px] text-muted-foreground">{currency}</p>
+      <div className="mt-2 pl-10">
+        <p className="text-sm font-semibold text-primary">${balance}</p>
       </div>
     </div>
 
