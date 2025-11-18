@@ -27,6 +27,7 @@ const mockPaymentLinks = [
 const mockWallets = [
   { name: "Main Wallet", address: "0xAb3...9dE1", balance: "5,420.50", currency: "USD" },
   { name: "Business Account", address: "0x7Fc...3Aa9", balance: "12,350.00", currency: "USD" },
+  { name: "Savings Wallet", address: "0x2Bd...7Ff2", balance: "8,750.25", currency: "USD" },
 ];
 
 const Index = () => {
