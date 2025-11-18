@@ -12,27 +12,23 @@ export function WalletItem({
   balance,
   currency
 }: WalletItemProps) {
-  return <div className="p-4 bg-muted rounded-lg">
-      <div className="flex items-start justify-between mb-3">
+  return <div className="p-3 bg-muted rounded-lg">
+      <div className="flex items-start justify-between mb-2">
         <div className="flex items-center gap-2">
-          <div className="p-2 rounded-lg bg-primary/10">
-            <Wallet className="h-4 w-4 text-primary" />
-          </div>
+          <Wallet className="h-4 w-4 text-primary" />
           <div>
             <p className="text-sm font-medium text-foreground">{name}</p>
             <p className="text-xs text-muted-foreground">{address}</p>
           </div>
         </div>
-        <Button variant="ghost" size="icon" className="h-8 w-8">
-          <Settings className="h-4 w-4" />
+        <Button variant="ghost" size="icon" className="h-6 w-6">
+          <Settings className="h-3 w-3" />
         </Button>
       </div>
       
-      <div className="mb-3">
-        <p className="text-2xl font-bold text-foreground">${balance}</p>
+      <div className="pl-6">
+        <p className="text-xl font-bold text-foreground">${balance}</p>
         <p className="text-xs text-muted-foreground">{currency}</p>
       </div>
-      
-      
     </div>;
 }
