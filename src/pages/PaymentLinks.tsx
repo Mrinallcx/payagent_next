@@ -6,13 +6,15 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Link as LinkIcon, Eye, Trash2, Plus, Clock } from "lucide-react";
 import { toast } from "sonner";
+import { CreateLinkModal } from "@/components/CreateLinkModal";
 
 interface PaymentLinkData {
   id: string;
   title: string;
   description: string;
   amount: string;
-  currency: string;
+  token: string;
+  network: string;
   expiresAt: Date;
   link: string;
 }
@@ -23,7 +25,8 @@ const mockPaymentLinks: PaymentLinkData[] = [
     title: "Testing",
     description: "cc",
     amount: "20",
-    currency: "USDT",
+    token: "USDT",
+    network: "ETH",
     expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
     link: "https://payme.app/pay/abc123",
   },
@@ -32,7 +35,8 @@ const mockPaymentLinks: PaymentLinkData[] = [
     title: "Web Design Project",
     description: "Final payment for website",
     amount: "500",
-    currency: "USDT",
+    token: "USDT",
+    network: "BASE",
     expiresAt: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
     link: "https://payme.app/pay/xyz789",
   },
@@ -41,7 +45,8 @@ const mockPaymentLinks: PaymentLinkData[] = [
     title: "Consulting Session",
     description: "One hour session",
     amount: "150",
-    currency: "USDT",
+    token: "USDT",
+    network: "SOL",
     expiresAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
     link: "https://payme.app/pay/def456",
   },
@@ -50,6 +55,7 @@ const mockPaymentLinks: PaymentLinkData[] = [
 const PaymentLinks = () => {
   const [paymentLinks, setPaymentLinks] = useState<PaymentLinkData[]>(mockPaymentLinks);
   const [, setCurrentTime] = useState(new Date());
+  const [isCreateLinkOpen, setIsCreateLinkOpen] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -82,6 +88,28 @@ const PaymentLinks = () => {
     toast.success(`"${title}" removed successfully`);
   };
 
+  const handleCreateLink = (linkData: {
+    title: string;
+    description: string;
+    amount: string;
+    token: string;
+    network: string;
+    expiresInDays: number;
+    link: string;
+  }) => {
+    const newLink: PaymentLinkData = {
+      id: Date.now().toString(),
+      title: linkData.title,
+      description: linkData.description,
+      amount: linkData.amount,
+      token: linkData.token,
+      network: linkData.network,
+      expiresAt: new Date(Date.now() + linkData.expiresInDays * 24 * 60 * 60 * 1000),
+      link: linkData.link,
+    };
+    setPaymentLinks([newLink, ...paymentLinks]);
+  };
+
   return (
     <SidebarProvider>
       <div className="flex min-h-screen w-full bg-background">
@@ -97,7 +125,7 @@ const PaymentLinks = () => {
                   <h1 className="text-3xl font-bold text-foreground mb-2">Payment Links</h1>
                   <p className="text-muted-foreground">Create and manage your payment links.</p>
                 </div>
-                <Button className="gap-2">
+                <Button className="gap-2" onClick={() => setIsCreateLinkOpen(true)}>
                   <Plus className="h-4 w-4" />
                   Create Link
                 </Button>
@@ -116,7 +144,7 @@ const PaymentLinks = () => {
                             {link.title}
                           </h3>
                           <Badge variant="secondary" className="bg-primary/10 text-primary hover:bg-primary/20 font-semibold text-xs">
-                            {link.amount} {link.currency}
+                            {link.amount} {link.token}
                           </Badge>
                         </div>
                         <p className="text-sm text-muted-foreground mb-2 line-clamp-1">
@@ -163,6 +191,12 @@ const PaymentLinks = () => {
           </main>
         </div>
       </div>
+      
+      <CreateLinkModal 
+        open={isCreateLinkOpen} 
+        onOpenChange={setIsCreateLinkOpen}
+        onCreateLink={handleCreateLink}
+      />
     </SidebarProvider>
   );
 };
