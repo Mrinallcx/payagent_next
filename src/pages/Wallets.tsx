@@ -68,57 +68,55 @@ const Wallets = () => {
                   </p>
                 </div>
 
-                <div className="space-y-4">
-                  {wallets.map((wallet) => (
-                    <div
-                      key={wallet.id}
-                      className="bg-card border border-border rounded-lg p-4 flex items-center justify-between hover:border-primary/30 transition-colors"
-                    >
-                      <div className="flex items-center gap-4 flex-1 min-w-0">
-                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                          <div className="w-6 h-6 rounded-full bg-primary/20" />
-                        </div>
-                        
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-foreground mb-1 break-all">
+              <div className="space-y-3">
+                {wallets.map((wallet) => (
+                  <div
+                    key={wallet.id}
+                    className="bg-card border border-border rounded-lg p-4 hover:border-primary/20 transition-colors"
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-2 overflow-x-auto">
+                          <code className="text-xs text-muted-foreground bg-muted/50 px-2 py-1 rounded font-mono">
                             {wallet.address}
-                          </p>
-                          <div className="flex gap-2">
-                            {wallet.tokens.map((token) => (
-                              <Badge
-                                key={token}
-                                variant="secondary"
-                                className="text-xs bg-muted text-foreground hover:bg-muted"
-                              >
-                                {token}
-                              </Badge>
-                            ))}
-                          </div>
+                          </code>
+                        </div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {wallet.tokens.map((token) => (
+                            <Badge
+                              key={token}
+                              variant="secondary"
+                              className="bg-primary/10 text-primary hover:bg-primary/20 text-xs"
+                            >
+                              {token}
+                            </Badge>
+                          ))}
                         </div>
                       </div>
 
-                      <div className="flex gap-2 ml-4">
+                      <div className="flex gap-2 sm:flex-shrink-0">
                         <Button
                           size="sm"
                           variant="outline"
                           onClick={() => handleCopyAddress(wallet.address)}
-                          className="gap-2"
+                          className="gap-1.5 h-8 text-xs"
                         >
                           <Copy className="h-3 w-3" />
-                          Copy
+                          <span className="hidden sm:inline">Copy</span>
                         </Button>
                         <Button
                           size="sm"
                           variant="outline"
                           onClick={() => handleDeleteWallet(wallet.id)}
-                          className="gap-2 text-destructive hover:text-destructive border-destructive/50"
+                          className="gap-1.5 h-8 text-xs text-destructive hover:text-destructive border-destructive/50"
                         >
                           <Trash2 className="h-3 w-3" />
-                          Remove
+                          <span className="hidden sm:inline">Remove</span>
                         </Button>
                       </div>
                     </div>
-                  ))}
+                  </div>
+                ))}
 
                   <button className="w-full bg-card border border-border rounded-lg p-4 flex items-center justify-center gap-2 text-foreground hover:border-primary/50 hover:bg-muted/30 transition-colors">
                     <Plus className="h-4 w-4" />
