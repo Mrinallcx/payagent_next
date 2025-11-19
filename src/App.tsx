@@ -8,6 +8,7 @@ import Wallets from "./pages/Wallets";
 import PaymentLinks from "./pages/PaymentLinks";
 import Transactions from "./pages/Transactions";
 import Settings from "./pages/Settings";
+import PaymentView from "./pages/PaymentView";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -24,6 +25,7 @@ const App = () => (
           <Route path="/payment-links" element={<PaymentLinks />} />
           <Route path="/transactions" element={<Transactions />} />
           <Route path="/settings" element={<Settings />} />
+          <Route path="/pay/:linkId" element={<PaymentView />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
