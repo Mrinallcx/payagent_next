@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { AppNavbar } from "@/components/AppNavbar";
@@ -53,6 +54,7 @@ const mockPaymentLinks: PaymentLinkData[] = [
 ];
 
 const PaymentLinks = () => {
+  const navigate = useNavigate();
   const [paymentLinks, setPaymentLinks] = useState<PaymentLinkData[]>(mockPaymentLinks);
   const [, setCurrentTime] = useState(new Date());
   const [isCreateLinkOpen, setIsCreateLinkOpen] = useState(false);
@@ -78,9 +80,8 @@ const PaymentLinks = () => {
     return `${days}d ${hours}h ${minutes}m ${seconds}s`;
   };
 
-  const handleViewLink = (link: string) => {
-    window.open(link, "_blank");
-    toast.success("Opening payment link...");
+  const handleViewLink = (id: string) => {
+    navigate(`/pay/${id}`);
   };
 
   const handleRemoveLink = (id: string, title: string) => {
@@ -160,7 +161,7 @@ const PaymentLinks = () => {
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => handleViewLink(link.link)}
+                          onClick={() => handleViewLink(link.id)}
                           className="gap-1.5 h-8 text-xs"
                         >
                           <Eye className="h-3 w-3" />
