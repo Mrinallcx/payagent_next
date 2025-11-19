@@ -105,122 +105,117 @@ export default function PaymentView() {
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
-      <div className="max-w-2xl mx-auto">
+      <div className="max-w-xl mx-auto">
         {step === "select-network" && (
-          <Card className="p-6 md:p-8 border border-border">
+          <Card className="p-6 md:p-8">
             <div className="space-y-6">
               <div>
-                <h1 className="text-2xl font-bold text-foreground mb-2">
+                <h1 className="text-xl font-bold text-foreground mb-1">
                   {paymentData.title}
                 </h1>
-                <p className="text-muted-foreground">{paymentData.description}</p>
+                <p className="text-sm text-muted-foreground">{paymentData.description}</p>
               </div>
 
-              <div className="pt-6 border-t">
-                <p className="text-sm text-muted-foreground mb-1">Amount</p>
-                <p className="text-3xl font-bold text-foreground">
-                  {paymentData.amount} {paymentData.token}
-                </p>
-                <p className="text-sm text-muted-foreground mt-1">+ {paymentData.gasFee} {paymentData.token} gas fee</p>
-              </div>
-
-              <div className="pt-4 border-t">
-                <p className="text-sm text-muted-foreground mb-1">Payment to</p>
-                <p className="font-semibold text-foreground mb-2">{paymentData.creatorName}</p>
-                <div className="flex items-center gap-2">
-                  <code className="text-xs text-muted-foreground bg-muted px-3 py-1.5 rounded font-mono">
-                    {paymentData.creatorWallet.slice(0, 10)}...{paymentData.creatorWallet.slice(-8)}
-                  </code>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() => handleCopyAddress(paymentData.creatorWallet)}
-                  >
-                    <Copy className="h-4 w-4" />
-                  </Button>
+              <div className="space-y-4">
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Amount</p>
+                  <p className="text-2xl font-bold text-foreground">
+                    {paymentData.amount} {paymentData.token}
+                  </p>
+                  <p className="text-xs text-muted-foreground">+ {paymentData.gasFee} gas fee</p>
                 </div>
-              </div>
 
-              <div className="pt-4 border-t">
-                <Label className="text-foreground mb-3 block">Select Network</Label>
-                <div className="grid grid-cols-2 gap-3">
-                  {paymentData.networks.map((network) => (
-                    <Button
-                      key={network}
-                      type="button"
-                      variant={selectedNetwork === network ? "default" : "outline"}
-                      className="w-full"
-                      onClick={() => setSelectedNetwork(network)}
-                    >
-                      {network}
-                    </Button>
-                  ))}
-                </div>
-                
-                {selectedNetwork && (
-                  <div className="mt-4 p-3 bg-muted rounded">
-                    <p className="text-xs text-muted-foreground mb-2">Wallet Address</p>
-                    <code className="text-xs text-foreground break-all font-mono">
-                      {selectedWalletAddress}
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">To</p>
+                  <p className="font-medium text-foreground">{paymentData.creatorName}</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <code className="text-xs text-muted-foreground font-mono">
+                      {paymentData.creatorWallet.slice(0, 8)}...{paymentData.creatorWallet.slice(-6)}
                     </code>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6"
+                      onClick={() => handleCopyAddress(paymentData.creatorWallet)}
+                    >
+                      <Copy className="h-3 w-3" />
+                    </Button>
                   </div>
-                )}
+                </div>
+
+                <div>
+                  <Label className="text-sm text-foreground mb-2 block">Select Network</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {paymentData.networks.map((network) => (
+                      <Button
+                        key={network}
+                        type="button"
+                        variant={selectedNetwork === network ? "default" : "outline"}
+                        className="w-full"
+                        onClick={() => setSelectedNetwork(network)}
+                      >
+                        {network}
+                      </Button>
+                    ))}
+                  </div>
+                  
+                  {selectedNetwork && (
+                    <div className="mt-3 p-3 bg-muted rounded text-xs">
+                      <p className="text-muted-foreground mb-1">Wallet Address</p>
+                      <code className="text-foreground break-all font-mono">
+                        {selectedWalletAddress}
+                      </code>
+                    </div>
+                  )}
+                </div>
               </div>
 
               <Button
                 className="w-full"
-                size="lg"
                 onClick={handleContinueToPayment}
                 disabled={!selectedNetwork}
               >
-                Continue to Payment
+                Continue
               </Button>
             </div>
           </Card>
         )}
 
         {step === "payment" && (
-          <Card className="p-6 md:p-8 border border-border">
+          <Card className="p-6 md:p-8">
             <div className="space-y-6">
-              <div className="flex items-center justify-between pb-4 border-b">
-                <div>
-                  <h2 className="text-xl font-bold text-foreground">Complete Payment</h2>
-                  <p className="text-sm text-muted-foreground mt-1">Scan QR or copy address</p>
-                </div>
-                <div className="text-center">
-                  <p className={`text-2xl font-bold tabular-nums ${timeRemaining < 30 ? "text-destructive" : "text-foreground"}`}>
-                    {formatTime(timeRemaining)}
-                  </p>
-                  <p className="text-xs text-muted-foreground">remaining</p>
-                </div>
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-bold text-foreground">Payment</h2>
+                <p className={`text-xl font-bold tabular-nums ${timeRemaining < 30 ? "text-destructive" : ""}`}>
+                  {formatTime(timeRemaining)}
+                </p>
               </div>
 
-              <div className="text-center py-6 border-b">
-                <div className="inline-flex items-center justify-center w-48 h-48 bg-muted rounded-lg mb-4">
-                  <div className="text-muted-foreground text-sm">QR Code</div>
+              <div className="text-center space-y-3">
+                <div className="inline-flex items-center justify-center w-40 h-40 bg-muted rounded">
+                  <div className="text-sm text-muted-foreground">QR Code</div>
                 </div>
-                <p className="text-2xl font-bold text-foreground">
-                  {paymentData.amount} {paymentData.token}
-                </p>
-                <p className="text-sm text-muted-foreground mt-1">+ {paymentData.gasFee} gas fee</p>
+                <div>
+                  <p className="text-xl font-bold">{paymentData.amount} {paymentData.token}</p>
+                  <p className="text-xs text-muted-foreground">+ {paymentData.gasFee} gas fee</p>
+                </div>
               </div>
 
               <div className="space-y-4">
                 <div>
-                  <p className="font-semibold text-foreground mb-3">How to Pay</p>
-                  <ol className="list-decimal list-inside space-y-2 text-sm text-muted-foreground">
-                    <li>Open your {paymentData.token} wallet</li>
-                    <li>Scan the QR code or copy the address below</li>
-                    <li>Send exactly {paymentData.amount} {paymentData.token} on {selectedNetwork} network</li>
-                    <li>Click "Payment Done" after sending</li>
+                  <p className="text-sm font-medium mb-2">Steps</p>
+                  <ol className="list-decimal list-inside space-y-1 text-sm text-muted-foreground">
+                    <li>Open your wallet</li>
+                    <li>Scan QR or copy address</li>
+                    <li>Send {paymentData.amount} {paymentData.token}</li>
+                    <li>Enter transaction hash</li>
                   </ol>
                 </div>
 
                 <div>
-                  <Label className="text-foreground mb-2 block">Wallet Address</Label>
+                  <Label className="text-sm mb-2 block">Address</Label>
                   <div className="flex gap-2">
-                    <code className="flex-1 text-xs text-foreground bg-muted px-3 py-2 rounded break-all font-mono">
+                    <code className="flex-1 text-xs bg-muted px-2 py-2 rounded break-all font-mono">
                       {selectedWalletAddress}
                     </code>
                     <Button
@@ -234,7 +229,7 @@ export default function PaymentView() {
                 </div>
 
                 <div>
-                  <Label className="text-foreground mb-2 block">Transaction Hash</Label>
+                  <Label className="text-sm mb-2 block">Transaction Hash</Label>
                   <Input
                     placeholder="0x..."
                     value={transactionHash}
@@ -245,11 +240,10 @@ export default function PaymentView() {
 
                 <Button
                   className="w-full"
-                  size="lg"
                   onClick={handlePaymentDone}
                   disabled={!transactionHash}
                 >
-                  Payment Done
+                  Done
                 </Button>
               </div>
             </div>
@@ -257,58 +251,54 @@ export default function PaymentView() {
         )}
 
         {step === "success" && (
-          <Card className="p-6 md:p-8 border border-border">
+          <Card className="p-6 md:p-8">
             <div className="space-y-6">
-              <div className="text-center pb-6 border-b">
-                <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4">
-                  <CheckCircle2 className="w-8 h-8 text-green-600" />
+              <div className="text-center">
+                <div className="inline-flex items-center justify-center w-12 h-12 bg-green-100 rounded-full mb-3">
+                  <CheckCircle2 className="w-6 h-6 text-green-600" />
                 </div>
-                <h2 className="text-2xl font-bold text-foreground mb-2">Payment Submitted!</h2>
-                <p className="text-muted-foreground">Your payment has been submitted for verification</p>
+                <h2 className="text-lg font-bold mb-1">Payment Submitted</h2>
+                <p className="text-sm text-muted-foreground">Submitted for verification</p>
               </div>
 
-              <div className="space-y-3">
-                <div className="flex justify-between py-3 border-b">
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between py-2">
                   <span className="text-muted-foreground">Amount</span>
-                  <span className="font-semibold text-foreground">{paymentData.amount} {paymentData.token}</span>
+                  <span className="font-medium">{paymentData.amount} {paymentData.token}</span>
                 </div>
-                <div className="flex justify-between py-3 border-b">
+                <div className="flex justify-between py-2">
                   <span className="text-muted-foreground">To</span>
-                  <span className="font-semibold text-foreground">{paymentData.creatorName}</span>
+                  <span className="font-medium">{paymentData.creatorName}</span>
                 </div>
-                <div className="flex justify-between py-3 border-b">
+                <div className="flex justify-between py-2">
                   <span className="text-muted-foreground">Network</span>
-                  <Badge variant="secondary">{selectedNetwork}</Badge>
+                  <Badge variant="secondary" className="text-xs">{selectedNetwork}</Badge>
                 </div>
-                <div className="py-3">
-                  <p className="text-muted-foreground mb-2">Transaction Hash</p>
-                  <code className="text-xs text-foreground break-all bg-muted px-3 py-2 rounded block font-mono">
+                <div className="py-2">
+                  <p className="text-muted-foreground mb-1">Transaction Hash</p>
+                  <code className="text-xs break-all bg-muted px-2 py-1 rounded block font-mono">
                     {transactionHash}
                   </code>
                 </div>
               </div>
 
-              <div className="pt-4 border-t">
-                <Label className="text-foreground mb-3 block">Upload Screenshot (Optional)</Label>
+              <div>
+                <Label className="text-sm mb-2 block">Screenshot (Optional)</Label>
                 <Input
                   type="file"
                   accept="image/*"
                   onChange={handleFileUpload}
-                  className="cursor-pointer"
+                  className="text-sm"
                 />
                 {screenshot && (
-                  <p className="text-sm text-green-600 mt-2 flex items-center gap-2">
-                    <CheckCircle2 className="h-4 w-4" />
+                  <p className="text-xs text-green-600 mt-2 flex items-center gap-1">
+                    <CheckCircle2 className="h-3 w-3" />
                     {screenshot.name}
                   </p>
                 )}
               </div>
 
-              <Button
-                className="w-full"
-                size="lg"
-                onClick={() => navigate("/")}
-              >
+              <Button className="w-full" onClick={() => navigate("/")}>
                 Done
               </Button>
             </div>
