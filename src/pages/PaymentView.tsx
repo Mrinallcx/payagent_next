@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Copy, CheckCircle2 } from "lucide-react";
+import { Copy, CheckCircle2, Circle, X } from "lucide-react";
 
 type PaymentStep = "select-network" | "payment" | "success";
 
@@ -103,204 +103,237 @@ export default function PaymentView() {
 
   const selectedWalletAddress = selectedNetwork ? paymentData.wallets[selectedNetwork as keyof typeof paymentData.wallets] : "";
 
+  const getNetworkColor = (network: string) => {
+    const colors: Record<string, string> = {
+      ETH: "#627EEA",
+      BASE: "#0052FF",
+      SOL: "#14F195",
+      BNB: "#F3BA2F",
+    };
+    return colors[network] || "#0B6FFE";
+  };
+
   return (
-    <div className="min-h-screen bg-background p-4 md:p-8">
-      <div className="max-w-xl mx-auto">
+    <div className="min-h-screen bg-[#FAFBFC] p-4 md:p-8">
+      <div className="max-w-md mx-auto">
         {step === "select-network" && (
-          <Card className="p-6 md:p-8">
+          <Card className="p-6 border border-[#E8F0FF] shadow-sm">
             <div className="space-y-6">
-              <div>
-                <h1 className="text-xl font-bold text-foreground mb-1">
-                  {paymentData.title}
-                </h1>
-                <p className="text-sm text-muted-foreground">{paymentData.description}</p>
+              <div className="text-center pb-4 border-b border-[#E8F0FF]">
+                <p className="text-xs text-muted-foreground uppercase tracking-wide mb-3">
+                  Payment Terminal
+                </p>
+                <div className="flex items-center justify-center gap-3">
+                  <p className="text-4xl font-bold text-[#0B233F]">
+                    {paymentData.amount}
+                  </p>
+                  <Badge variant="secondary" className="text-sm px-3 py-1">
+                    {paymentData.token}
+                  </Badge>
+                </div>
               </div>
 
-              <div className="space-y-4">
-                <div>
-                  <p className="text-sm text-muted-foreground mb-1">Amount</p>
-                  <p className="text-2xl font-bold text-foreground">
-                    {paymentData.amount} {paymentData.token}
-                  </p>
-                  <p className="text-xs text-muted-foreground">+ {paymentData.gasFee} gas fee</p>
-                </div>
-
-                <div>
-                  <p className="text-sm text-muted-foreground mb-1">To</p>
-                  <p className="font-medium text-foreground">{paymentData.creatorName}</p>
-                  <div className="flex items-center gap-2 mt-1">
-                    <code className="text-xs text-muted-foreground font-mono">
-                      {paymentData.creatorWallet.slice(0, 8)}...{paymentData.creatorWallet.slice(-6)}
-                    </code>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6"
-                      onClick={() => handleCopyAddress(paymentData.creatorWallet)}
+              <div>
+                <p className="text-xs text-muted-foreground uppercase tracking-wide mb-3">
+                  Available Networks
+                </p>
+                <div className="space-y-2">
+                  {paymentData.networks.map((network) => (
+                    <button
+                      key={network}
+                      onClick={() => setSelectedNetwork(network)}
+                      className={`w-full p-4 rounded-lg border-2 transition-all ${
+                        selectedNetwork === network
+                          ? "border-[#0B6FFE] bg-[#F8FBFF]"
+                          : "border-[#E8F0FF] hover:border-[#0B6FFE]/50"
+                      }`}
                     >
-                      <Copy className="h-3 w-3" />
-                    </Button>
-                  </div>
-                </div>
-
-                <div>
-                  <Label className="text-sm text-foreground mb-2 block">Select Network</Label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {paymentData.networks.map((network) => (
-                      <Button
-                        key={network}
-                        type="button"
-                        variant={selectedNetwork === network ? "default" : "outline"}
-                        className="w-full"
-                        onClick={() => setSelectedNetwork(network)}
-                      >
-                        {network}
-                      </Button>
-                    ))}
-                  </div>
-                  
-                  {selectedNetwork && (
-                    <div className="mt-3 p-3 bg-muted rounded text-xs">
-                      <p className="text-muted-foreground mb-1">Wallet Address</p>
-                      <code className="text-foreground break-all font-mono">
-                        {selectedWalletAddress}
-                      </code>
-                    </div>
-                  )}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <Circle
+                            className="h-8 w-8"
+                            fill={getNetworkColor(network)}
+                            stroke="none"
+                          />
+                          <div className="text-left">
+                            <p className="font-medium text-[#0B233F]">
+                              {network === "ETH" ? "Ethereum (ERC20)" : `${network} (${network}20)`}
+                            </p>
+                            <p className="text-xs text-muted-foreground font-mono">
+                              {paymentData.wallets[network as keyof typeof paymentData.wallets]?.slice(0, 10)}...
+                              {paymentData.wallets[network as keyof typeof paymentData.wallets]?.slice(-8)}
+                            </p>
+                          </div>
+                        </div>
+                        <Badge variant="secondary" className="text-xs">
+                          ~{paymentData.gasFee}
+                        </Badge>
+                      </div>
+                    </button>
+                  ))}
                 </div>
               </div>
 
               <Button
-                className="w-full"
+                className="w-full h-12 text-base font-medium"
                 onClick={handleContinueToPayment}
                 disabled={!selectedNetwork}
               >
-                Continue
+                Pay - {paymentData.amount} {paymentData.token} ({selectedNetwork || "Select Network"})
               </Button>
             </div>
           </Card>
         )}
 
         {step === "payment" && (
-          <Card className="p-6 md:p-8">
+          <Card className="p-6 border border-[#E8F0FF] shadow-sm">
             <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <h2 className="text-lg font-bold text-foreground">Payment</h2>
-                <p className={`text-xl font-bold tabular-nums ${timeRemaining < 30 ? "text-destructive" : ""}`}>
-                  {formatTime(timeRemaining)}
+              <div className="flex items-center justify-between pb-4 border-b border-[#E8F0FF]">
+                <div className="text-sm">
+                  <p className="text-xs text-muted-foreground mb-1">Paying to</p>
+                  <p className="font-bold text-[#0B233F]">@{paymentData.creatorName.replace(/\s+/g, '').toLowerCase()}</p>
+                </div>
+                <div className="text-right">
+                  <p className={`text-lg font-bold tabular-nums ${timeRemaining < 30 ? "text-destructive" : "text-[#0B6FFE]"}`}>
+                    {formatTime(timeRemaining)}
+                  </p>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-destructive hover:text-destructive h-auto p-0 mt-1"
+                    onClick={() => {
+                      setStep("select-network");
+                      setTimeRemaining(120);
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+
+              <div className="text-center">
+                <div className="flex items-center justify-center gap-2 mb-4">
+                  <p className="text-2xl font-bold text-[#0B233F]">{paymentData.amount} {paymentData.token}</p>
+                  <Badge variant="secondary" className="text-xs">{selectedNetwork}</Badge>
+                </div>
+              </div>
+
+              <div className="bg-white p-6 rounded-lg border-2 border-[#E8F0FF]">
+                <p className="text-xs text-muted-foreground uppercase tracking-wide text-center mb-4">
+                  Send to this address
+                </p>
+                <div className="inline-flex items-center justify-center w-full h-48 bg-[#FAFBFC] rounded-lg mb-3">
+                  <div className="text-sm text-muted-foreground">Scan QR Code</div>
+                </div>
+                <p className="text-xs text-center text-muted-foreground">
+                  Click QR code to copy address
                 </p>
               </div>
 
-              <div className="text-center space-y-3">
-                <div className="inline-flex items-center justify-center w-40 h-40 bg-muted rounded">
-                  <div className="text-sm text-muted-foreground">QR Code</div>
-                </div>
-                <div>
-                  <p className="text-xl font-bold">{paymentData.amount} {paymentData.token}</p>
-                  <p className="text-xs text-muted-foreground">+ {paymentData.gasFee} gas fee</p>
-                </div>
+              <div>
+                <p className="text-xs text-muted-foreground uppercase tracking-wide mb-3">
+                  Payment Instructions
+                </p>
+                <ol className="space-y-2 text-sm text-[#0B233F]">
+                  <li className="flex gap-3">
+                    <span className="text-muted-foreground">1.</span>
+                    <span>Open your crypto wallet app (Binance, Coinbase, Trust Wallet, etc.)</span>
+                  </li>
+                  <li className="flex gap-3">
+                    <span className="text-muted-foreground">2.</span>
+                    <span>Scan this QR code with your wallet's scanner</span>
+                  </li>
+                  <li className="flex gap-3">
+                    <span className="text-muted-foreground">3.</span>
+                    <span>Confirm sending {paymentData.amount} {paymentData.token} on {selectedNetwork} network</span>
+                  </li>
+                </ol>
               </div>
 
-              <div className="space-y-4">
-                <div>
-                  <p className="text-sm font-medium mb-2">Steps</p>
-                  <ol className="list-decimal list-inside space-y-1 text-sm text-muted-foreground">
-                    <li>Open your wallet</li>
-                    <li>Scan QR or copy address</li>
-                    <li>Send {paymentData.amount} {paymentData.token}</li>
-                    <li>Enter transaction hash</li>
-                  </ol>
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <Label className="text-xs text-muted-foreground uppercase tracking-wide">
+                    Recipient Address
+                  </Label>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-auto p-0 text-xs"
+                    onClick={() => handleCopyAddress(selectedWalletAddress)}
+                  >
+                    <Copy className="h-3 w-3 mr-1" />
+                    Copy
+                  </Button>
                 </div>
-
-                <div>
-                  <Label className="text-sm mb-2 block">Address</Label>
-                  <div className="flex gap-2">
-                    <code className="flex-1 text-xs bg-muted px-2 py-2 rounded break-all font-mono">
-                      {selectedWalletAddress}
-                    </code>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => handleCopyAddress(selectedWalletAddress)}
-                    >
-                      <Copy className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-
-                <div>
-                  <Label className="text-sm mb-2 block">Transaction Hash</Label>
-                  <Input
-                    placeholder="0x..."
-                    value={transactionHash}
-                    onChange={(e) => setTransactionHash(e.target.value)}
-                    className="font-mono text-sm"
-                  />
-                </div>
-
-                <Button
-                  className="w-full"
-                  onClick={handlePaymentDone}
-                  disabled={!transactionHash}
-                >
-                  Done
-                </Button>
+                <code className="block text-xs bg-[#FAFBFC] px-3 py-2 rounded border border-[#E8F0FF] break-all font-mono text-[#0B233F]">
+                  {selectedWalletAddress}
+                </code>
               </div>
+
+              <Button
+                className="w-full h-12 text-base font-medium"
+                onClick={handlePaymentDone}
+              >
+                ✓ I've sent payment
+              </Button>
             </div>
           </Card>
         )}
 
         {step === "success" && (
-          <Card className="p-6 md:p-8">
+          <Card className="p-6 border border-[#E8F0FF] shadow-sm">
             <div className="space-y-6">
-              <div className="text-center">
-                <div className="inline-flex items-center justify-center w-12 h-12 bg-green-100 rounded-full mb-3">
-                  <CheckCircle2 className="w-6 h-6 text-green-600" />
+              <div className="text-center pb-6 border-b border-[#E8F0FF]">
+                <div className="inline-flex items-center justify-center w-16 h-16 bg-[#E8F0FF] rounded-full mb-4">
+                  <CheckCircle2 className="w-8 h-8 text-[#0B6FFE]" />
                 </div>
-                <h2 className="text-lg font-bold mb-1">Payment Submitted</h2>
-                <p className="text-sm text-muted-foreground">Submitted for verification</p>
+                <h2 className="text-xl font-bold text-[#0B233F] mb-2">Payment noted!</h2>
+                <p className="text-sm text-muted-foreground">
+                  We're monitoring the blockchain for your transaction
+                </p>
               </div>
 
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between py-2">
+              <div className="bg-[#FAFBFC] p-4 rounded-lg border border-[#E8F0FF] space-y-3 text-sm">
+                <div className="flex justify-between">
                   <span className="text-muted-foreground">Amount</span>
-                  <span className="font-medium">{paymentData.amount} {paymentData.token}</span>
+                  <span className="font-bold text-[#0B233F]">{paymentData.amount} {paymentData.token}</span>
                 </div>
-                <div className="flex justify-between py-2">
+                <div className="flex justify-between">
                   <span className="text-muted-foreground">To</span>
-                  <span className="font-medium">{paymentData.creatorName}</span>
+                  <span className="font-bold text-[#0B233F]">@{paymentData.creatorName.replace(/\s+/g, '').toLowerCase()}</span>
                 </div>
-                <div className="flex justify-between py-2">
+                <div className="flex justify-between">
                   <span className="text-muted-foreground">Network</span>
-                  <Badge variant="secondary" className="text-xs">{selectedNetwork}</Badge>
-                </div>
-                <div className="py-2">
-                  <p className="text-muted-foreground mb-1">Transaction Hash</p>
-                  <code className="text-xs break-all bg-muted px-2 py-1 rounded block font-mono">
-                    {transactionHash}
-                  </code>
+                  <Badge variant="secondary" className="text-xs">{selectedNetwork} ({selectedNetwork}20)</Badge>
                 </div>
               </div>
 
               <div>
-                <Label className="text-sm mb-2 block">Screenshot (Optional)</Label>
-                <Input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleFileUpload}
-                  className="text-sm"
-                />
-                {screenshot && (
-                  <p className="text-xs text-green-600 mt-2 flex items-center gap-1">
-                    <CheckCircle2 className="h-3 w-3" />
-                    {screenshot.name}
-                  </p>
-                )}
+                <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">
+                  Add your name to let @{paymentData.creatorName.replace(/\s+/g, '').toLowerCase()} know who sent this
+                </p>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Your name or @username"
+                    className="flex-1"
+                  />
+                  <Button className="px-6">Add</Button>
+                </div>
               </div>
 
-              <Button className="w-full" onClick={() => navigate("/")}>
-                Done
+              <Button 
+                className="w-full h-12 text-base font-medium" 
+                onClick={() => navigate("/")}
+              >
+                Stop copying wallet addresses - Get your link
               </Button>
+
+              <div className="pt-4 border-t border-[#E8F0FF]">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <div className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse" />
+                  <span>Finding your transaction on blockchain...</span>
+                </div>
+              </div>
             </div>
           </Card>
         )}
