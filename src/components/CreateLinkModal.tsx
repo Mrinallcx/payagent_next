@@ -37,7 +37,7 @@ export function CreateLinkModal({ open, onOpenChange, onCreateLink }: CreateLink
   const [step, setStep] = useState<Step>("amount-token");
   const [amount, setAmount] = useState("");
   const [selectedToken, setSelectedToken] = useState("");
-  const [selectedNetwork, setSelectedNetwork] = useState("");
+  const [selectedNetworks, setSelectedNetworks] = useState<string[]>([]);
   const [expiresInDays, setExpiresInDays] = useState("");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -52,8 +52,8 @@ export function CreateLinkModal({ open, onOpenChange, onCreateLink }: CreateLink
   };
 
   const handleContinueToExpiration = () => {
-    if (!selectedNetwork) {
-      toast.error("Please select a network");
+    if (!selectedNetworks.length) {
+      toast.error("Please select at least one network");
       return;
     }
     setStep("expiration");
@@ -82,12 +82,12 @@ export function CreateLinkModal({ open, onOpenChange, onCreateLink }: CreateLink
         description,
         amount,
         token: selectedToken,
-        network: selectedNetwork,
+        network: selectedNetworks.join(", "),
         expiresInDays: parseInt(expiresInDays),
         link,
       });
     }
-    
+
     setStep("generated");
     toast.success("Payment link created!");
   };
@@ -107,7 +107,7 @@ export function CreateLinkModal({ open, onOpenChange, onCreateLink }: CreateLink
     setStep("amount-token");
     setAmount("");
     setSelectedToken("");
-    setSelectedNetwork("");
+    setSelectedNetworks([]);
     setExpiresInDays("");
     setTitle("");
     setDescription("");
@@ -122,13 +122,13 @@ export function CreateLinkModal({ open, onOpenChange, onCreateLink }: CreateLink
           <DialogTitle>Create Payment Link</DialogTitle>
           <DialogDescription>
             {step === "amount-token" && "Enter amount and select token"}
-            {step === "network" && "Select network for payment"}
+            {step === "network" && "Select networks for payment"}
             {step === "expiration" && "Set link expiration"}
             {step === "details" && "Add title and description"}
             {step === "generated" && "Your payment link is ready"}
           </DialogDescription>
         </DialogHeader>
-        
+
         <div className="space-y-4 py-4">
           {step === "amount-token" && (
             <>
@@ -163,19 +163,28 @@ export function CreateLinkModal({ open, onOpenChange, onCreateLink }: CreateLink
 
           {step === "network" && (
             <div className="space-y-2">
-              <Label>Select Network</Label>
+              <Label>Select Networks</Label>
               <div className="grid grid-cols-2 gap-2">
-                {NETWORKS.map((network) => (
-                  <Button
-                    key={network}
-                    type="button"
-                    variant={selectedNetwork === network ? "default" : "outline"}
-                    className="w-full"
-                    onClick={() => setSelectedNetwork(network)}
-                  >
-                    {network}
-                  </Button>
-                ))}
+                {NETWORKS.map((network) => {
+                  const isSelected = selectedNetworks.includes(network);
+                  return (
+                    <Button
+                      key={network}
+                      type="button"
+                      variant={isSelected ? "default" : "outline"}
+                      className="w-full"
+                      onClick={() => {
+                        setSelectedNetworks((prev) =>
+                          prev.includes(network)
+                            ? prev.filter((n) => n !== network)
+                            : [...prev, network]
+                        );
+                      }}
+                    >
+                      {network}
+                    </Button>
+                  );
+                })}
               </div>
             </div>
           )}
