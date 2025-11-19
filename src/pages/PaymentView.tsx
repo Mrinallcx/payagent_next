@@ -114,8 +114,28 @@ export default function PaymentView() {
   };
 
   return (
-    <div className="min-h-screen bg-[#FAFBFC] p-4 md:p-8">
-      <div className="max-w-md mx-auto">
+    <div className="min-h-screen bg-[#FAFBFC]">
+      <nav className="bg-white border-b-2 border-[#E8F0FF] px-4 md:px-8 py-4">
+        <div className="max-w-6xl mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-[#0B6FFE] flex items-center justify-center">
+              <span className="text-white font-bold text-sm">P</span>
+            </div>
+            <span className="text-xl font-bold text-[#0B233F]">Payme</span>
+          </div>
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => navigate("/")}
+            className="border-[#E8F0FF] hover:bg-[#F8FBFF]"
+          >
+            Create Your Link
+          </Button>
+        </div>
+      </nav>
+      
+      <div className="p-4 md:p-8">
+        <div className="max-w-md mx-auto">
         {step === "select-network" && (
           <Card className="p-8 border-2 border-[#E8F0FF] shadow-lg bg-white">
             <div className="space-y-6">
@@ -352,6 +372,7 @@ export default function PaymentView() {
             </div>
           </Card>
         )}
+        </div>
       </div>
     </div>
   );
