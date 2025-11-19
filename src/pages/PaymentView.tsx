@@ -270,9 +270,22 @@ export default function PaymentView() {
                 </code>
               </div>
 
+              <div>
+                <Label className="text-xs text-muted-foreground uppercase tracking-wide mb-2 block">
+                  Transaction Hash (After sending)
+                </Label>
+                <Input
+                  placeholder="Enter transaction hash (0x...)"
+                  value={transactionHash}
+                  onChange={(e) => setTransactionHash(e.target.value)}
+                  className="font-mono text-sm"
+                />
+              </div>
+
               <Button
                 className="w-full h-12 text-base font-medium"
                 onClick={handlePaymentDone}
+                disabled={!transactionHash}
               >
                 ✓ I've sent payment
               </Button>
