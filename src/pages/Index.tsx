@@ -8,8 +8,10 @@ import { PaymentLinkItem } from "@/components/PaymentLinkItem";
 import { WalletItem } from "@/components/WalletItem";
 import { QuickActions } from "@/components/QuickActions";
 import { CreateLinkModal } from "@/components/CreateLinkModal";
+import { AddWalletModal } from "@/components/AddWalletModal";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
 
 const mockTransactions = [
   { type: "received" as const, status: "success" as const, amount: "1,250.00", description: "Client Payment - Website Design", date: "Today, 2:30 PM" },
@@ -32,6 +34,15 @@ const mockWallets = [
 
 const Index = () => {
   const [isCreateLinkOpen, setIsCreateLinkOpen] = useState(false);
+  const [isAddWalletOpen, setIsAddWalletOpen] = useState(false);
+
+  const handleAddWallet = (wallet: { token: string; network: string; address: string }) => {
+    toast({
+      title: "Wallet Added",
+      description: `${wallet.token} wallet on ${wallet.network} network added successfully.`,
+    });
+    setIsAddWalletOpen(false);
+  };
 
   return (
     <SidebarProvider>
@@ -88,7 +99,12 @@ const Index = () => {
                 <DashboardCard 
                   title="Payment Wallets"
                   action={
-                    <Button variant="ghost" size="sm" className="text-xs gap-1">
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="text-xs gap-1"
+                      onClick={() => setIsAddWalletOpen(true)}
+                    >
                       <Plus className="h-3 w-3" />
                       Add
                     </Button>
@@ -109,6 +125,11 @@ const Index = () => {
       </div>
       
       <CreateLinkModal open={isCreateLinkOpen} onOpenChange={setIsCreateLinkOpen} />
+      <AddWalletModal 
+        open={isAddWalletOpen} 
+        onOpenChange={setIsAddWalletOpen}
+        onAddWallet={handleAddWallet}
+      />
     </SidebarProvider>
   );
 };
