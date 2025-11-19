@@ -4,9 +4,10 @@ import { Card } from "@/components/ui/card";
 
 interface QuickActionsProps {
   onCreateLink: () => void;
+  onAddWallet: () => void;
 }
 
-export function QuickActions({ onCreateLink }: QuickActionsProps) {
+export function QuickActions({ onCreateLink, onAddWallet }: QuickActionsProps) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
       <Card 
@@ -26,7 +27,10 @@ export function QuickActions({ onCreateLink }: QuickActionsProps) {
         </div>
       </Card>
 
-      <Card className="p-6 border-border hover:shadow-lg transition-all cursor-pointer hover:-translate-y-0.5">
+      <Card 
+        className="p-6 border-border hover:shadow-lg transition-all cursor-pointer hover:-translate-y-0.5"
+        onClick={onAddWallet}
+      >
         <div className="flex flex-col items-center text-center gap-3">
           <div className="p-3 rounded-full bg-accent/20">
             <Wallet className="h-6 w-6 text-accent-foreground" />

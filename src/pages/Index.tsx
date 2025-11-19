@@ -118,7 +118,10 @@ const Index = () => {
                 </DashboardCard>
               </div>
 
-              <QuickActions onCreateLink={() => setIsCreateLinkOpen(true)} />
+              <QuickActions 
+                onCreateLink={() => setIsCreateLinkOpen(true)} 
+                onAddWallet={() => setIsAddWalletOpen(true)}
+              />
             </div>
           </main>
         </div>
