@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Copy, Upload, CheckCircle2 } from "lucide-react";
+import { Copy, CheckCircle2, Timer, Wallet, Network, ArrowRight, Upload } from "lucide-react";
 
 type PaymentStep = "select-network" | "payment" | "success";
 
@@ -104,210 +104,270 @@ export default function PaymentView() {
   const selectedWalletAddress = selectedNetwork ? paymentData.wallets[selectedNetwork as keyof typeof paymentData.wallets] : "";
 
   return (
-    <div className="min-h-screen bg-background p-4 md:p-8">
-      <div className="max-w-2xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-background via-[#F8FBFF] to-[#E8F0FF] p-4 md:p-8">
+      <div className="max-w-2xl mx-auto animate-fade-in">
         {step === "select-network" && (
-          <Card className="p-6 md:p-8 border-[#E8F0FF] shadow-sm">
-            <div className="space-y-6">
-              <div>
-                <h1 className="text-2xl font-bold text-[#0B233F] mb-2">
-                  {paymentData.title}
-                </h1>
-                <p className="text-[#46658A]">{paymentData.description}</p>
+          <Card className="overflow-hidden border-2 border-[#E8F0FF] shadow-xl bg-white animate-scale-in">
+            {/* Header Section */}
+            <div className="bg-gradient-to-r from-[#0B6FFE] to-[#0547B2] p-6 md:p-8 text-white">
+              <h1 className="text-2xl md:text-3xl font-bold mb-2">
+                {paymentData.title}
+              </h1>
+              <p className="text-white/90 text-sm md:text-base">{paymentData.description}</p>
+            </div>
+
+            <div className="p-6 md:p-8 space-y-6">
+              {/* Amount Display */}
+              <div className="text-center py-6 bg-gradient-to-br from-[#E8F0FF] to-white rounded-2xl border border-[#E8F0FF]">
+                <p className="text-sm text-[#46658A] mb-2 uppercase tracking-wide">Total Amount</p>
+                <p className="text-4xl md:text-5xl font-bold text-[#0B233F] mb-2">
+                  {paymentData.amount} <span className="text-[#0B6FFE]">{paymentData.token}</span>
+                </p>
+                <p className="text-sm text-[#46658A] flex items-center justify-center gap-1">
+                  <span>+ {paymentData.gasFee} {paymentData.token}</span>
+                  <span className="text-xs">(gas fee)</span>
+                </p>
               </div>
 
-              <div className="space-y-4 pt-4 border-t border-[#E8F0FF]">
-                <div>
-                  <p className="text-sm text-[#46658A] mb-1">Payment to</p>
-                  <p className="font-semibold text-[#0B233F]">{paymentData.creatorName}</p>
-                  <div className="flex items-center gap-2 mt-1">
-                    <code className="text-xs text-[#46658A] bg-[#E8F0FF] px-2 py-1 rounded">
-                      {paymentData.creatorWallet.slice(0, 6)}...{paymentData.creatorWallet.slice(-4)}
+              {/* Recipient Info */}
+              <div className="flex items-start gap-4 p-4 bg-[#E8F0FF]/30 rounded-xl border border-[#E8F0FF]">
+                <div className="p-2 bg-[#0B6FFE] rounded-lg">
+                  <Wallet className="h-5 w-5 text-white" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs text-[#46658A] mb-1 uppercase tracking-wide">Payment to</p>
+                  <p className="font-semibold text-[#0B233F] mb-2">{paymentData.creatorName}</p>
+                  <div className="flex items-center gap-2">
+                    <code className="text-xs text-[#46658A] bg-white px-3 py-1.5 rounded-lg border border-[#E8F0FF] font-mono">
+                      {paymentData.creatorWallet.slice(0, 10)}...{paymentData.creatorWallet.slice(-8)}
                     </code>
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-6 w-6"
+                      className="h-8 w-8 hover:bg-white hover:border-[#E8F0FF]"
                       onClick={() => handleCopyAddress(paymentData.creatorWallet)}
                     >
-                      <Copy className="h-3 w-3" />
+                      <Copy className="h-4 w-4 text-[#0B6FFE]" />
                     </Button>
                   </div>
                 </div>
+              </div>
 
-                <div>
-                  <p className="text-sm text-[#46658A] mb-1">Amount</p>
-                  <p className="text-3xl font-bold text-[#0B233F]">
-                    {paymentData.amount} {paymentData.token}
-                  </p>
-                  <p className="text-sm text-[#46658A] mt-1">+ {paymentData.gasFee} {paymentData.token} gas fee</p>
+              {/* Network Selection */}
+              <div>
+                <div className="flex items-center gap-2 mb-4">
+                  <Network className="h-5 w-5 text-[#0B6FFE]" />
+                  <Label className="text-[#0B233F] text-base font-semibold">Select Payment Network</Label>
                 </div>
-
-                <div>
-                  <Label className="text-[#0B233F] mb-3 block">Select Network</Label>
-                  <div className="grid grid-cols-2 gap-3">
-                    {paymentData.networks.map((network) => (
-                      <Button
-                        key={network}
-                        type="button"
-                        variant={selectedNetwork === network ? "default" : "outline"}
-                        className="w-full"
-                        onClick={() => setSelectedNetwork(network)}
-                      >
-                        {network}
-                      </Button>
-                    ))}
+                <div className="grid grid-cols-2 gap-3">
+                  {paymentData.networks.map((network) => (
+                    <Button
+                      key={network}
+                      type="button"
+                      variant={selectedNetwork === network ? "default" : "outline"}
+                      className={`w-full h-14 text-base font-semibold transition-all hover-scale ${
+                        selectedNetwork === network 
+                          ? "bg-[#0B6FFE] hover:bg-[#0547B2] shadow-lg" 
+                          : "border-2 border-[#E8F0FF] hover:border-[#0B6FFE]"
+                      }`}
+                      onClick={() => setSelectedNetwork(network)}
+                    >
+                      {network}
+                    </Button>
+                  ))}
+                </div>
+                
+                {selectedNetwork && (
+                  <div className="mt-4 p-4 bg-gradient-to-br from-[#E8F0FF] to-white rounded-xl border-2 border-[#0B6FFE]/20 animate-fade-in">
+                    <p className="text-xs text-[#46658A] mb-2 uppercase tracking-wide font-semibold">Wallet Address</p>
+                    <code className="text-xs md:text-sm text-[#0B233F] break-all font-mono block bg-white p-3 rounded-lg border border-[#E8F0FF]">
+                      {selectedWalletAddress}
+                    </code>
                   </div>
-                  {selectedNetwork && (
-                    <div className="mt-4 p-3 bg-[#E8F0FF] rounded-md">
-                      <p className="text-xs text-[#46658A] mb-1">Wallet Address</p>
-                      <code className="text-xs text-[#0B233F] break-all">
-                        {selectedWalletAddress}
-                      </code>
-                    </div>
-                  )}
-                </div>
+                )}
               </div>
 
               <Button
-                className="w-full"
+                className="w-full h-14 text-base font-semibold shadow-lg hover:shadow-xl transition-all hover-scale"
                 size="lg"
                 onClick={handleContinueToPayment}
                 disabled={!selectedNetwork}
               >
                 Continue to Payment
+                <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
             </div>
           </Card>
         )}
 
         {step === "payment" && (
-          <Card className="p-6 md:p-8 border-[#E8F0FF] shadow-sm">
-            <div className="space-y-6">
-              <div className="text-center">
-                <div className="inline-flex items-center justify-center w-48 h-48 bg-[#E8F0FF] rounded-lg mb-4">
-                  <div className="text-[#46658A] text-sm">QR Code</div>
+          <Card className="overflow-hidden border-2 border-[#E8F0FF] shadow-xl bg-white animate-scale-in">
+            {/* Header with Timer */}
+            <div className="bg-gradient-to-r from-[#0B6FFE] to-[#0547B2] p-6 text-white">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-bold">Complete Payment</h2>
+                  <p className="text-white/80 text-sm mt-1">Scan QR or copy address</p>
                 </div>
-                <p className="text-2xl font-bold text-[#0B233F]">
-                  {paymentData.amount} {paymentData.token}
-                </p>
-                <p className="text-sm text-[#46658A] mt-1">+ {paymentData.gasFee} gas fee</p>
+                <div className="text-center">
+                  <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-xl">
+                    <Timer className="h-5 w-5" />
+                    <span className={`text-2xl font-bold tabular-nums ${timeRemaining < 30 ? "animate-pulse" : ""}`}>
+                      {formatTime(timeRemaining)}
+                    </span>
+                  </div>
+                  <p className="text-xs mt-1 text-white/70">Time remaining</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-6 md:p-8 space-y-6">
+              {/* QR Code Section */}
+              <div className="text-center">
+                <div className="inline-flex items-center justify-center w-56 h-56 bg-gradient-to-br from-white to-[#E8F0FF] rounded-2xl border-4 border-[#0B6FFE]/20 shadow-2xl mb-4">
+                  <div className="text-[#46658A] text-sm font-medium">QR Code Placeholder</div>
+                </div>
+                <div className="inline-block p-4 bg-[#E8F0FF]/50 rounded-xl">
+                  <p className="text-3xl font-bold text-[#0B233F]">
+                    {paymentData.amount} <span className="text-[#0B6FFE]">{paymentData.token}</span>
+                  </p>
+                  <p className="text-sm text-[#46658A] mt-1">+ {paymentData.gasFee} gas fee</p>
+                </div>
               </div>
 
-              <div className="space-y-4 pt-4 border-t border-[#E8F0FF]">
-                <div>
-                  <p className="font-semibold text-[#0B233F] mb-2">How to Pay</p>
-                  <ol className="list-decimal list-inside space-y-1 text-sm text-[#46658A]">
-                    <li>Open your {paymentData.token} wallet</li>
-                    <li>Scan the QR code or copy the address below</li>
-                    <li>Send exactly {paymentData.amount} {paymentData.token} on {selectedNetwork} network</li>
-                    <li>Click "Payment Done" after sending</li>
-                  </ol>
-                </div>
-
-                <div>
-                  <Label className="text-[#0B233F] mb-2 block">Wallet Address</Label>
-                  <div className="flex gap-2">
-                    <code className="flex-1 text-xs text-[#0B233F] bg-[#E8F0FF] px-3 py-2 rounded break-all">
-                      {selectedWalletAddress}
-                    </code>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => handleCopyAddress(selectedWalletAddress)}
-                    >
-                      <Copy className="h-4 w-4" />
-                    </Button>
+              {/* Instructions */}
+              <div className="p-5 bg-gradient-to-br from-[#E8F0FF] to-white rounded-xl border border-[#E8F0FF]">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-6 h-6 bg-[#0B6FFE] rounded-full flex items-center justify-center">
+                    <CheckCircle2 className="h-4 w-4 text-white" />
                   </div>
+                  <p className="font-semibold text-[#0B233F]">How to Pay</p>
                 </div>
+                <ol className="space-y-2.5 ml-8">
+                  <li className="text-sm text-[#46658A] flex items-start gap-2">
+                    <span className="text-[#0B6FFE] font-bold">1.</span>
+                    <span>Open your {paymentData.token} wallet app</span>
+                  </li>
+                  <li className="text-sm text-[#46658A] flex items-start gap-2">
+                    <span className="text-[#0B6FFE] font-bold">2.</span>
+                    <span>Scan the QR code or copy the address below</span>
+                  </li>
+                  <li className="text-sm text-[#46658A] flex items-start gap-2">
+                    <span className="text-[#0B6FFE] font-bold">3.</span>
+                    <span>Send exactly <strong>{paymentData.amount} {paymentData.token}</strong> on <Badge variant="secondary" className="inline-flex">{selectedNetwork}</Badge> network</span>
+                  </li>
+                  <li className="text-sm text-[#46658A] flex items-start gap-2">
+                    <span className="text-[#0B6FFE] font-bold">4.</span>
+                    <span>Enter transaction hash and click "Payment Done"</span>
+                  </li>
+                </ol>
+              </div>
 
-                <div className="text-center py-4">
-                  <p className="text-sm text-[#46658A] mb-1">Time Remaining</p>
-                  <p className={`text-3xl font-bold ${timeRemaining < 30 ? "text-destructive" : "text-[#0B233F]"}`}>
-                    {formatTime(timeRemaining)}
-                  </p>
+              {/* Wallet Address */}
+              <div>
+                <Label className="text-[#0B233F] mb-3 flex items-center gap-2 font-semibold">
+                  <Wallet className="h-4 w-4 text-[#0B6FFE]" />
+                  Wallet Address
+                </Label>
+                <div className="flex gap-2">
+                  <code className="flex-1 text-xs md:text-sm text-[#0B233F] bg-gradient-to-br from-[#E8F0FF] to-white px-4 py-3 rounded-xl border-2 border-[#E8F0FF] break-all font-mono">
+                    {selectedWalletAddress}
+                  </code>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-12 w-12 border-2 border-[#E8F0FF] hover:bg-[#0B6FFE] hover:text-white hover:border-[#0B6FFE] transition-all hover-scale"
+                    onClick={() => handleCopyAddress(selectedWalletAddress)}
+                  >
+                    <Copy className="h-5 w-5" />
+                  </Button>
                 </div>
+              </div>
 
-                <div>
-                  <Label className="text-[#0B233F] mb-2 block">Transaction Hash</Label>
-                  <Input
-                    placeholder="Enter transaction hash"
-                    value={transactionHash}
-                    onChange={(e) => setTransactionHash(e.target.value)}
-                    className="font-mono text-xs"
-                  />
-                </div>
+              {/* Transaction Hash Input */}
+              <div>
+                <Label className="text-[#0B233F] mb-3 block font-semibold">Transaction Hash</Label>
+                <Input
+                  placeholder="0x..."
+                  value={transactionHash}
+                  onChange={(e) => setTransactionHash(e.target.value)}
+                  className="font-mono text-sm h-12 border-2 border-[#E8F0FF] focus:border-[#0B6FFE] bg-white"
+                />
               </div>
 
               <Button
-                className="w-full"
+                className="w-full h-14 text-base font-semibold shadow-lg hover:shadow-xl transition-all hover-scale"
                 size="lg"
                 onClick={handlePaymentDone}
                 disabled={!transactionHash}
               >
                 Payment Done
+                <CheckCircle2 className="ml-2 h-5 w-5" />
               </Button>
             </div>
           </Card>
         )}
 
         {step === "success" && (
-          <Card className="p-6 md:p-8 border-[#E8F0FF] shadow-sm">
-            <div className="space-y-6 text-center">
-              <div className="flex justify-center">
-                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
-                  <CheckCircle2 className="w-8 h-8 text-green-600" />
-                </div>
+          <Card className="overflow-hidden border-2 border-[#E8F0FF] shadow-xl bg-white animate-scale-in">
+            {/* Success Header */}
+            <div className="bg-gradient-to-r from-green-500 to-green-600 p-8 text-white text-center">
+              <div className="inline-flex items-center justify-center w-20 h-20 bg-white rounded-full mb-4 animate-scale-in">
+                <CheckCircle2 className="w-12 h-12 text-green-600" />
               </div>
+              <h2 className="text-2xl md:text-3xl font-bold mb-2">Payment Submitted!</h2>
+              <p className="text-white/90">Your payment has been submitted for verification</p>
+            </div>
 
-              <div>
-                <h2 className="text-2xl font-bold text-[#0B233F] mb-2">Payment Submitted!</h2>
-                <p className="text-[#46658A]">Your payment has been submitted for verification</p>
-              </div>
-
-              <div className="space-y-3 pt-4 border-t border-[#E8F0FF] text-left">
-                <div className="flex justify-between">
-                  <span className="text-[#46658A]">Amount</span>
-                  <span className="font-semibold text-[#0B233F]">{paymentData.amount} {paymentData.token}</span>
+            <div className="p-6 md:p-8 space-y-6">
+              {/* Payment Details */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between p-4 bg-[#E8F0FF]/30 rounded-xl">
+                  <span className="text-[#46658A] font-medium">Amount</span>
+                  <span className="font-bold text-[#0B233F] text-lg">{paymentData.amount} {paymentData.token}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-[#46658A]">To</span>
+                <div className="flex items-center justify-between p-4 bg-[#E8F0FF]/30 rounded-xl">
+                  <span className="text-[#46658A] font-medium">To</span>
                   <span className="font-semibold text-[#0B233F]">{paymentData.creatorName}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-[#46658A]">Network</span>
-                  <Badge variant="outline">{selectedNetwork}</Badge>
+                <div className="flex items-center justify-between p-4 bg-[#E8F0FF]/30 rounded-xl">
+                  <span className="text-[#46658A] font-medium">Network</span>
+                  <Badge variant="default" className="bg-[#0B6FFE] hover:bg-[#0547B2] font-semibold">{selectedNetwork}</Badge>
                 </div>
-                <div className="flex justify-between items-start">
-                  <span className="text-[#46658A]">Transaction Hash</span>
-                  <code className="text-xs text-[#0B233F] break-all max-w-[200px] text-right">
-                    {transactionHash.slice(0, 10)}...{transactionHash.slice(-8)}
+                <div className="p-4 bg-gradient-to-br from-[#E8F0FF] to-white rounded-xl border border-[#E8F0FF]">
+                  <p className="text-[#46658A] font-medium mb-2">Transaction Hash</p>
+                  <code className="text-xs md:text-sm text-[#0B233F] break-all font-mono block bg-white p-3 rounded-lg">
+                    {transactionHash}
                   </code>
                 </div>
               </div>
 
-              <div className="pt-4 border-t border-[#E8F0FF]">
-                <Label className="text-[#0B233F] mb-3 block text-left">Upload Payment Screenshot (Optional)</Label>
-                <div className="relative">
-                  <Input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleFileUpload}
-                    className="cursor-pointer"
-                  />
-                  {screenshot && (
-                    <p className="text-sm text-green-600 mt-2 flex items-center gap-2">
+              {/* Screenshot Upload */}
+              <div className="p-5 bg-gradient-to-br from-[#E8F0FF] to-white rounded-xl border-2 border-dashed border-[#0B6FFE]/30">
+                <Label className="text-[#0B233F] mb-3 flex items-center gap-2 font-semibold">
+                  <Upload className="h-4 w-4 text-[#0B6FFE]" />
+                  Upload Payment Screenshot (Optional)
+                </Label>
+                <Input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileUpload}
+                  className="cursor-pointer border-2 border-[#E8F0FF] hover:border-[#0B6FFE] transition-colors"
+                />
+                {screenshot && (
+                  <div className="mt-3 p-3 bg-green-50 border-2 border-green-200 rounded-lg animate-fade-in">
+                    <p className="text-sm text-green-700 flex items-center gap-2 font-medium">
                       <CheckCircle2 className="h-4 w-4" />
                       {screenshot.name}
                     </p>
-                  )}
-                </div>
+                  </div>
+                )}
               </div>
 
               <Button
-                className="w-full"
+                className="w-full h-14 text-base font-semibold shadow-lg hover:shadow-xl transition-all hover-scale"
                 size="lg"
-                variant="outline"
+                variant="default"
                 onClick={() => navigate("/")}
               >
                 Done
