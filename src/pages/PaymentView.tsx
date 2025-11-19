@@ -117,55 +117,57 @@ export default function PaymentView() {
     <div className="min-h-screen bg-[#FAFBFC] p-4 md:p-8">
       <div className="max-w-md mx-auto">
         {step === "select-network" && (
-          <Card className="p-6 border border-[#E8F0FF] shadow-sm">
+          <Card className="p-8 border-2 border-[#E8F0FF] shadow-lg bg-white">
             <div className="space-y-6">
-              <div className="text-center pb-4 border-b border-[#E8F0FF]">
-                <p className="text-xs text-muted-foreground uppercase tracking-wide mb-3">
+              <div className="text-center pb-6">
+                <p className="text-[10px] text-[#46658A] font-semibold uppercase tracking-widest mb-4">
                   Payment Terminal
                 </p>
-                <div className="flex items-center justify-center gap-3">
-                  <p className="text-4xl font-bold text-[#0B233F]">
+                <div className="flex items-center justify-center gap-3 mb-1">
+                  <p className="text-5xl font-bold text-[#0B233F] tracking-tight">
                     {paymentData.amount}
                   </p>
-                  <Badge variant="secondary" className="text-sm px-3 py-1">
+                  <Badge className="text-base px-4 py-1.5 bg-[#0B6FFE] hover:bg-[#0547B2]">
                     {paymentData.token}
                   </Badge>
                 </div>
               </div>
 
               <div>
-                <p className="text-xs text-muted-foreground uppercase tracking-wide mb-3">
+                <p className="text-[10px] text-[#46658A] font-semibold uppercase tracking-widest mb-4">
                   Available Networks
                 </p>
-                <div className="space-y-2">
+                <div className="space-y-3">
                   {paymentData.networks.map((network) => (
                     <button
                       key={network}
                       onClick={() => setSelectedNetwork(network)}
-                      className={`w-full p-4 rounded-lg border-2 transition-all ${
+                      className={`w-full p-5 rounded-xl border-2 transition-all duration-200 ${
                         selectedNetwork === network
-                          ? "border-[#0B6FFE] bg-[#F8FBFF]"
-                          : "border-[#E8F0FF] hover:border-[#0B6FFE]/50"
+                          ? "border-[#0B6FFE] bg-[#F8FBFF] shadow-md"
+                          : "border-[#E8F0FF] hover:border-[#80A9FF] hover:bg-[#FAFBFC]"
                       }`}
                     >
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <Circle
-                            className="h-8 w-8"
-                            fill={getNetworkColor(network)}
-                            stroke="none"
-                          />
+                        <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ backgroundColor: `${getNetworkColor(network)}20` }}>
+                            <Circle
+                              className="h-5 w-5"
+                              fill={getNetworkColor(network)}
+                              stroke="none"
+                            />
+                          </div>
                           <div className="text-left">
-                            <p className="font-medium text-[#0B233F]">
-                              {network === "ETH" ? "Ethereum (ERC20)" : `${network} (${network}20)`}
+                            <p className="font-semibold text-[#0B233F] text-base mb-0.5">
+                              {network === "ETH" ? "Ethereum (ERC20)" : network === "BASE" ? "BASE (BASE20)" : `${network} (${network}20)`}
                             </p>
-                            <p className="text-xs text-muted-foreground font-mono">
-                              {paymentData.wallets[network as keyof typeof paymentData.wallets]?.slice(0, 10)}...
-                              {paymentData.wallets[network as keyof typeof paymentData.wallets]?.slice(-8)}
+                            <p className="text-xs text-[#46658A] font-mono">
+                              {paymentData.wallets[network as keyof typeof paymentData.wallets]?.slice(0, 6)}...
+                              {paymentData.wallets[network as keyof typeof paymentData.wallets]?.slice(-6)}
                             </p>
                           </div>
                         </div>
-                        <Badge variant="secondary" className="text-xs">
+                        <Badge variant="secondary" className="text-xs font-semibold px-3 py-1 bg-[#0B6FFE]/10 text-[#0547B2] border-0">
                           ~{paymentData.gasFee}
                         </Badge>
                       </div>
@@ -175,7 +177,7 @@ export default function PaymentView() {
               </div>
 
               <Button
-                className="w-full h-12 text-base font-medium"
+                className="w-full h-14 text-base font-semibold rounded-xl shadow-md hover:shadow-lg transition-all"
                 onClick={handleContinueToPayment}
                 disabled={!selectedNetwork}
               >
