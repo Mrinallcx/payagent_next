@@ -4,10 +4,22 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { CreateLinkModal } from "./CreateLinkModal";
+import { useAccount } from "wagmi";
+import { useConnectModal } from "@rainbow-me/rainbowkit";
 
 export function AppNavbar() {
   const [isCreateLinkOpen, setIsCreateLinkOpen] = useState(false);
   const navigate = useNavigate();
+  const { isConnected } = useAccount();
+  const { openConnectModal } = useConnectModal();
+
+  const handleCreateLinkClick = () => {
+    if (!isConnected) {
+      openConnectModal?.();
+      return;
+    }
+    setIsCreateLinkOpen(true);
+  };
 
   return (
     <>
@@ -29,7 +41,7 @@ export function AppNavbar() {
             <Button
               size="sm"
               className="gap-2"
-              onClick={() => setIsCreateLinkOpen(true)}
+              onClick={handleCreateLinkClick}
             >
               <Plus className="h-4 w-4" />
               <span>Create Link</span>

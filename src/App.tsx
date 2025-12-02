@@ -1,8 +1,8 @@
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { WalletProvider } from "@/components/WalletProvider";
 import Index from "./pages/Index";
 import Wallets from "./pages/Wallets";
 import PaymentLinks from "./pages/PaymentLinks";
@@ -11,10 +11,8 @@ import Settings from "./pages/Settings";
 import PaymentView from "./pages/PaymentView";
 import NotFound from "./pages/NotFound";
 
-const queryClient = new QueryClient();
-
 const App = () => (
-  <QueryClientProvider client={queryClient}>
+  <WalletProvider>
     <TooltipProvider>
       <Toaster />
       <Sonner />
@@ -26,12 +24,13 @@ const App = () => (
           <Route path="/transactions" element={<Transactions />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/pay/:linkId" element={<PaymentView />} />
+          <Route path="/r/:linkId" element={<PaymentView />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
     </TooltipProvider>
-  </QueryClientProvider>
+  </WalletProvider>
 );
 
 export default App;
