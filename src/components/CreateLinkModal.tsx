@@ -259,8 +259,14 @@ export function CreateLinkModal({ open, onOpenChange, onCreateLink }: CreateLink
                     type="number"
                     placeholder="0.00"
                     value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
-                    className="h-12 text-xl font-semibold flex-1"
+                    min="0"
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      if (value === '' || parseFloat(value) >= 0) {
+                        setAmount(value);
+                      }
+                    }}
+                    className="h-12 text-xl font-semibold flex-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   />
                   {selectedToken && (
                     <div className="bg-muted px-4 py-2.5 rounded-lg border h-12 flex items-center">
