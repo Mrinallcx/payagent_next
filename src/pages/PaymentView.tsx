@@ -77,6 +77,7 @@ export default function PaymentView() {
             expiresAt: null,
             txHash: null,
             paidAt: null,
+            creatorWallet: null,
           };
           setPaymentRequest(request);
         } else if (response.request) {
@@ -218,6 +219,7 @@ export default function PaymentView() {
       toast.loading("Please confirm transaction in your wallet...");
 
       // Send USDC transfer transaction
+      // @ts-ignore - wagmi v2 type issue with writeContract
       writeContract({
         address: tokenAddress,
         abi: ERC20_ABI,
