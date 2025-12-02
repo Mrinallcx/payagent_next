@@ -15,6 +15,7 @@ export default {
     extend: {
       fontFamily: {
         syne: ['Syne', 'sans-serif'],
+        geist: ['Geist', 'sans-serif'],
       },
       colors: {
         border: "hsl(var(--border))",
