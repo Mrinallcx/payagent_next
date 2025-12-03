@@ -1,6 +1,5 @@
-import { LogOut } from "lucide-react";
 import { MdSpaceDashboard } from "react-icons/md";
-import { IoLink } from "react-icons/io5";
+import { IoLink, IoLogOut } from "react-icons/io5";
 import { FaMoneyBill } from "react-icons/fa";
 import { NavLink } from "@/components/NavLink";
 import { ConnectButton } from '@rainbow-me/rainbowkit';
@@ -81,7 +80,7 @@ export function AppSidebar() {
               className="w-full text-muted-foreground hover:text-foreground hover:bg-muted"
               onClick={() => disconnect()}
             >
-              <LogOut className="h-4 w-4 mr-2" />
+              <IoLogOut className="h-4 w-4 mr-2" />
               <span>Disconnect</span>
             </SidebarMenuButton>
           </>
