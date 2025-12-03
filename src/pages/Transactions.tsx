@@ -4,10 +4,11 @@ import { AppNavbar } from "@/components/AppNavbar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowDownLeft, Download, Loader2, ExternalLink, Receipt, CheckCircle2 } from "lucide-react";
+import { ArrowDownLeft, Download, Loader2, ExternalLink, Receipt, CheckCircle2, Wallet } from "lucide-react";
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useAccount } from "wagmi";
+import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { getAllPaymentRequests, PaymentRequest } from "@/lib/api";
 
 const truncateAddress = (addr: string) => {
@@ -34,16 +35,23 @@ const formatDate = (timestamp: number) => {
 const Transactions = () => {
   const { toast } = useToast();
   const { address, isConnected } = useAccount();
+  const { openConnectModal } = useConnectModal();
   const [transactions, setTransactions] = useState<PaymentRequest[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
   const fetchTransactions = useCallback(async () => {
+    // Only fetch if wallet is connected
+    if (!isConnected || !address) {
+      setTransactions([]);
+      return;
+    }
+
     setIsLoading(true);
     try {
-      // Fetch all payment requests and filter for PAID ones
-      const response = await getAllPaymentRequests();
+      // Fetch payment requests for this wallet and filter for PAID ones
+      const response = await getAllPaymentRequests(address);
       const paidTransactions = response.requests.filter(r => r.status === 'PAID');
       setTransactions(paidTransactions);
     } catch (error) {
@@ -52,11 +60,18 @@ const Transactions = () => {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [address, isConnected]);
 
   useEffect(() => {
     fetchTransactions();
   }, [fetchTransactions]);
+
+  // Clear data when wallet disconnects
+  useEffect(() => {
+    if (!isConnected) {
+      setTransactions([]);
+    }
+  }, [isConnected]);
 
   // Paginate transactions
   const totalPages = Math.ceil(transactions.length / itemsPerPage);
@@ -112,11 +127,28 @@ const Transactions = () => {
               <div className="mb-4 sm:mb-6">
                 <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-1">Transactions</h1>
                 <p className="text-sm text-muted-foreground">
-                  Completed payments made through PayMe
+                  {isConnected 
+                    ? 'Completed payments made through PayMe'
+                    : 'Connect your wallet to view your transactions'}
                 </p>
               </div>
 
-              {isLoading ? (
+              {/* Connect Wallet Prompt */}
+              {!isConnected ? (
+                <div className="bg-card border rounded-xl p-12 text-center">
+                  <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                    <Wallet className="h-8 w-8 text-primary" />
+                  </div>
+                  <h3 className="text-lg font-semibold mb-2">Connect Your Wallet</h3>
+                  <p className="text-sm text-muted-foreground mb-6 max-w-sm mx-auto">
+                    Connect your wallet to view your transaction history
+                  </p>
+                  <Button onClick={() => openConnectModal?.()} className="gap-2">
+                    <Wallet className="h-4 w-4" />
+                    Connect Wallet
+                  </Button>
+                </div>
+              ) : isLoading ? (
                 <div className="flex items-center justify-center py-16">
                   <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                 </div>

@@ -91,11 +91,29 @@ exports.verifyPayment = async (req, res) => {
             return res.status(400).json({ error: 'Request already paid' });
         }
 
+        // Determine token address based on token type
+        const tokenSymbol = request.token?.toUpperCase() || 'USDC';
+        const isNativeToken = tokenSymbol === 'ETH'; // Only ETH is native, BNB is ERC20
+        
+        // Select the correct token address
+        let tokenAddress = null;
+        if (!isNativeToken) {
+            if (tokenSymbol === 'USDT') {
+                tokenAddress = process.env.NEXT_PUBLIC_USDT_ADDRESS;
+            } else if (tokenSymbol === 'BNB') {
+                tokenAddress = process.env.NEXT_PUBLIC_BNB_ADDRESS;
+            } else {
+                // Default to USDC for other tokens
+                tokenAddress = process.env.NEXT_PUBLIC_USDC_ADDRESS;
+            }
+        }
+
         const verification = await verifyTransaction(
             txHash,
             request.amount,
-            process.env.NEXT_PUBLIC_USDC_ADDRESS,
-            request.receiver
+            tokenAddress,
+            request.receiver,
+            tokenSymbol  // Pass token symbol for ETH detection
         );
 
         if (!verification.valid) {

@@ -19,6 +19,8 @@ function create402Response(request) {
         network: request.network,
         receiver: request.receiver,
         description: request.description,
+        expiresAt: request.expiresAt || request.expires_at,
+        createdAt: request.createdAt || request.created_at,
         instructions: `Send ${request.amount} ${request.token} on ${request.network} to ${request.receiver}`
       }
     }

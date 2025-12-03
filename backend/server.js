@@ -6,6 +6,7 @@ dotenv.config({ path: '.env.local' });
 console.log('✅ Environment loaded:');
 console.log('   ETH_RPC_URL:', process.env.NEXT_PUBLIC_ETH_RPC_URL ? '✓ Set' : '✗ Missing');
 console.log('   USDC_ADDRESS:', process.env.NEXT_PUBLIC_USDC_ADDRESS ? '✓ Set' : '✗ Missing');
+console.log('   USDT_ADDRESS:', process.env.NEXT_PUBLIC_USDT_ADDRESS ? '✓ Set' : '✗ Missing');
 
 // Now load other modules
 const express = require('express');

@@ -10,7 +10,11 @@ const ERC20_ABI = [
   'function decimals() view returns (uint8)'
 ];
 
-async function verifyTransaction(txHash, expectedAmount, expectedToken, expectedReceiver) {
+/**
+ * Verify a transaction on the blockchain
+ * Supports both ERC20 tokens and native transfers (ETH, BNB)
+ */
+async function verifyTransaction(txHash, expectedAmount, expectedToken, expectedReceiver, tokenSymbol = 'USDC') {
   try {
     const provider = new ethers.JsonRpcProvider(ETH_RPC);
 
@@ -25,6 +29,80 @@ async function verifyTransaction(txHash, expectedAmount, expectedToken, expected
       return { valid: false, error: 'Transaction failed' };
     }
 
+    // Check if this is a native token transfer (only ETH, BNB is ERC20 on Sepolia)
+    const tokenUpper = tokenSymbol.toUpperCase();
+    const isNativeToken = tokenUpper === 'ETH';
+
+    if (isNativeToken) {
+      // Verify native ETH transfer
+      return await verifyNativeTransfer(txHash, expectedAmount, expectedReceiver, provider, receipt, tokenUpper);
+    } else {
+      // Verify ERC20 token transfer
+      return await verifyErc20Transfer(txHash, expectedAmount, expectedToken, expectedReceiver, provider, receipt);
+    }
+
+  } catch (error) {
+    console.error('Verification error:', error);
+    return { valid: false, error: error.message };
+  }
+}
+
+/**
+ * Verify native token transfer (ETH or BNB)
+ */
+async function verifyNativeTransfer(txHash, expectedAmount, expectedReceiver, provider, receipt, tokenSymbol = 'ETH') {
+  try {
+    // Get the full transaction to check value and recipient
+    const tx = await provider.getTransaction(txHash);
+    
+    if (!tx) {
+      return { valid: false, error: 'Transaction not found' };
+    }
+
+    // Get the amount transferred (works for both ETH and BNB as they use 18 decimals)
+    const transferredAmount = ethers.formatEther(tx.value);
+    const transferredTo = tx.to.toLowerCase();
+
+    // Validate amount and receiver
+    const amountValid = parseFloat(transferredAmount) >= parseFloat(expectedAmount);
+    const receiverValid = transferredTo === expectedReceiver.toLowerCase();
+
+    if (!amountValid || !receiverValid) {
+      return {
+        valid: false,
+        error: 'Amount or receiver mismatch',
+        details: {
+          expected: { amount: expectedAmount, receiver: expectedReceiver },
+          actual: { amount: transferredAmount, receiver: transferredTo }
+        }
+      };
+    }
+
+    return {
+      valid: true,
+      txHash,
+      amount: transferredAmount,
+      receiver: transferredTo,
+      blockNumber: receipt.blockNumber,
+      tokenType: tokenSymbol
+    };
+
+  } catch (error) {
+    console.error(`${tokenSymbol} verification error:`, error);
+    return { valid: false, error: error.message };
+  }
+}
+
+// Alias for backwards compatibility
+async function verifyEthTransfer(txHash, expectedAmount, expectedReceiver, provider, receipt) {
+  return verifyNativeTransfer(txHash, expectedAmount, expectedReceiver, provider, receipt, 'ETH');
+}
+
+/**
+ * Verify ERC20 token transfer
+ */
+async function verifyErc20Transfer(txHash, expectedAmount, expectedToken, expectedReceiver, provider, receipt) {
+  try {
     // Parse transfer logs
     const contract = new ethers.Contract(expectedToken, ERC20_ABI, provider);
     const decimals = await contract.decimals();
@@ -67,11 +145,12 @@ async function verifyTransaction(txHash, expectedAmount, expectedToken, expected
       txHash,
       amount: transferredAmount,
       receiver: transferredTo,
-      blockNumber: receipt.blockNumber
+      blockNumber: receipt.blockNumber,
+      tokenType: 'ERC20'
     };
 
   } catch (error) {
-    console.error('Verification error:', error);
+    console.error('ERC20 verification error:', error);
     return { valid: false, error: error.message };
   }
 }
@@ -96,5 +175,8 @@ async function getTokenBalance(address, tokenAddress, provider) {
 
 module.exports = {
   verifyTransaction,
+  verifyNativeTransfer,
+  verifyEthTransfer,
+  verifyErc20Transfer,
   getTokenBalance
 };

@@ -6,10 +6,10 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Copy, CheckCircle2, Circle, Loader2, AlertCircle, Wallet } from "lucide-react";
+import { Copy, CheckCircle2, Circle, Loader2, AlertCircle, Wallet, Clock, ExternalLink } from "lucide-react";
 import { ConnectButton } from '@rainbow-me/rainbowkit';
-import { useAccount, useWriteContract, useWaitForTransactionReceipt, useSwitchChain } from 'wagmi';
-import { parseUnits } from 'viem';
+import { useAccount, useWriteContract, useWaitForTransactionReceipt, useSwitchChain, useSendTransaction } from 'wagmi';
+import { parseUnits, parseEther } from 'viem';
 import { getPaymentRequest, verifyPayment, type PaymentRequest } from "@/lib/api";
 import { ERC20_ABI, getTokenAddress, getChainId, getTokenDecimals } from "@/lib/contracts";
 
@@ -33,11 +33,19 @@ export default function PaymentView() {
   const [transactionHash, setTransactionHash] = useState("");
   const [verifying, setVerifying] = useState(false);
   const [processingPayment, setProcessingPayment] = useState(false);
+  const [isNativeToken, setIsNativeToken] = useState(false);
+  const [expiryTimeRemaining, setExpiryTimeRemaining] = useState<number | null>(null);
   
-  // Wagmi hooks for contract interaction
+  // Wagmi hooks for ERC20 token transfers
   const { data: hash, writeContract, isPending: isWritePending, error: writeError } = useWriteContract();
   const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
     hash,
+  });
+
+  // Wagmi hooks for native ETH transfers
+  const { data: ethHash, sendTransaction, isPending: isEthPending, error: ethError } = useSendTransaction();
+  const { isLoading: isEthConfirming, isSuccess: isEthConfirmed } = useWaitForTransactionReceipt({
+    hash: ethHash,
   });
 
   // Fetch payment request data
@@ -64,6 +72,14 @@ export default function PaymentView() {
         // Handle 402 Payment Required response
         if (response.payment) {
           // Convert backend format to frontend format
+          // Parse expiresAt - handle both timestamp and ISO string
+          let expiresAtTimestamp: number | null = null;
+          if (response.payment.expiresAt) {
+            expiresAtTimestamp = typeof response.payment.expiresAt === 'string' 
+              ? new Date(response.payment.expiresAt).getTime()
+              : response.payment.expiresAt;
+          }
+          
           const request: PaymentRequest = {
             id: response.payment.id,
             token: response.payment.token,
@@ -73,15 +89,20 @@ export default function PaymentView() {
             description: response.payment.description,
             network: response.payment.network,
             status: 'PENDING',
-            createdAt: Date.now(),
-            expiresAt: null,
+            createdAt: response.payment.createdAt ? new Date(response.payment.createdAt).getTime() : Date.now(),
+            expiresAt: expiresAtTimestamp,
             txHash: null,
             paidAt: null,
             creatorWallet: null,
           };
           setPaymentRequest(request);
         } else if (response.request) {
-          setPaymentRequest(response.request);
+          // Also handle expiresAt parsing for request format
+          const req = response.request;
+          if (req.expiresAt && typeof req.expiresAt === 'string') {
+            req.expiresAt = new Date(req.expiresAt).getTime();
+          }
+          setPaymentRequest(req);
         }
         
         setLoading(false);
@@ -105,6 +126,34 @@ export default function PaymentView() {
     }
   }, [paymentRequest]);
 
+  // Expiry countdown timer
+  useEffect(() => {
+    if (!paymentRequest?.expiresAt) {
+      setExpiryTimeRemaining(null);
+      return;
+    }
+
+    const calculateTimeRemaining = () => {
+      const expiresAt = new Date(paymentRequest.expiresAt!).getTime();
+      const now = Date.now();
+      const remaining = Math.max(0, Math.floor((expiresAt - now) / 1000));
+      return remaining;
+    };
+
+    setExpiryTimeRemaining(calculateTimeRemaining());
+
+    const timer = setInterval(() => {
+      const remaining = calculateTimeRemaining();
+      setExpiryTimeRemaining(remaining);
+      
+      if (remaining <= 0) {
+        clearInterval(timer);
+      }
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [paymentRequest?.expiresAt]);
+
   // Countdown timer
   useEffect(() => {
     if (step === "payment" && timeRemaining > 0) {
@@ -127,6 +176,25 @@ export default function PaymentView() {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, "0")}`;
+  };
+
+  const formatExpiryTime = (seconds: number) => {
+    if (seconds <= 0) return "Expired";
+    
+    const days = Math.floor(seconds / 86400);
+    const hours = Math.floor((seconds % 86400) / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    
+    if (days > 0) {
+      return `${days}d ${hours}h ${mins}m`;
+    } else if (hours > 0) {
+      return `${hours}h ${mins}m ${secs}s`;
+    } else if (mins > 0) {
+      return `${mins}m ${secs}s`;
+    } else {
+      return `${secs}s`;
+    }
   };
   const handleContinueToPayment = () => {
     if (!selectedNetwork) {
@@ -189,9 +257,14 @@ export default function PaymentView() {
       // Get the correct network and token address
       const network = paymentRequest.network.split(',')[0].trim().toLowerCase();
       const requiredChainId = getChainId(network);
-      const tokenAddress = getTokenAddress(network, paymentRequest.token);
+      const tokenUpper = paymentRequest.token.toUpperCase();
+      const isNative = tokenUpper === 'ETH'; // Only ETH is native, BNB is ERC20 on Sepolia
+      setIsNativeToken(isNative);
 
-      if (!tokenAddress) {
+      // For ERC20 tokens, get the contract address
+      const tokenAddress = isNative ? null : getTokenAddress(network, paymentRequest.token);
+
+      if (!isNative && !tokenAddress) {
         toast.error(`${paymentRequest.token} not supported on ${network}`);
         setProcessingPayment(false);
         return;
@@ -212,20 +285,29 @@ export default function PaymentView() {
         }
       }
 
-      // Calculate amount with correct decimals
-      const decimals = getTokenDecimals(paymentRequest.token);
-      const amountInWei = parseUnits(paymentRequest.amount, decimals);
-
       toast.loading("Please confirm transaction in your wallet...");
 
-      // Send USDC transfer transaction
-      // @ts-ignore - wagmi v2 type issue with writeContract
-      writeContract({
-        address: tokenAddress,
-        abi: ERC20_ABI,
-        functionName: 'transfer',
-        args: [paymentRequest.receiver as `0x${string}`, amountInWei],
-      });
+      if (isNative) {
+        // Native ETH transfer
+        const amountInWei = parseEther(paymentRequest.amount);
+        
+        sendTransaction({
+          to: paymentRequest.receiver as `0x${string}`,
+          value: amountInWei,
+        });
+      } else {
+        // ERC20 token transfer
+        const decimals = getTokenDecimals(paymentRequest.token);
+        const amountInWei = parseUnits(paymentRequest.amount, decimals);
+
+        // @ts-ignore - wagmi v2 type issue with writeContract
+        writeContract({
+          address: tokenAddress,
+          abi: ERC20_ABI,
+          functionName: 'transfer',
+          args: [paymentRequest.receiver as `0x${string}`, amountInWei],
+        });
+      }
 
     } catch (err) {
       console.error('Error initiating payment:', err);
@@ -235,15 +317,14 @@ export default function PaymentView() {
     }
   };
 
-  // Watch for transaction confirmation
+  // Watch for ERC20 transaction confirmation
   useEffect(() => {
-    if (isConfirmed && hash && paymentRequest) {
+    if (isConfirmed && hash && paymentRequest && !isNativeToken) {
       const verifyAndComplete = async () => {
         try {
           toast.dismiss();
           toast.loading("Verifying payment on blockchain...");
 
-          // Verify payment with backend
           const result = await verifyPayment({
             requestId: paymentRequest.id,
             txHash: hash,
@@ -256,15 +337,12 @@ export default function PaymentView() {
             toast.success("Payment verified successfully!");
           } else {
             toast.dismiss();
-            // Silently fail - just log to console
             console.log("Payment verification returned non-success status");
-            // Still show success screen since transaction succeeded on-chain
             setStep("success");
           }
         } catch (err) {
           console.error('Error verifying payment:', err);
           toast.dismiss();
-          // Silently fail - transaction succeeded on-chain, just show success
           console.log("Verification error but transaction was successful:", hash);
           setStep("success");
         } finally {
@@ -274,26 +352,81 @@ export default function PaymentView() {
 
       verifyAndComplete();
     }
-  }, [isConfirmed, hash, paymentRequest]);
+  }, [isConfirmed, hash, paymentRequest, isNativeToken]);
 
-  // Handle write errors
+  // Watch for ETH transaction confirmation
+  useEffect(() => {
+    if (isEthConfirmed && ethHash && paymentRequest && isNativeToken) {
+      const verifyAndComplete = async () => {
+        try {
+          toast.dismiss();
+          toast.loading("Verifying ETH payment on blockchain...");
+
+          const result = await verifyPayment({
+            requestId: paymentRequest.id,
+            txHash: ethHash,
+          });
+
+          if (result.success && result.status === 'PAID') {
+            setPaymentRequest(result.request);
+            setStep("success");
+            toast.dismiss();
+            toast.success("Payment verified successfully!");
+          } else {
+            toast.dismiss();
+            console.log("Payment verification returned non-success status");
+            setStep("success");
+          }
+        } catch (err) {
+          console.error('Error verifying payment:', err);
+          toast.dismiss();
+          console.log("Verification error but transaction was successful:", ethHash);
+          setStep("success");
+        } finally {
+          setProcessingPayment(false);
+        }
+      };
+
+      verifyAndComplete();
+    }
+  }, [isEthConfirmed, ethHash, paymentRequest, isNativeToken]);
+
+  // Handle ERC20 write errors
   useEffect(() => {
     if (writeError) {
-      console.error('Transaction error:', writeError);
+      console.error('ERC20 Transaction error:', writeError);
       toast.dismiss();
-      // Silently fail - just log to console
       console.log("Transaction error:", writeError.message);
       setProcessingPayment(false);
     }
   }, [writeError]);
 
-  // Update processing state when confirming
+  // Handle ETH send errors
+  useEffect(() => {
+    if (ethError) {
+      console.error('ETH Transaction error:', ethError);
+      toast.dismiss();
+      console.log("ETH Transaction error:", ethError.message);
+      setProcessingPayment(false);
+    }
+  }, [ethError]);
+
+  // Update processing state when confirming (ERC20)
   useEffect(() => {
     if (isConfirming) {
       toast.dismiss();
       toast.loading("Waiting for blockchain confirmation...");
     }
   }, [isConfirming]);
+
+  // Update processing state when confirming (ETH)
+  useEffect(() => {
+    if (isEthConfirming) {
+      toast.dismiss();
+      toast.loading("Waiting for ETH transaction confirmation...");
+    }
+  }, [isEthConfirming]);
+
   const handleCopyAddress = (address: string) => {
     navigator.clipboard.writeText(address);
     toast.success("Address copied!");
@@ -312,16 +445,23 @@ export default function PaymentView() {
   };
 
   const getNetworkDisplayName = (network: string) => {
+    const networkUpper = network.toUpperCase();
+    const networkLower = network.toLowerCase();
+    
+    // Handle full network names
+    if (networkLower.includes('sepolia')) return "Sepolia (Ethereum Testnet)";
+    if (networkLower.includes('eth testnet')) return "Sepolia (Ethereum Testnet)";
+    
     const names: Record<string, string> = {
-      ETH: "Ethereum (ERC20)",
-      BASE: "BASE (BASE20)",
+      ETH: "Ethereum Mainnet",
+      BASE: "BASE Chain",
       SOL: "Solana",
-      BNB: "BNB Chain (BEP20)",
+      BNB: "BNB Chain",
       POLYGON: "Polygon",
       ARBITRUM: "Arbitrum",
-      SEPOLIA: "Sepolia Testnet"
+      SEPOLIA: "Sepolia (Ethereum Testnet)"
     };
-    return names[network.toUpperCase()] || network;
+    return names[networkUpper] || network;
   };
 
   // Parse networks from comma-separated string
@@ -366,9 +506,16 @@ export default function PaymentView() {
             </div>
             <span className="text-xl font-bold text-[#0B233F]">Payme</span>
           </div>
-          <Button variant="outline" size="sm" onClick={() => navigate("/")} className="border-[#E8F0FF] hover:bg-[#F8FBFF]">
-            Create Your Link
-          </Button>
+          <div className="flex items-center gap-3">
+            <ConnectButton 
+              accountStatus="address"
+              chainStatus="icon"
+              showBalance={false}
+            />
+            <Button variant="outline" size="sm" onClick={() => navigate("/")} className="border-[#E8F0FF] hover:bg-[#F8FBFF]">
+              Create Your Link
+            </Button>
+          </div>
         </div>
       </nav>
       
@@ -376,6 +523,36 @@ export default function PaymentView() {
         <div className="max-w-md mx-auto">
         {step === "select-network" && <Card className="p-8 border-2 border-[#E8F0FF] shadow-lg bg-white">
             <div className="space-y-6">
+              {/* Expiry Timer Banner */}
+              {expiryTimeRemaining !== null && (
+                <div className={`flex items-center justify-center gap-2 py-3 px-4 rounded-lg ${
+                  expiryTimeRemaining <= 0 
+                    ? 'bg-red-50 border border-red-200' 
+                    : expiryTimeRemaining < 3600 
+                      ? 'bg-orange-50 border border-orange-200' 
+                      : 'bg-blue-50 border border-blue-200'
+                }`}>
+                  <Clock className={`h-4 w-4 ${
+                    expiryTimeRemaining <= 0 
+                      ? 'text-red-500' 
+                      : expiryTimeRemaining < 3600 
+                        ? 'text-orange-500' 
+                        : 'text-blue-500'
+                  }`} />
+                  <span className={`text-sm font-medium ${
+                    expiryTimeRemaining <= 0 
+                      ? 'text-red-700' 
+                      : expiryTimeRemaining < 3600 
+                        ? 'text-orange-700' 
+                        : 'text-blue-700'
+                  }`}>
+                    {expiryTimeRemaining <= 0 
+                      ? 'This payment link has expired' 
+                      : `Expires in ${formatExpiryTime(expiryTimeRemaining)}`}
+                  </span>
+                </div>
+              )}
+
               <div className="text-center pb-6">
                 <p className="text-[10px] text-[#46658A] font-semibold uppercase tracking-widest mb-4">
                   Payment Terminal
@@ -395,36 +572,68 @@ export default function PaymentView() {
                 )}
               </div>
 
-              <div>
-                <p className="text-[10px] text-[#46658A] font-semibold uppercase tracking-widest mb-4">
-                  Available Networks
+              {/* Payment Details Section */}
+              <div className="bg-[#F8FBFF] p-4 rounded-xl border border-[#E8F0FF] space-y-3">
+                <p className="text-[10px] text-[#46658A] font-semibold uppercase tracking-widest">
+                  Payment Details
                 </p>
-                <div className="space-y-3">
-                  {networks.map(network => <button key={network} onClick={() => setSelectedNetwork(network)} className={`w-full p-5 rounded-xl border-2 transition-all duration-200 ${selectedNetwork === network ? "border-[#0B6FFE] bg-[#F8FBFF] shadow-md" : "border-[#E8F0FF] hover:border-[#80A9FF] hover:bg-[#FAFBFC]"}`}>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                          <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{
-                        backgroundColor: `${getNetworkColor(network)}20`
-                      }}>
-                            <Circle className="h-5 w-5" fill={getNetworkColor(network)} stroke="none" />
-                          </div>
-                          <div className="text-left">
-                            <p className="font-semibold text-[#0B233F] text-base mb-0.5">
-                              {getNetworkDisplayName(network)}
-                            </p>
-                            <p className="text-xs text-[#46658A] font-mono">
-                              {selectedWalletAddress?.slice(0, 6)}...
-                              {selectedWalletAddress?.slice(-6)}
-                            </p>
-                          </div>
-                        </div>
-                        <Badge variant="secondary" className="text-xs font-semibold px-3 py-1 bg-[#0B6FFE]/10 text-[#0547B2] border-0">
-                          ~0.002
-                        </Badge>
-                      </div>
-                    </button>)}
+                
+                {/* Receiver Address - Full Display */}
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Transfer To</p>
+                  <div className="flex items-center gap-2">
+                    <code className="text-xs font-mono font-semibold text-[#0B233F] bg-white px-3 py-2 rounded-lg border border-[#E8F0FF] flex-1 break-all">
+                      {selectedWalletAddress}
+                    </code>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-8 w-8 shrink-0"
+                      onClick={() => handleCopyAddress(selectedWalletAddress)}
+                    >
+                      <Copy className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Network/Chain - Clearly Displayed */}
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Network / Chain</p>
+                  <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-lg border border-[#E8F0FF]">
+                    <div className="w-6 h-6 rounded-full flex items-center justify-center" style={{
+                      backgroundColor: `${getNetworkColor(paymentRequest.network.split(',')[0].trim())}20`
+                    }}>
+                      <Circle className="h-3 w-3" fill={getNetworkColor(paymentRequest.network.split(',')[0].trim())} stroke="none" />
+                    </div>
+                    <span className="font-semibold text-sm text-[#0B233F]">
+                      {getNetworkDisplayName(paymentRequest.network.split(',')[0].trim())}
+                    </span>
+                  </div>
                 </div>
               </div>
+
+              {/* Network Selection - Only show if multiple networks */}
+              {networks.length > 1 && (
+                <div>
+                  <p className="text-[10px] text-[#46658A] font-semibold uppercase tracking-widest mb-4">
+                    Select Network
+                  </p>
+                  <div className="space-y-3">
+                    {networks.map(network => <button key={network} onClick={() => setSelectedNetwork(network)} className={`w-full p-4 rounded-xl border-2 transition-all duration-200 ${selectedNetwork === network ? "border-[#0B6FFE] bg-[#F8FBFF] shadow-md" : "border-[#E8F0FF] hover:border-[#80A9FF] hover:bg-[#FAFBFC]"}`}>
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{
+                            backgroundColor: `${getNetworkColor(network)}20`
+                          }}>
+                            <Circle className="h-4 w-4" fill={getNetworkColor(network)} stroke="none" />
+                          </div>
+                          <span className="font-semibold text-[#0B233F]">
+                            {getNetworkDisplayName(network)}
+                          </span>
+                        </div>
+                      </button>)}
+                  </div>
+                </div>
+              )}
 
               {/* Wallet Payment Option */}
               <div className="space-y-3">
@@ -456,29 +665,40 @@ export default function PaymentView() {
                     </p>
                   </div>
                 ) : (
-                  <div className="flex flex-col gap-2">
+                  <div className="flex flex-col gap-3">
                     <div className="bg-[#F8FBFF] p-3 rounded-lg border border-[#E8F0FF]">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs text-muted-foreground">Connected Wallet</span>
-                        <code className="text-xs font-mono font-semibold">
-                          {address?.slice(0, 6)}...{address?.slice(-4)}
-                        </code>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <span className="text-xs text-muted-foreground block mb-1">Paying From</span>
+                          <code className="text-sm font-mono font-semibold text-[#0B233F]">
+                            {address?.slice(0, 6)}...{address?.slice(-4)}
+                          </code>
+                        </div>
+                        <ConnectButton.Custom>
+                          {({ openAccountModal }) => (
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={openAccountModal}
+                              className="text-xs"
+                            >
+                              Switch
+                            </Button>
+                          )}
+                        </ConnectButton.Custom>
                       </div>
-                      <p className="text-[10px] text-muted-foreground">
-                        Need to switch? Disconnect in sidebar (bottom left) and reconnect
-                      </p>
                     </div>
                     <Button 
                       className="w-full h-14 text-base font-semibold rounded-xl shadow-md hover:shadow-lg transition-all gap-2"
                       onClick={handlePayWithWallet}
-                      disabled={processingPayment || isWritePending || isConfirming}
+                      disabled={processingPayment || isWritePending || isConfirming || isEthPending || isEthConfirming || (expiryTimeRemaining !== null && expiryTimeRemaining <= 0)}
                     >
-                      {isWritePending ? (
+                      {(isWritePending || isEthPending) ? (
                         <>
                           <Loader2 className="h-5 w-5 animate-spin" />
                           Confirm in Wallet...
                         </>
-                      ) : isConfirming ? (
+                      ) : (isConfirming || isEthConfirming) ? (
                         <>
                           <Loader2 className="h-5 w-5 animate-spin" />
                           Confirming Transaction...
@@ -487,6 +707,11 @@ export default function PaymentView() {
                         <>
                           <Loader2 className="h-5 w-5 animate-spin" />
                           Verifying Payment...
+                        </>
+                      ) : (expiryTimeRemaining !== null && expiryTimeRemaining <= 0) ? (
+                        <>
+                          <AlertCircle className="h-5 w-5" />
+                          Link Expired
                         </>
                       ) : (
                         <>
@@ -660,17 +885,35 @@ export default function PaymentView() {
                     {selectedWalletAddress.slice(0, 8)}...{selectedWalletAddress.slice(-6)}
                   </span>
                 </div>
-                <div className="flex justify-between">
+                <div className="flex justify-between items-center">
                   <span className="text-muted-foreground">Network</span>
-                  <Badge variant="secondary" className="text-xs">{selectedNetwork}</Badge>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary" className="text-xs">{selectedNetwork}</Badge>
+                    {paymentRequest.txHash && (
+                      <a
+                        href={`https://sepolia.etherscan.io/tx/${paymentRequest.txHash}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary hover:text-primary/80 transition-colors"
+                        title="View on Etherscan"
+                      >
+                        <ExternalLink className="h-3.5 w-3.5" />
+                      </a>
+                    )}
+                  </div>
                 </div>
                 {paymentRequest.txHash && (
                   <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground">Transaction</span>
+                    <span className="text-muted-foreground">Transaction Hash</span>
                     <div className="flex items-center gap-2">
-                      <code className="text-xs font-mono">
+                      <a
+                        href={`https://sepolia.etherscan.io/tx/${paymentRequest.txHash}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs font-mono text-primary hover:underline"
+                      >
                         {paymentRequest.txHash.slice(0, 8)}...{paymentRequest.txHash.slice(-6)}
-                      </code>
+                      </a>
                       <Button
                         variant="ghost"
                         size="icon"
@@ -703,7 +946,7 @@ export default function PaymentView() {
               <div className="pt-4 border-t border-[#E8F0FF]">
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <div className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse" />
-                  <span>Finding your transaction on blockchain...</span>
+                  {/* <span>Finding your transaction on blockchain...</span> */}
                 </div>
               </div>
               )}

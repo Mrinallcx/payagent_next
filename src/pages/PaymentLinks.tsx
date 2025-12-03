@@ -5,45 +5,59 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { AppNavbar } from "@/components/AppNavbar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Link as LinkIcon, Eye, Trash2, Plus, Clock, CheckCircle2, XCircle, Copy, ExternalLink, Loader2, RefreshCw, AlertCircle } from "lucide-react";
+import { Link as LinkIcon, Trash2, Plus, Clock, CheckCircle2, XCircle, Copy, ExternalLink, Loader2, RefreshCw, AlertCircle, Wallet } from "lucide-react";
 import { toast } from "sonner";
 import { CreateLinkModal } from "@/components/CreateLinkModal";
 import { useAccount } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { getAllPaymentRequests, deletePaymentRequest, PaymentRequest } from "@/lib/api";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+
 const PaymentLinks = () => {
   const navigate = useNavigate();
   const [paymentLinks, setPaymentLinks] = useState<PaymentRequest[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [, setCurrentTime] = useState(new Date());
   const [isCreateLinkOpen, setIsCreateLinkOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  const {
-    address,
-    isConnected
-  } = useAccount();
-  const {
-    openConnectModal
-  } = useConnectModal();
+  const { address, isConnected } = useAccount();
+  const { openConnectModal } = useConnectModal();
+
   const fetchPaymentLinks = useCallback(async (showRefresh = false) => {
+    // Only fetch if wallet is connected
+    if (!isConnected || !address) {
+      setPaymentLinks([]);
+      setIsLoading(false);
+      return;
+    }
+
     try {
-      if (showRefresh) setIsRefreshing(true);else setIsLoading(true);
+      if (showRefresh) setIsRefreshing(true);
+      else setIsLoading(true);
       const response = await getAllPaymentRequests(address);
       setPaymentLinks(response.requests);
     } catch (error) {
       console.error("Error fetching payment links:", error);
       toast.error("Failed to load payment links");
+      setPaymentLinks([]);
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  }, [address]);
+  }, [address, isConnected]);
+
   useEffect(() => {
     fetchPaymentLinks();
   }, [fetchPaymentLinks]);
+
+  // Clear data when wallet disconnects
+  useEffect(() => {
+    if (!isConnected) {
+      setPaymentLinks([]);
+    }
+  }, [isConnected]);
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTime(new Date());
@@ -143,19 +157,45 @@ const PaymentLinks = () => {
                 <div>
                   <h1 className="text-3xl font-bold text-foreground mb-2">Payment Links</h1>
                   <p className="text-muted-foreground">
-                    {paymentLinks.length > 0 ? `${paymentLinks.length} payment link${paymentLinks.length > 1 ? 's' : ''}` : 'Create and manage your payment links'}
+                    {!isConnected 
+                      ? 'Connect your wallet to view your payment links'
+                      : paymentLinks.length > 0 
+                        ? `${paymentLinks.length} payment link${paymentLinks.length > 1 ? 's' : ''}` 
+                        : 'Create and manage your payment links'}
                   </p>
                 </div>
-                <div className="flex gap-2">
-                  <Button variant="outline" size="icon" onClick={() => fetchPaymentLinks(true)} disabled={isRefreshing}>
-                    <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-                  </Button>
-                  
-                </div>
+                {isConnected && (
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="icon" onClick={() => fetchPaymentLinks(true)} disabled={isRefreshing}>
+                      <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                    </Button>
+                    <Button className="gap-2" onClick={handleCreateLinkClick}>
+                      <Plus className="h-4 w-4" />
+                      Create Link
+                    </Button>
+                  </div>
+                )}
               </div>
 
+              {/* Connect Wallet Prompt */}
+              {!isConnected && (
+                <div className="bg-card border rounded-xl p-12 text-center">
+                  <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                    <Wallet className="h-8 w-8 text-primary" />
+                  </div>
+                  <h3 className="text-lg font-semibold mb-2">Connect Your Wallet</h3>
+                  <p className="text-sm text-muted-foreground mb-6 max-w-sm mx-auto">
+                    Connect your wallet to create and manage your payment links
+                  </p>
+                  <Button onClick={() => openConnectModal?.()} className="gap-2">
+                    <Wallet className="h-4 w-4" />
+                    Connect Wallet
+                  </Button>
+                </div>
+              )}
+
               {/* Stats Cards */}
-              {paymentLinks.length > 0 && <div className="grid grid-cols-3 gap-4 mb-6">
+              {isConnected && paymentLinks.length > 0 && <div className="grid grid-cols-3 gap-4 mb-6">
                   <div className="bg-card border rounded-xl p-4">
                     <p className="text-sm text-muted-foreground mb-1">Total Links</p>
                     <p className="text-2xl font-bold">{paymentLinks.length}</p>
@@ -175,13 +215,13 @@ const PaymentLinks = () => {
                 </div>}
 
               {/* Loading State */}
-              {isLoading && <div className="flex flex-col items-center justify-center py-16">
+              {isConnected && isLoading && <div className="flex flex-col items-center justify-center py-16">
                   <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mb-4" />
                   <p className="text-muted-foreground">Loading payment links...</p>
                 </div>}
 
               {/* Payment Links List */}
-              {!isLoading && <div className="space-y-3">
+              {isConnected && !isLoading && <div className="space-y-3">
                   {paymentLinks.map(link => <div key={link.id} className={`bg-card border rounded-xl p-5 transition-all hover:shadow-md ${link.status === 'PAID' ? 'border-green-500/20' : link.expiresAt && Date.now() > link.expiresAt ? 'border-red-500/20 opacity-75' : 'border-border hover:border-primary/30'}`}>
                       <div className="flex flex-col gap-4">
                         {/* Top Row */}

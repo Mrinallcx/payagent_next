@@ -31,6 +31,8 @@ export interface PaymentResponse {
     receiver: string;
     description: string;
     instructions: string;
+    expiresAt?: string | number;
+    createdAt?: string | number;
   };
 }
 
