@@ -1,6 +1,7 @@
-import { Receipt, LogOut } from "lucide-react";
+import { LogOut } from "lucide-react";
 import { MdSpaceDashboard } from "react-icons/md";
 import { IoLink } from "react-icons/io5";
+import { FaMoneyBill } from "react-icons/fa";
 import { NavLink } from "@/components/NavLink";
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { useAccount, useDisconnect } from 'wagmi';
@@ -18,7 +19,7 @@ import {
 const menuItems = [
   { title: "Dashboard", url: "/", icon: MdSpaceDashboard },
   { title: "Payment Links", url: "/payment-links", icon: IoLink },
-  { title: "Transactions", url: "/transactions", icon: Receipt },
+  { title: "Transactions", url: "/transactions", icon: FaMoneyBill },
 ];
 
 export function AppSidebar() {
