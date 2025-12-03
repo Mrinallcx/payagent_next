@@ -1,5 +1,6 @@
-import { Link2, Receipt, LogOut } from "lucide-react";
+import { Receipt, LogOut } from "lucide-react";
 import { MdSpaceDashboard } from "react-icons/md";
+import { IoLink } from "react-icons/io5";
 import { NavLink } from "@/components/NavLink";
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { useAccount, useDisconnect } from 'wagmi';
@@ -16,7 +17,7 @@ import {
 
 const menuItems = [
   { title: "Dashboard", url: "/", icon: MdSpaceDashboard },
-  { title: "Payment Links", url: "/payment-links", icon: Link2 },
+  { title: "Payment Links", url: "/payment-links", icon: IoLink },
   { title: "Transactions", url: "/transactions", icon: Receipt },
 ];
 
