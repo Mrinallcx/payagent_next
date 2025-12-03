@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { GiPayMoney } from "react-icons/gi";
 import { FaGlobe } from "react-icons/fa";
+import { MdAccessTimeFilled } from "react-icons/md";
 import { toast } from "sonner";
 import { createPaymentLink } from "@/lib/api";
 import { useAccount } from "wagmi";
@@ -69,7 +70,7 @@ const TOKEN_NETWORK_SUPPORT: Record<string, string[]> = {
 const STEPS = [
   { key: "amount-token", label: "Amount", icon: GiPayMoney },
   { key: "network", label: "Network", icon: FaGlobe },
-  { key: "expiration", label: "Expiry", icon: Clock },
+  { key: "expiration", label: "Expiry", icon: MdAccessTimeFilled },
   { key: "details", label: "Details", icon: FileText },
 ];
 
