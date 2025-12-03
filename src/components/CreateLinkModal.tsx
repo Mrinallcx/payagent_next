@@ -15,7 +15,6 @@ import {
   Loader2, 
   Wallet, 
   FileText, 
-  Coins, 
   Globe, 
   Clock, 
   CheckCircle2,
@@ -24,6 +23,7 @@ import {
   X,
   Sparkles
 } from "lucide-react";
+import { GiPayMoney } from "react-icons/gi";
 import { toast } from "sonner";
 import { createPaymentLink } from "@/lib/api";
 import { useAccount } from "wagmi";
@@ -66,7 +66,7 @@ const TOKEN_NETWORK_SUPPORT: Record<string, string[]> = {
 };
 
 const STEPS = [
-  { key: "amount-token", label: "Amount", icon: Coins },
+  { key: "amount-token", label: "Amount", icon: GiPayMoney },
   { key: "network", label: "Network", icon: Globe },
   { key: "expiration", label: "Expiry", icon: Clock },
   { key: "details", label: "Details", icon: FileText },
