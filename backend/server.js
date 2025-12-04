@@ -16,7 +16,14 @@ const paymentRoutes = require('./routes/paymentRoutes');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(cors());
+app.use(cors({
+    origin: [
+      'http://localhost:8080',
+      'http://localhost:5173',
+      'https://payme-your-simple-payment-hub.vercel.app'
+    ],
+    credentials: true
+  }));
 app.use(express.json());
 
 // Routes
