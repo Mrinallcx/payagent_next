@@ -50,21 +50,22 @@ const TOKENS = [
   { symbol: "USDC", name: "USD Coin", color: "bg-blue-500" },
   { symbol: "USDT", name: "Tether", color: "bg-green-500" },
   { symbol: "ETH", name: "Ethereum", color: "bg-purple-500" },
-  { symbol: "BNB", name: "Wrapped BNB", color: "bg-yellow-500" },
+  { symbol: "BNB", name: "BNB Coin", color: "bg-yellow-500" },
   { symbol: "LCX", name: "LCX Token", color: "bg-orange-500" },
 ];
 
 const NETWORKS = [
   { name: "Sepolia (ETH Testnet)", short: "Sepolia", color: "bg-purple-500" },
+  { name: "BNB Testnet", short: "BNB Test", color: "bg-yellow-500" },
 ];
 
 // Token to supported networks mapping
 const TOKEN_NETWORK_SUPPORT: Record<string, string[]> = {
-  "USDC": ["Sepolia (ETH Testnet)"],
-  "USDT": ["Sepolia (ETH Testnet)"],
-  "ETH": ["Sepolia (ETH Testnet)"],
-  "BNB": ["Sepolia (ETH Testnet)"], // WBNB as ERC20 on Sepolia
-  "LCX": ["Sepolia (ETH Testnet)"],
+  "USDC": ["Sepolia (ETH Testnet)", "BNB Testnet"],
+  "USDT": ["Sepolia (ETH Testnet)", "BNB Testnet"],
+  "ETH": ["Sepolia (ETH Testnet)"], // ETH only on Ethereum networks
+  "BNB": ["Sepolia (ETH Testnet)", "BNB Testnet"], // WBNB on Sepolia, native on BNB Testnet
+  "LCX": ["Sepolia (ETH Testnet)"], // LCX only on Sepolia
 };
 
 const STEPS = [

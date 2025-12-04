@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { AppNavbar } from "@/components/AppNavbar";
@@ -11,13 +12,12 @@ import { CreateLinkModal } from "@/components/CreateLinkModal";
 import { useAccount } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { getAllPaymentRequests, deletePaymentRequest, PaymentRequest } from "@/lib/api";
+import { getExplorerUrl } from "@/lib/contracts";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 const PaymentLinks = () => {
   const navigate = useNavigate();
-  const [paymentLinks, setPaymentLinks] = useState<PaymentRequest[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  const queryClient = useQueryClient();
   const [, setCurrentTime] = useState(new Date());
   const [isCreateLinkOpen, setIsCreateLinkOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -25,45 +25,27 @@ const PaymentLinks = () => {
   const { address, isConnected } = useAccount();
   const { openConnectModal } = useConnectModal();
 
-  const fetchPaymentLinks = useCallback(async (showRefresh = false) => {
-    // Only fetch if wallet is connected
-    if (!isConnected || !address) {
-      setPaymentLinks([]);
-      setIsLoading(false);
-      return;
-    }
+  // React Query for fetching payment links
+  const { data, isLoading, isFetching, refetch } = useQuery({
+    queryKey: ['paymentLinks', address],
+    queryFn: () => getAllPaymentRequests(address!),
+    enabled: isConnected && !!address,
+    staleTime: 10000,              // Consider data fresh for 10 seconds
+    refetchOnWindowFocus: true,    // Refetch when user returns to tab
+    refetchInterval: 30000,        // Background refresh every 30 seconds (only when visible)
+    refetchIntervalInBackground: false, // Don't poll when tab is hidden
+  });
 
-    try {
-      if (showRefresh) setIsRefreshing(true);
-      else setIsLoading(true);
-      const response = await getAllPaymentRequests(address);
-      setPaymentLinks(response.requests);
-    } catch (error) {
-      console.error("Error fetching payment links:", error);
-      toast.error("Failed to load payment links");
-      setPaymentLinks([]);
-    } finally {
-      setIsLoading(false);
-      setIsRefreshing(false);
-    }
-  }, [address, isConnected]);
+  const paymentLinks = data?.requests ?? [];
 
-  useEffect(() => {
-    fetchPaymentLinks();
-  }, [fetchPaymentLinks]);
-
-  // Clear data when wallet disconnects
-  useEffect(() => {
-    if (!isConnected) {
-      setPaymentLinks([]);
-    }
-  }, [isConnected]);
+  // Update time display every second (for expiry countdown)
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTime(new Date());
     }, 1000);
     return () => clearInterval(timer);
   }, []);
+
   const handleCreateLinkClick = () => {
     if (!isConnected) {
       openConnectModal?.();
@@ -71,6 +53,7 @@ const PaymentLinks = () => {
     }
     setIsCreateLinkOpen(true);
   };
+
   const calculateTimeRemaining = (expiresAt: number | null) => {
     if (!expiresAt) return "No expiry";
     const now = Date.now();
@@ -83,6 +66,7 @@ const PaymentLinks = () => {
     if (hours > 0) return `${hours}h ${minutes}m remaining`;
     return `${minutes}m remaining`;
   };
+
   const getStatusBadge = (link: PaymentRequest) => {
     if (link.status === 'PAID') {
       return <Badge className="bg-green-500/10 text-green-600 hover:bg-green-500/20 border-green-500/20">
@@ -101,23 +85,30 @@ const PaymentLinks = () => {
         Pending
       </Badge>;
   };
+
   const handleViewLink = (id: string) => {
     navigate(`/pay/${id}`);
   };
+
   const handleCopyLink = (id: string) => {
     const link = `${window.location.origin}/pay/${id}`;
     navigator.clipboard.writeText(link);
     toast.success("Link copied to clipboard!");
   };
+
   const handleDeleteClick = (id: string) => {
     setDeleteId(id);
   };
+
   const handleConfirmDelete = async () => {
     if (!deleteId) return;
     setIsDeleting(true);
     try {
       await deletePaymentRequest(deleteId);
-      setPaymentLinks(links => links.filter(l => l.id !== deleteId));
+      // Invalidate query to trigger refetch
+      queryClient.invalidateQueries({ queryKey: ['paymentLinks', address] });
+      // Also invalidate the paymentRequests query used by Index
+      queryClient.invalidateQueries({ queryKey: ['paymentRequests', address] });
       toast.success("Payment link deleted successfully");
     } catch (error) {
       console.error("Error deleting payment link:", error);
@@ -127,10 +118,14 @@ const PaymentLinks = () => {
       setDeleteId(null);
     }
   };
+
   const handleCreateLink = () => {
-    // Refresh the list after creating a new link
-    fetchPaymentLinks(true);
+    // Invalidate query to trigger refetch
+    queryClient.invalidateQueries({ queryKey: ['paymentLinks', address] });
+    // Also invalidate the paymentRequests query used by Index
+    queryClient.invalidateQueries({ queryKey: ['paymentRequests', address] });
   };
+
   const formatDate = (timestamp: number) => {
     return new Date(timestamp).toLocaleDateString('en-US', {
       month: 'short',
@@ -140,9 +135,11 @@ const PaymentLinks = () => {
       minute: '2-digit'
     });
   };
+
   const truncateAddress = (addr: string) => {
     return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
   };
+
   return <SidebarProvider>
       <div className="flex min-h-screen w-full bg-background">
         <AppSidebar />
@@ -165,8 +162,8 @@ const PaymentLinks = () => {
                   </p>
                 </div>
                 {isConnected && (
-                  <Button variant="outline" size="icon" onClick={() => fetchPaymentLinks(true)} disabled={isRefreshing}>
-                    <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                  <Button variant="outline" size="icon" onClick={() => refetch()} disabled={isFetching}>
+                    <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
                   </Button>
                 )}
               </div>
@@ -276,7 +273,7 @@ const PaymentLinks = () => {
                           {link.status === 'PAID' && link.txHash && <div className="flex items-center gap-2 text-sm">
                               <CheckCircle2 className="h-4 w-4 text-green-500" />
                               <span className="text-muted-foreground">Paid on {formatDate(link.paidAt!)}</span>
-                              <a href={`https://sepolia.etherscan.io/tx/${link.txHash}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline flex items-center gap-1">
+                              <a href={`${getExplorerUrl(link.network)}/tx/${link.txHash}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline flex items-center gap-1">
                                 <code className="text-xs">{truncateAddress(link.txHash)}</code>
                                 <ExternalLink className="h-3 w-3" />
                               </a>
@@ -332,4 +329,5 @@ const PaymentLinks = () => {
       </AlertDialog>
     </SidebarProvider>;
 };
+
 export default PaymentLinks;

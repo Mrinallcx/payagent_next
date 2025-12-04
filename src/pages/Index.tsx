@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { AppNavbar } from "@/components/AppNavbar";
@@ -11,7 +12,8 @@ import { Button } from "@/components/ui/button";
 import { Plus, Link2, Loader2, Receipt, ArrowDownLeft, CheckCircle2, ExternalLink, Wallet } from "lucide-react";
 import { useAccount } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
-import { getAllPaymentRequests, PaymentRequest } from "@/lib/api";
+import { getAllPaymentRequests } from "@/lib/api";
+import { getExplorerUrl } from "@/lib/contracts";
 
 const formatDate = (timestamp: number) => {
   const now = Date.now();
@@ -37,59 +39,27 @@ const formatDate = (timestamp: number) => {
 
 const Index = () => {
   const [isCreateLinkOpen, setIsCreateLinkOpen] = useState(false);
-  const [paymentLinks, setPaymentLinks] = useState<PaymentRequest[]>([]);
-  const [recentTransactions, setRecentTransactions] = useState<PaymentRequest[]>([]);
-  const [isLoadingLinks, setIsLoadingLinks] = useState(false);
-  const [isLoadingTxns, setIsLoadingTxns] = useState(false);
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   
   // Wallet connection
   const { address, isConnected } = useAccount();
   const { openConnectModal } = useConnectModal();
 
-  const fetchData = useCallback(async () => {
-    // Only fetch if wallet is connected
-    if (!isConnected || !address) {
-      setPaymentLinks([]);
-      setRecentTransactions([]);
-      return;
-    }
+  // React Query for fetching payment data
+  const { data, isLoading } = useQuery({
+    queryKey: ['paymentRequests', address],
+    queryFn: () => getAllPaymentRequests(address!),
+    enabled: isConnected && !!address,
+    staleTime: 10000,              // Consider data fresh for 10 seconds
+    refetchOnWindowFocus: true,    // Refetch when user returns to tab
+    refetchInterval: 30000,        // Background refresh every 30 seconds (only when visible)
+    refetchIntervalInBackground: false, // Don't poll when tab is hidden
+  });
 
-    try {
-      setIsLoadingLinks(true);
-      setIsLoadingTxns(true);
-      
-      // Pass wallet address to filter by creator
-      const response = await getAllPaymentRequests(address);
-      
-      // Payment links (all for this wallet)
-      setPaymentLinks(response.requests.slice(0, 4));
-      
-      // Recent transactions (only PAID ones for this wallet)
-      const paidTxns = response.requests.filter(r => r.status === 'PAID').slice(0, 4);
-      setRecentTransactions(paidTxns);
-    } catch (error) {
-      console.error("Error fetching data:", error);
-      setPaymentLinks([]);
-      setRecentTransactions([]);
-    } finally {
-      setIsLoadingLinks(false);
-      setIsLoadingTxns(false);
-    }
-  }, [address, isConnected]);
-
-  // Fetch data when wallet connects or address changes
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
-  // Clear data when wallet disconnects
-  useEffect(() => {
-    if (!isConnected) {
-      setPaymentLinks([]);
-      setRecentTransactions([]);
-    }
-  }, [isConnected]);
+  // Derive payment links and transactions from query data
+  const paymentLinks = data?.requests?.slice(0, 4) ?? [];
+  const recentTransactions = data?.requests?.filter(r => r.status === 'PAID').slice(0, 4) ?? [];
 
   const handleCreateLinkClick = () => {
     if (!isConnected) {
@@ -100,7 +70,13 @@ const Index = () => {
   };
 
   const handleLinkCreated = () => {
-    fetchData();
+    // Invalidate query to trigger refetch
+    queryClient.invalidateQueries({ queryKey: ['paymentRequests', address] });
+  };
+
+  const handleDelete = () => {
+    // Invalidate query to trigger refetch
+    queryClient.invalidateQueries({ queryKey: ['paymentRequests', address] });
   };
 
   return (
@@ -154,7 +130,7 @@ const Index = () => {
                         </Button>
                       }
                     >
-                      {isLoadingTxns ? (
+                      {isLoading ? (
                         <div className="flex items-center justify-center py-8">
                           <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                         </div>
@@ -171,7 +147,7 @@ const Index = () => {
                                 </div>
                                 <div>
                                   <p className="text-sm font-medium text-foreground">
-                                    {txn.description || `Payment received`}
+                                    {txn.description?.trim() ? txn.description : 'Payment received'}
                                   </p>
                                   <p className="text-xs text-muted-foreground">{formatDate(txn.paidAt!)}</p>
                                 </div>
@@ -188,11 +164,11 @@ const Index = () => {
                                 </div>
                                 {txn.txHash && (
                                   <a
-                                    href={`https://sepolia.etherscan.io/tx/${txn.txHash}`}
+                                    href={`${getExplorerUrl(txn.network)}/tx/${txn.txHash}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="p-1.5 rounded-md hover:bg-muted"
-                                    title="View on Etherscan"
+                                    title="View on Explorer"
                                   >
                                     <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />
                                   </a>
@@ -227,7 +203,7 @@ const Index = () => {
                         </Button>
                       }
                     >
-                      {isLoadingLinks ? (
+                      {isLoading ? (
                         <div className="flex items-center justify-center py-8">
                           <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                         </div>
@@ -242,7 +218,7 @@ const Index = () => {
                               token={link.token}
                               status={link.status}
                               link={`${window.location.origin}/pay/${link.id}`}
-                              onDelete={fetchData}
+                              onDelete={handleDelete}
                             />
                           ))}
                         </div>

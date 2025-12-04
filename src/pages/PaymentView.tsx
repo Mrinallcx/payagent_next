@@ -11,7 +11,7 @@ import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { useAccount, useWriteContract, useWaitForTransactionReceipt, useSwitchChain, useSendTransaction } from 'wagmi';
 import { parseUnits, parseEther } from 'viem';
 import { getPaymentRequest, verifyPayment, type PaymentRequest } from "@/lib/api";
-import { ERC20_ABI, getTokenAddress, getChainId, getTokenDecimals } from "@/lib/contracts";
+import { ERC20_ABI, getTokenAddress, getChainId, getTokenDecimals, isNativeToken as checkIsNativeToken, getExplorerUrl } from "@/lib/contracts";
 
 type PaymentStep = "select-network" | "payment" | "success";
 
@@ -258,7 +258,8 @@ export default function PaymentView() {
       const network = paymentRequest.network.split(',')[0].trim().toLowerCase();
       const requiredChainId = getChainId(network);
       const tokenUpper = paymentRequest.token.toUpperCase();
-      const isNative = tokenUpper === 'ETH'; // Only ETH is native, BNB is ERC20 on Sepolia
+      // Check if native token based on token and network (BNB is native on BNB chains, ETH on ETH chains)
+      const isNative = checkIsNativeToken(tokenUpper, network);
       setIsNativeToken(isNative);
 
       // For ERC20 tokens, get the contract address
@@ -300,7 +301,7 @@ export default function PaymentView() {
         const decimals = getTokenDecimals(paymentRequest.token);
         const amountInWei = parseUnits(paymentRequest.amount, decimals);
 
-        // @ts-ignore - wagmi v2 type issue with writeContract
+        // @ts-expect-error - wagmi v2 type issue with writeContract
         writeContract({
           address: tokenAddress,
           abi: ERC20_ABI,
@@ -891,7 +892,7 @@ export default function PaymentView() {
                     <Badge variant="secondary" className="text-xs">{selectedNetwork}</Badge>
                     {paymentRequest.txHash && (
                       <a
-                        href={`https://sepolia.etherscan.io/tx/${paymentRequest.txHash}`}
+                        href={`${getExplorerUrl(paymentRequest.network)}/tx/${paymentRequest.txHash}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-primary hover:text-primary/80 transition-colors"
@@ -907,7 +908,7 @@ export default function PaymentView() {
                     <span className="text-muted-foreground">Transaction Hash</span>
                     <div className="flex items-center gap-2">
                       <a
-                        href={`https://sepolia.etherscan.io/tx/${paymentRequest.txHash}`}
+                        href={`${getExplorerUrl(paymentRequest.network)}/tx/${paymentRequest.txHash}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-xs font-mono text-primary hover:underline"

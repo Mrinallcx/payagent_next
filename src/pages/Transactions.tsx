@@ -1,3 +1,5 @@
+import { useState, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { AppNavbar } from "@/components/AppNavbar";
@@ -5,11 +7,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ArrowDownLeft, Download, Loader2, ExternalLink, Receipt, CheckCircle2, Wallet } from "lucide-react";
-import { useState, useEffect, useMemo, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useAccount } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
-import { getAllPaymentRequests, PaymentRequest } from "@/lib/api";
+import { getAllPaymentRequests } from "@/lib/api";
+import { getExplorerUrl } from "@/lib/contracts";
 
 const truncateAddress = (addr: string) => {
   if (!addr) return '';
@@ -36,42 +38,22 @@ const Transactions = () => {
   const { toast } = useToast();
   const { address, isConnected } = useAccount();
   const { openConnectModal } = useConnectModal();
-  const [transactions, setTransactions] = useState<PaymentRequest[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  const fetchTransactions = useCallback(async () => {
-    // Only fetch if wallet is connected
-    if (!isConnected || !address) {
-      setTransactions([]);
-      return;
-    }
+  // React Query for fetching transactions
+  const { data, isLoading } = useQuery({
+    queryKey: ['transactions', address],
+    queryFn: () => getAllPaymentRequests(address!),
+    enabled: isConnected && !!address,
+    staleTime: 10000,              // Consider data fresh for 10 seconds
+    refetchOnWindowFocus: true,    // Refetch when user returns to tab
+    refetchInterval: 30000,        // Background refresh every 30 seconds (only when visible)
+    refetchIntervalInBackground: false, // Don't poll when tab is hidden
+    select: (data) => data.requests.filter(r => r.status === 'PAID'), // Only PAID transactions
+  });
 
-    setIsLoading(true);
-    try {
-      // Fetch payment requests for this wallet and filter for PAID ones
-      const response = await getAllPaymentRequests(address);
-      const paidTransactions = response.requests.filter(r => r.status === 'PAID');
-      setTransactions(paidTransactions);
-    } catch (error) {
-      console.error('Error fetching transactions:', error);
-      setTransactions([]);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [address, isConnected]);
-
-  useEffect(() => {
-    fetchTransactions();
-  }, [fetchTransactions]);
-
-  // Clear data when wallet disconnects
-  useEffect(() => {
-    if (!isConnected) {
-      setTransactions([]);
-    }
-  }, [isConnected]);
+  const transactions = data ?? [];
 
   // Paginate transactions
   const totalPages = Math.ceil(transactions.length / itemsPerPage);
@@ -207,7 +189,7 @@ const Transactions = () => {
                               <TableCell>
                                 <div>
                                   <p className="text-sm font-medium">
-                                    {transaction.description || `Payment ${transaction.id}`}
+                                    {transaction.description?.trim() ? transaction.description : 'Payment received'}
                                   </p>
                                   <p className="text-xs text-muted-foreground">
                                     {formatDate(transaction.paidAt!)}
@@ -245,7 +227,7 @@ const Transactions = () => {
                               <TableCell>
                                 {transaction.txHash && (
                                   <a
-                                    href={`https://sepolia.etherscan.io/tx/${transaction.txHash}`}
+                                    href={`${getExplorerUrl(transaction.network)}/tx/${transaction.txHash}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="p-1.5 rounded-md hover:bg-muted inline-flex"
