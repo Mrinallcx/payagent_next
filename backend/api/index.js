@@ -8,17 +8,16 @@ const paymentRoutes = require('../routes/paymentRoutes');
 
 const app = express();
 
-// CORS configuration
+// CORS configuration - Allow all origins for now
 app.use(cors({
-  origin: [
-    'http://localhost:8080',
-    'http://localhost:5173',
-    'http://localhost:3000',
-    'https://payme-your-simple-payment-hub.vercel.app',
-    /\.vercel\.app$/
-  ],
-  credentials: true
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+  credentials: false
 }));
+
+// Handle preflight requests
+app.options('*', cors());
 
 app.use(express.json());
 
@@ -40,4 +39,3 @@ app.use('/api', paymentRoutes);
 
 // Export for Vercel
 module.exports = app;
-
