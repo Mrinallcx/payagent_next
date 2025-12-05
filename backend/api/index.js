@@ -1,44 +1,19 @@
-// Vercel Serverless Function Entry Point
-try {
-  require('dotenv').config();
-} catch (e) {
-  console.log('dotenv not available, using process.env directly');
-}
-
+// Minimal Vercel Serverless Function
 const express = require('express');
 const cors = require('cors');
 
 const app = express();
 
-// CORS configuration - Allow all origins
-app.use(cors({
-  origin: '*',
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
-  credentials: false
-}));
-
-// Handle preflight requests
-app.options('*', cors());
-
+// CORS
+app.use(cors({ origin: '*' }));
 app.use(express.json());
 
-// Log environment status
-console.log('🔧 Environment Check:');
-console.log('   SUPABASE_URL:', process.env.SUPABASE_URL ? '✓ Set' : '✗ Missing');
-console.log('   SUPABASE_ANON_KEY:', process.env.SUPABASE_ANON_KEY ? '✓ Set' : '✗ Missing');
-console.log('   ETH_RPC_URL:', process.env.NEXT_PUBLIC_ETH_RPC_URL ? '✓ Set' : '✗ Missing');
-
-// Health check endpoint
+// Health check
 app.get('/', (req, res) => {
   res.json({ 
     status: 'ok', 
     message: 'PayMe API is running',
-    timestamp: new Date().toISOString(),
-    env: {
-      supabase: !!process.env.SUPABASE_URL,
-      rpc: !!process.env.NEXT_PUBLIC_ETH_RPC_URL
-    }
+    timestamp: new Date().toISOString()
   });
 });
 
@@ -46,31 +21,52 @@ app.get('/health', (req, res) => {
   res.json({ status: 'healthy' });
 });
 
-// Load routes with error handling
+// Try to load routes
+let routesLoaded = false;
+let loadError = null;
+
 try {
+  // Check if supabase can be loaded
+  const { supabase } = require('../lib/supabase');
+  console.log('Supabase client:', supabase ? 'Created' : 'Null (no credentials)');
+  
+  // Load routes
   const paymentRoutes = require('../routes/paymentRoutes');
   app.use('/api', paymentRoutes);
-  console.log('✅ Routes loaded successfully');
+  routesLoaded = true;
+  console.log('✅ Routes loaded');
 } catch (error) {
-  console.error('❌ Failed to load routes:', error.message);
-  
-  // Fallback error route
+  loadError = error.message;
+  console.error('❌ Error loading routes:', error);
+}
+
+// Debug endpoint
+app.get('/debug', (req, res) => {
+  res.json({
+    routesLoaded,
+    loadError,
+    env: {
+      SUPABASE_URL: process.env.SUPABASE_URL ? 'Set' : 'Missing',
+      SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY ? 'Set' : 'Missing',
+      NEXT_PUBLIC_ETH_RPC_URL: process.env.NEXT_PUBLIC_ETH_RPC_URL ? 'Set' : 'Missing',
+    }
+  });
+});
+
+// Fallback for API routes if not loaded
+if (!routesLoaded) {
   app.use('/api', (req, res) => {
     res.status(500).json({ 
-      error: 'Routes failed to load', 
-      details: error.message 
+      error: 'API routes failed to load',
+      details: loadError
     });
   });
 }
 
-// Global error handler
+// Error handler
 app.use((err, req, res, next) => {
-  console.error('Unhandled error:', err);
-  res.status(500).json({ 
-    error: 'Internal server error', 
-    message: err.message 
-  });
+  console.error('Error:', err);
+  res.status(500).json({ error: err.message });
 });
 
-// Export for Vercel
 module.exports = app;
