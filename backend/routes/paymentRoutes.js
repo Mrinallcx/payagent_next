@@ -10,6 +10,7 @@ router.get('/requests', paymentController.getAllPaymentRequests);
 
 // Get single payment request
 router.get('/request/:id', paymentController.getPaymentRequest);
+console.log('getPaymentRequest');
 
 // Delete payment request
 router.delete('/request/:id', paymentController.deletePaymentRequest);
