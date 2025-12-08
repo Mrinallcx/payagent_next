@@ -12,16 +12,12 @@ import {
   Plus, 
   Link2, 
   Loader2, 
-  Receipt, 
   ArrowDownLeft, 
   CheckCircle2, 
   ExternalLink, 
   Wallet,
-  TrendingUp,
-  Sparkles,
   ArrowRight,
-  Zap,
-  BarChart3
+  ArrowUpRight
 } from "lucide-react";
 import { useAccount } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
@@ -42,7 +38,7 @@ const formatDate = (timestamp: number) => {
     return `${hours}h ago`;
   }
   if (days === 1) return 'Yesterday';
-  if (days < 7) return `${days} days ago`;
+  if (days < 7) return `${days}d ago`;
   
   return new Date(timestamp).toLocaleDateString('en-US', {
     month: 'short',
@@ -68,8 +64,8 @@ const Index = () => {
     refetchIntervalInBackground: false,
   });
 
-  const paymentLinks = data?.requests?.slice(0, 4) ?? [];
-  const recentTransactions = data?.requests?.filter(r => r.status === 'PAID').slice(0, 4) ?? [];
+  const paymentLinks = data?.requests?.slice(0, 5) ?? [];
+  const recentTransactions = data?.requests?.filter(r => r.status === 'PAID').slice(0, 5) ?? [];
   const totalReceived = recentTransactions.reduce((acc, t) => acc + parseFloat(t.amount), 0);
   const pendingLinks = paymentLinks.filter(l => l.status === 'PENDING').length;
 
@@ -94,142 +90,98 @@ const Index = () => {
       <div className="flex min-h-screen w-full">
         <AppSidebar />
         
-        <div className="flex-1 flex flex-col bg-gradient-to-br from-slate-50 via-white to-blue-50/30 relative overflow-hidden">
-          {/* Background decoration */}
-          <div className="absolute inset-0 overflow-hidden pointer-events-none">
-            <div className="absolute -top-40 -right-40 w-[500px] h-[500px] bg-gradient-to-br from-primary/10 to-blue-500/10 rounded-full blur-3xl" />
-            <div className="absolute -bottom-40 -left-40 w-[400px] h-[400px] bg-gradient-to-tr from-purple-500/10 to-primary/10 rounded-full blur-3xl" />
-            <div className="absolute inset-0 bg-[linear-gradient(to_right,#0066ff05_1px,transparent_1px),linear-gradient(to_bottom,#0066ff05_1px,transparent_1px)] bg-[size:60px_60px]" />
-          </div>
-
+        <div className="flex-1 flex flex-col bg-slate-50">
           <AppNavbar />
           
-          <main className="flex-1 p-6 relative z-10">
-            <div className="max-w-7xl mx-auto space-y-6">
+          <main className="flex-1 p-6 lg:p-8">
+            <div className="max-w-6xl mx-auto space-y-8">
               {/* Header */}
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
                 <div>
-                  <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-white/80 backdrop-blur-sm rounded-full border border-primary/10 shadow-sm mb-3">
-                    <Sparkles className="w-3 h-3 text-primary" />
-                    <span className="text-xs font-medium text-foreground/70">Dashboard</span>
-                  </div>
-                  <h1 className="text-3xl md:text-4xl font-heading font-bold text-foreground mb-2">
-                    {isConnected ? 'Welcome back!' : 'Welcome to PayMe'}
+                  <p className="text-sm text-muted-foreground mb-1">Dashboard</p>
+                  <h1 className="text-2xl font-heading font-bold text-foreground">
+                    {isConnected ? 'Welcome back' : 'Welcome to PayMe'}
                   </h1>
-                  <p className="text-muted-foreground">
-                    {isConnected 
-                      ? "Here's what's happening with your payments today."
-                      : "Connect your wallet to start receiving crypto payments."}
-                  </p>
                 </div>
                 {isConnected && (
                   <Button 
                     onClick={handleCreateLinkClick}
-                    className="gap-2 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-lg shadow-primary/25 rounded-xl"
+                    className="gap-2 bg-slate-900 hover:bg-slate-800 rounded-lg"
                   >
                     <Plus className="h-4 w-4" />
-                    Create Payment Link
+                    Create Link
                   </Button>
                 )}
               </div>
 
               {/* Connect Prompt */}
               {!isConnected ? (
-                <div className="bg-white/80 backdrop-blur-xl border border-white/50 rounded-3xl p-12 text-center shadow-xl shadow-primary/5">
-                  <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary/10 to-accent/20 flex items-center justify-center mx-auto mb-6 shadow-lg shadow-primary/10">
-                    <Wallet className="h-10 w-10 text-primary" />
+                <div className="bg-white rounded-2xl border border-border p-12 text-center">
+                  <div className="w-14 h-14 rounded-xl bg-slate-100 flex items-center justify-center mx-auto mb-5">
+                    <Wallet className="h-6 w-6 text-slate-600" />
                   </div>
-                  <h3 className="text-2xl font-heading font-bold mb-3">Connect Your Wallet</h3>
-                  <p className="text-muted-foreground mb-8 max-w-md mx-auto">
-                    Connect your wallet to create payment links and view your transaction history
+                  <h3 className="text-lg font-heading font-semibold mb-2">Connect Your Wallet</h3>
+                  <p className="text-sm text-muted-foreground mb-6 max-w-sm mx-auto">
+                    Connect your wallet to create payment links and view transactions
                   </p>
                   <Button 
                     onClick={() => openConnectModal?.()} 
-                    className="gap-2 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-lg shadow-primary/25 rounded-xl px-8 py-6 text-base"
+                    className="gap-2 bg-slate-900 hover:bg-slate-800 rounded-lg"
                   >
-                    <Wallet className="h-5 w-5" />
+                    <Wallet className="h-4 w-4" />
                     Connect Wallet
-                    <ArrowRight className="h-4 w-4 ml-1" />
                   </Button>
                 </div>
               ) : (
                 <>
-                  {/* Stats Cards */}
+                  {/* Stats */}
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-5 border border-white/50 shadow-lg shadow-primary/5">
-                      <div className="flex items-center gap-3 mb-3">
-                        <div className="p-2 rounded-xl bg-blue-500/10">
-                          <Link2 className="h-5 w-5 text-blue-500" />
-                        </div>
+                    {[
+                      { label: "Total Links", value: paymentLinks.length },
+                      { label: "Completed", value: recentTransactions.length },
+                      { label: "Pending", value: pendingLinks },
+                      { label: "Total Received", value: totalReceived > 0 ? totalReceived.toFixed(2) : "0" },
+                    ].map((stat) => (
+                      <div key={stat.label} className="bg-white rounded-xl border border-border p-5">
+                        <p className="text-xs text-muted-foreground mb-1">{stat.label}</p>
+                        <p className="text-2xl font-heading font-bold text-foreground">{stat.value}</p>
                       </div>
-                      <p className="text-2xl font-heading font-bold text-foreground">{paymentLinks.length}</p>
-                      <p className="text-xs text-muted-foreground">Total Links</p>
-                    </div>
-                    <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-5 border border-white/50 shadow-lg shadow-green-500/5">
-                      <div className="flex items-center gap-3 mb-3">
-                        <div className="p-2 rounded-xl bg-green-500/10">
-                          <TrendingUp className="h-5 w-5 text-green-500" />
-                        </div>
-                      </div>
-                      <p className="text-2xl font-heading font-bold text-foreground">{recentTransactions.length}</p>
-                      <p className="text-xs text-muted-foreground">Completed</p>
-                    </div>
-                    <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-5 border border-white/50 shadow-lg shadow-amber-500/5">
-                      <div className="flex items-center gap-3 mb-3">
-                        <div className="p-2 rounded-xl bg-amber-500/10">
-                          <Zap className="h-5 w-5 text-amber-500" />
-                        </div>
-                      </div>
-                      <p className="text-2xl font-heading font-bold text-foreground">{pendingLinks}</p>
-                      <p className="text-xs text-muted-foreground">Pending</p>
-                    </div>
-                    <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-5 border border-white/50 shadow-lg shadow-purple-500/5">
-                      <div className="flex items-center gap-3 mb-3">
-                        <div className="p-2 rounded-xl bg-purple-500/10">
-                          <BarChart3 className="h-5 w-5 text-purple-500" />
-                        </div>
-                      </div>
-                      <p className="text-2xl font-heading font-bold text-foreground">
-                        {totalReceived > 0 ? totalReceived.toFixed(2) : '0'}
-                      </p>
-                      <p className="text-xs text-muted-foreground">Total Received</p>
-                    </div>
+                    ))}
                   </div>
 
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     {/* Transactions */}
                     <DashboardCard 
                       title="Recent Transactions"
-                      icon={<Receipt className="h-5 w-5 text-green-500" />}
                       action={
                         <Button 
                           variant="ghost" 
                           size="sm" 
-                          className="text-xs hover:bg-primary/5 hover:text-primary gap-1"
+                          className="text-xs text-muted-foreground hover:text-foreground gap-1 h-8"
                           onClick={() => navigate('/transactions')}
                         >
                           View All
-                          <ArrowRight className="h-3 w-3" />
+                          <ArrowUpRight className="h-3 w-3" />
                         </Button>
                       }
                     >
                       {isLoading ? (
                         <div className="flex items-center justify-center py-12">
-                          <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                         </div>
                       ) : recentTransactions.length > 0 ? (
-                        <div className="space-y-1">
+                        <div className="space-y-0">
                           {recentTransactions.map((txn) => (
                             <div 
                               key={txn.id} 
-                              className="flex items-center justify-between py-3 px-3 -mx-3 rounded-xl hover:bg-green-500/5 transition-colors border-b last:border-0 border-border/50"
+                              className="flex items-center justify-between py-3.5 border-b last:border-0 border-border/50"
                             >
                               <div className="flex items-center gap-3">
-                                <div className="p-2.5 rounded-xl bg-gradient-to-br from-green-500/10 to-emerald-500/20">
-                                  <ArrowDownLeft className="h-4 w-4 text-green-600" />
+                                <div className="w-9 h-9 rounded-lg bg-emerald-50 flex items-center justify-center">
+                                  <ArrowDownLeft className="h-4 w-4 text-emerald-600" />
                                 </div>
                                 <div>
-                                  <p className="text-sm font-semibold text-foreground">
+                                  <p className="text-sm font-medium text-foreground">
                                     {txn.description?.trim() || 'Payment received'}
                                   </p>
                                   <p className="text-xs text-muted-foreground">{formatDate(txn.paidAt!)}</p>
@@ -237,12 +189,12 @@ const Index = () => {
                               </div>
                               <div className="flex items-center gap-3">
                                 <div className="text-right">
-                                  <p className="text-sm font-bold text-green-600">
+                                  <p className="text-sm font-semibold text-emerald-600">
                                     +{txn.amount} {txn.token}
                                   </p>
                                   <div className="flex items-center gap-1 justify-end">
-                                    <CheckCircle2 className="h-3 w-3 text-green-600" />
-                                    <span className="text-[10px] text-green-600 font-medium">Success</span>
+                                    <CheckCircle2 className="h-3 w-3 text-emerald-600" />
+                                    <span className="text-[10px] text-emerald-600">Success</span>
                                   </div>
                                 </div>
                                 {txn.txHash && (
@@ -250,9 +202,9 @@ const Index = () => {
                                     href={`${getExplorerUrl(txn.network)}/tx/${txn.txHash}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="p-2 rounded-lg hover:bg-muted transition-colors"
+                                    className="p-1.5 rounded-md hover:bg-slate-100 transition-colors"
                                   >
-                                    <ExternalLink className="h-4 w-4 text-muted-foreground hover:text-primary" />
+                                    <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />
                                   </a>
                                 )}
                               </div>
@@ -261,11 +213,10 @@ const Index = () => {
                         </div>
                       ) : (
                         <div className="flex flex-col items-center justify-center py-12 text-center">
-                          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-muted to-muted/50 flex items-center justify-center mb-4">
-                            <Receipt className="h-7 w-7 text-muted-foreground" />
+                          <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center mb-3">
+                            <ArrowDownLeft className="h-5 w-5 text-muted-foreground" />
                           </div>
-                          <p className="text-sm font-medium text-foreground mb-1">No transactions yet</p>
-                          <p className="text-xs text-muted-foreground">Completed payments will appear here</p>
+                          <p className="text-sm text-muted-foreground">No transactions yet</p>
                         </div>
                       )}
                     </DashboardCard>
@@ -273,25 +224,24 @@ const Index = () => {
                     {/* Payment Links */}
                     <DashboardCard 
                       title="Payment Links"
-                      icon={<Link2 className="h-5 w-5 text-primary" />}
                       action={
                         <Button 
                           variant="ghost" 
                           size="sm" 
-                          className="text-xs gap-1 hover:bg-primary/5 hover:text-primary"
+                          className="text-xs gap-1 text-muted-foreground hover:text-foreground h-8"
                           onClick={handleCreateLinkClick}
                         >
                           <Plus className="h-3 w-3" />
-                          New Link
+                          New
                         </Button>
                       }
                     >
                       {isLoading ? (
                         <div className="flex items-center justify-center py-12">
-                          <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                         </div>
                       ) : paymentLinks.length > 0 ? (
-                        <div className="space-y-1">
+                        <div className="space-y-0">
                           {paymentLinks.map((link) => (
                             <PaymentLinkItem 
                               key={link.id} 
@@ -307,16 +257,15 @@ const Index = () => {
                         </div>
                       ) : (
                         <div className="flex flex-col items-center justify-center py-12 text-center">
-                          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-muted to-muted/50 flex items-center justify-center mb-4">
-                            <Link2 className="h-7 w-7 text-muted-foreground" />
+                          <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center mb-3">
+                            <Link2 className="h-5 w-5 text-muted-foreground" />
                           </div>
-                          <p className="text-sm font-medium text-foreground mb-1">No payment links</p>
-                          <p className="text-xs text-muted-foreground mb-4">Create your first link to start receiving payments</p>
+                          <p className="text-sm text-muted-foreground mb-3">No payment links yet</p>
                           <Button 
                             variant="outline" 
                             size="sm" 
                             onClick={handleCreateLinkClick}
-                            className="gap-1 rounded-lg"
+                            className="gap-1 rounded-lg text-xs"
                           >
                             <Plus className="h-3 w-3" />
                             Create Link
@@ -330,44 +279,44 @@ const Index = () => {
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <button 
                       onClick={handleCreateLinkClick}
-                      className="group bg-gradient-to-br from-primary to-primary/80 rounded-2xl p-6 text-left text-white shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 transition-all hover:-translate-y-1"
+                      className="group bg-slate-900 rounded-xl p-5 text-left text-white hover:bg-slate-800 transition-colors"
                     >
-                      <div className="flex items-center justify-between mb-4">
-                        <div className="p-3 rounded-xl bg-white/20">
-                          <Plus className="h-6 w-6" />
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center">
+                          <Plus className="h-5 w-5" />
                         </div>
-                        <ArrowRight className="h-5 w-5 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
+                        <ArrowRight className="h-4 w-4 opacity-40 group-hover:opacity-100 transition-opacity" />
                       </div>
-                      <h3 className="font-heading font-bold text-lg mb-1">Create Payment Link</h3>
-                      <p className="text-sm text-white/80">Generate a new link instantly</p>
+                      <h3 className="font-medium mb-0.5">Create Payment Link</h3>
+                      <p className="text-sm text-white/60">Generate a new link</p>
                     </button>
 
                     <button 
                       onClick={() => navigate('/payment-links')}
-                      className="group bg-white/80 backdrop-blur-sm rounded-2xl p-6 text-left border border-border/50 shadow-lg hover:shadow-xl transition-all hover:-translate-y-1"
+                      className="group bg-white rounded-xl p-5 text-left border border-border hover:border-slate-300 transition-colors"
                     >
-                      <div className="flex items-center justify-between mb-4">
-                        <div className="p-3 rounded-xl bg-blue-500/10">
-                          <Link2 className="h-6 w-6 text-blue-500" />
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center">
+                          <Link2 className="h-5 w-5 text-slate-600" />
                         </div>
-                        <ArrowRight className="h-5 w-5 text-muted-foreground opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
+                        <ArrowRight className="h-4 w-4 text-muted-foreground opacity-40 group-hover:opacity-100 transition-opacity" />
                       </div>
-                      <h3 className="font-heading font-bold text-lg text-foreground mb-1">Manage Links</h3>
-                      <p className="text-sm text-muted-foreground">View and manage all your links</p>
+                      <h3 className="font-medium text-foreground mb-0.5">Manage Links</h3>
+                      <p className="text-sm text-muted-foreground">View all payment links</p>
                     </button>
 
                     <button 
                       onClick={() => navigate('/transactions')}
-                      className="group bg-white/80 backdrop-blur-sm rounded-2xl p-6 text-left border border-border/50 shadow-lg hover:shadow-xl transition-all hover:-translate-y-1"
+                      className="group bg-white rounded-xl p-5 text-left border border-border hover:border-slate-300 transition-colors"
                     >
-                      <div className="flex items-center justify-between mb-4">
-                        <div className="p-3 rounded-xl bg-green-500/10">
-                          <TrendingUp className="h-6 w-6 text-green-500" />
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center">
+                          <ArrowDownLeft className="h-5 w-5 text-slate-600" />
                         </div>
-                        <ArrowRight className="h-5 w-5 text-muted-foreground opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
+                        <ArrowRight className="h-4 w-4 text-muted-foreground opacity-40 group-hover:opacity-100 transition-opacity" />
                       </div>
-                      <h3 className="font-heading font-bold text-lg text-foreground mb-1">View Transactions</h3>
-                      <p className="text-sm text-muted-foreground">Check your payment history</p>
+                      <h3 className="font-medium text-foreground mb-0.5">Transactions</h3>
+                      <p className="text-sm text-muted-foreground">View payment history</p>
                     </button>
                   </div>
                 </>

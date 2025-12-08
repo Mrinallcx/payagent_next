@@ -1,4 +1,4 @@
-import { Plus, Sparkles } from "lucide-react";
+import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useState } from "react";
@@ -22,15 +22,9 @@ export function AppNavbar() {
 
   return (
     <>
-      <header className="sticky top-0 z-50 h-16 border-b border-border/50 bg-white/80 backdrop-blur-xl">
+      <header className="sticky top-0 z-50 h-14 border-b border-border bg-white">
         <div className="flex h-full items-center justify-between px-4 md:px-6">
-          <div className="flex items-center gap-4">
-            <SidebarTrigger className="hover:bg-primary/5 rounded-lg" />
-            <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-primary/5 to-transparent rounded-full">
-              <Sparkles className="h-3 w-3 text-primary" />
-              <span className="text-xs font-medium text-muted-foreground">Web3 Payment Hub</span>
-            </div>
-          </div>
+          <SidebarTrigger />
           
           <div className="flex items-center gap-3">
             <div className="hidden md:block">
@@ -42,7 +36,7 @@ export function AppNavbar() {
             </div>
             <Button 
               size="sm" 
-              className="gap-2 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-lg shadow-primary/20 rounded-xl"
+              className="gap-2 bg-slate-900 hover:bg-slate-800 rounded-lg h-9"
               onClick={handleCreateLinkClick}
             >
               <Plus className="h-4 w-4" />

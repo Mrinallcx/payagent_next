@@ -32,14 +32,14 @@ interface PaymentLinkItemProps {
   onDelete?: () => void;
 }
 
-export function PaymentLinkItem({ id, title, amount, token, status, link, onDelete }: PaymentLinkItemProps) {
+export function PaymentLinkItem({ id, amount, token, status, link, onDelete }: PaymentLinkItemProps) {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const navigate = useNavigate();
 
   const handleCopy = () => {
     navigator.clipboard.writeText(link);
-    toast.success("Link copied to clipboard!");
+    toast.success("Link copied to clipboard");
   };
 
   const handleOpenLink = () => {
@@ -65,21 +65,21 @@ export function PaymentLinkItem({ id, title, amount, token, status, link, onDele
     switch (status) {
       case 'PAID':
         return (
-          <Badge className="bg-green-500 text-white border-0 text-[10px] shadow-sm shadow-green-500/30">
+          <Badge variant="secondary" className="bg-emerald-50 text-emerald-700 border-0 text-[10px] font-medium">
             <CheckCircle2 className="h-3 w-3 mr-1" />
             Paid
           </Badge>
         );
       case 'EXPIRED':
         return (
-          <Badge className="bg-red-500 text-white border-0 text-[10px] shadow-sm shadow-red-500/30">
+          <Badge variant="secondary" className="bg-red-50 text-red-700 border-0 text-[10px] font-medium">
             <XCircle className="h-3 w-3 mr-1" />
             Expired
           </Badge>
         );
       default:
         return (
-          <Badge className="bg-amber-500 text-white border-0 text-[10px] shadow-sm shadow-amber-500/30">
+          <Badge variant="secondary" className="bg-amber-50 text-amber-700 border-0 text-[10px] font-medium">
             <Clock className="h-3 w-3 mr-1" />
             Pending
           </Badge>
@@ -89,56 +89,56 @@ export function PaymentLinkItem({ id, title, amount, token, status, link, onDele
 
   return (
     <>
-      <div className="flex items-center justify-between py-3 px-3 -mx-3 rounded-xl hover:bg-primary/5 transition-all group border-b last:border-0 border-border/50">
+      <div className="flex items-center justify-between py-3.5 border-b last:border-0 border-border/50 group">
         <div className="flex items-center gap-3">
-          <div className={`p-2.5 rounded-xl transition-transform group-hover:scale-110 ${
+          <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${
             status === 'PAID' 
-              ? 'bg-gradient-to-br from-green-500/10 to-emerald-500/20' 
+              ? 'bg-emerald-50' 
               : status === 'EXPIRED' 
-              ? 'bg-gradient-to-br from-red-500/10 to-rose-500/20' 
-              : 'bg-gradient-to-br from-primary/10 to-blue-500/20'
+              ? 'bg-red-50' 
+              : 'bg-slate-100'
           }`}>
             <Link2 className={`h-4 w-4 ${
-              status === 'PAID' ? 'text-green-600' : status === 'EXPIRED' ? 'text-red-500' : 'text-primary'
+              status === 'PAID' ? 'text-emerald-600' : status === 'EXPIRED' ? 'text-red-500' : 'text-slate-600'
             }`} />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <p className="text-sm font-bold text-foreground">{amount} {token}</p>
+              <p className="text-sm font-semibold text-foreground">{amount} {token}</p>
               {getStatusBadge()}
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
           <Button 
             variant="ghost" 
             size="icon" 
-            className="h-8 w-8 rounded-lg hover:bg-primary/10 hover:text-primary" 
+            className="h-8 w-8 rounded-md hover:bg-slate-100" 
             onClick={handleCopy}
           >
-            <Copy className="h-4 w-4" />
+            <Copy className="h-3.5 w-3.5" />
           </Button>
           <Button 
             variant="ghost" 
             size="icon" 
-            className="h-8 w-8 rounded-lg hover:bg-primary/10 hover:text-primary" 
+            className="h-8 w-8 rounded-md hover:bg-slate-100" 
             onClick={handleOpenLink}
           >
-            <ExternalLink className="h-4 w-4" />
+            <ExternalLink className="h-3.5 w-3.5" />
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-muted">
-                <MoreVertical className="h-4 w-4" />
+              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-md hover:bg-slate-100">
+                <MoreVertical className="h-3.5 w-3.5" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-44 rounded-xl">
+            <DropdownMenuContent align="end" className="w-40 rounded-lg">
               <DropdownMenuItem 
-                className="text-destructive focus:text-destructive cursor-pointer text-xs rounded-lg"
+                className="text-destructive focus:text-destructive cursor-pointer text-xs rounded-md"
                 onClick={() => setShowDeleteDialog(true)}
               >
                 <Trash2 className="h-3.5 w-3.5 mr-2" />
-                Remove Link
+                Remove
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -146,19 +146,19 @@ export function PaymentLinkItem({ id, title, amount, token, status, link, onDele
       </div>
 
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <AlertDialogContent className="rounded-2xl">
+        <AlertDialogContent className="rounded-xl">
           <AlertDialogHeader>
             <AlertDialogTitle className="font-heading">Remove Payment Link?</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to remove this {amount} {token} payment link? This action cannot be undone.
+              This will permanently delete the {amount} {token} payment link.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting} className="rounded-xl">Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={isDeleting} className="rounded-lg">Cancel</AlertDialogCancel>
             <AlertDialogAction 
               onClick={handleRemoveLink} 
               disabled={isDeleting}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl"
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-lg"
             >
               {isDeleting ? "Removing..." : "Remove"}
             </AlertDialogAction>

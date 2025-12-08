@@ -15,16 +15,11 @@ import {
   Copy, 
   Loader2, 
   Wallet, 
-  FileText, 
-  Globe, 
   Clock, 
-  CheckCircle2,
+  Check,
   ArrowRight,
   ArrowLeft,
-  X,
-  Sparkles,
-  Coins,
-  Network
+  X
 } from "lucide-react";
 import { toast } from "sonner";
 import { createPaymentLink } from "@/lib/api";
@@ -47,11 +42,11 @@ interface CreateLinkModalProps {
 type Step = "amount-token" | "network" | "expiration" | "details" | "generated";
 
 const TOKENS = [
-  { symbol: "USDC", name: "USD Coin", icon: "💵" },
-  { symbol: "USDT", name: "Tether", icon: "💲" },
-  { symbol: "ETH", name: "Ethereum", icon: "⟠" },
-  { symbol: "BNB", name: "BNB Coin", icon: "🔶" },
-  { symbol: "LCX", name: "LCX Token", icon: "🔷" },
+  { symbol: "USDC", name: "USD Coin" },
+  { symbol: "USDT", name: "Tether" },
+  { symbol: "ETH", name: "Ethereum" },
+  { symbol: "BNB", name: "BNB" },
+  { symbol: "LCX", name: "LCX Token" },
 ];
 
 const NETWORKS = [
@@ -59,7 +54,6 @@ const NETWORKS = [
   { name: "BNB Testnet", short: "BNB Test" },
 ];
 
-// Token to supported networks mapping
 const TOKEN_NETWORK_SUPPORT: Record<string, string[]> = {
   "USDC": ["Sepolia (ETH Testnet)", "BNB Testnet"],
   "USDT": ["Sepolia (ETH Testnet)", "BNB Testnet"],
@@ -67,13 +61,6 @@ const TOKEN_NETWORK_SUPPORT: Record<string, string[]> = {
   "BNB": ["Sepolia (ETH Testnet)", "BNB Testnet"],
   "LCX": ["Sepolia (ETH Testnet)"],
 };
-
-const STEPS = [
-  { key: "amount-token", label: "Amount", icon: Coins },
-  { key: "network", label: "Network", icon: Network },
-  { key: "expiration", label: "Expiry", icon: Clock },
-  { key: "details", label: "Details", icon: FileText },
-];
 
 export function CreateLinkModal({ open, onOpenChange, onCreateLink }: CreateLinkModalProps) {
   const [step, setStep] = useState<Step>("amount-token");
@@ -93,10 +80,6 @@ export function CreateLinkModal({ open, onOpenChange, onCreateLink }: CreateLink
       setAddress(walletAddress);
     }
   }, [step, walletAddress, address]);
-
-  const getCurrentStepIndex = () => {
-    return STEPS.findIndex(s => s.key === step);
-  };
 
   const handleContinueToNetwork = () => {
     if (!amount || !selectedToken) {
@@ -159,10 +142,10 @@ export function CreateLinkModal({ open, onOpenChange, onCreateLink }: CreateLink
       }
 
       setStep("generated");
-      toast.success("Payment link created!");
+      toast.success("Payment link created");
     } catch (error) {
       console.error("Error creating link:", error);
-      toast.error("Failed to create payment link. Please try again.");
+      toast.error("Failed to create payment link");
     } finally {
       setIsLoading(false);
     }
@@ -170,7 +153,7 @@ export function CreateLinkModal({ open, onOpenChange, onCreateLink }: CreateLink
 
   const handleCopy = () => {
     navigator.clipboard.writeText(generatedLink);
-    toast.success("Link copied to clipboard!");
+    toast.success("Copied to clipboard");
   };
 
   const handleBack = () => {
@@ -191,129 +174,79 @@ export function CreateLinkModal({ open, onOpenChange, onCreateLink }: CreateLink
     onOpenChange(false);
   };
 
+  const stepNumber = step === "amount-token" ? 1 : step === "network" ? 2 : step === "expiration" ? 3 : step === "details" ? 4 : 5;
+
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[460px] p-0 gap-0 overflow-hidden bg-white border-border/50 shadow-2xl">
+      <DialogContent className="sm:max-w-[420px] p-0 gap-0 rounded-xl">
         {/* Header */}
-        <DialogHeader className="px-6 pt-6 pb-4 border-b border-border/50 bg-gradient-to-r from-primary/5 to-transparent">
-          <DialogTitle className="text-xl font-heading font-bold text-foreground">
-            {step === "generated" ? "Link Created!" : "Create Payment Link"}
+        <DialogHeader className="px-6 pt-6 pb-4">
+          <DialogTitle className="text-lg font-heading font-semibold">
+            {step === "generated" ? "Link Created" : "Create Payment Link"}
           </DialogTitle>
           <DialogDescription className="text-sm text-muted-foreground">
             {step === "generated" 
               ? "Share this link to receive payment" 
-              : "Set up your payment request in a few steps"}
+              : `Step ${stepNumber} of 4`}
           </DialogDescription>
         </DialogHeader>
 
-        {/* Step Indicator */}
-        {step !== "generated" && (
-          <div className="px-6 py-4 bg-muted/30">
-            <div className="flex items-center justify-between">
-              {STEPS.map((s, index) => {
-                const Icon = s.icon;
-                const currentIndex = getCurrentStepIndex();
-                const isActive = index === currentIndex;
-                const isCompleted = index < currentIndex;
-                
-                return (
-                  <div key={s.key} className="flex items-center">
-                    <div className="flex flex-col items-center">
-                      <div
-                        className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300 ${
-                          isActive
-                            ? "bg-primary text-white shadow-lg shadow-primary/30"
-                            : isCompleted
-                            ? "bg-primary/20 text-primary"
-                            : "bg-muted text-muted-foreground"
-                        }`}
-                      >
-                        {isCompleted ? (
-                          <CheckCircle2 className="h-5 w-5" />
-                        ) : (
-                          <Icon className="h-5 w-5" />
-                        )}
-                      </div>
-                      <span className={`text-[10px] mt-1.5 font-medium transition-colors ${
-                        isActive ? "text-primary" : "text-muted-foreground"
-                      }`}>
-                        {s.label}
-                      </span>
-                    </div>
-                    {index < STEPS.length - 1 && (
-                      <div className={`w-10 h-0.5 mx-1 mb-5 transition-colors ${
-                        index < currentIndex ? "bg-primary/40" : "bg-border"
-                      }`} />
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
         {/* Content */}
-        <div className="px-6 py-6">
+        <div className="px-6 pb-6">
           {/* Step 1: Amount & Token */}
           {step === "amount-token" && (
-            <div className="space-y-6">
-              <div className="space-y-3">
-                <Label htmlFor="amount" className="text-sm font-medium text-foreground">
-                  How much do you want to receive?
-                </Label>
-                <div className="flex items-center gap-3">
-                  <div className="relative flex-1">
-                    <Input
-                      id="amount"
-                      type="number"
-                      placeholder="0.00"
-                      value={amount}
-                      min="0"
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        if (value === '' || parseFloat(value) >= 0) {
-                          setAmount(value);
-                        }
-                      }}
-                      className="h-14 text-2xl font-heading font-bold pl-4 pr-4 rounded-xl border-border/50 focus:border-primary focus:ring-primary/20 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                    />
-                  </div>
+            <div className="space-y-5">
+              <div className="space-y-2">
+                <Label htmlFor="amount" className="text-sm">Amount</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="amount"
+                    type="number"
+                    placeholder="0.00"
+                    value={amount}
+                    min="0"
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      if (value === '' || parseFloat(value) >= 0) {
+                        setAmount(value);
+                      }
+                    }}
+                    className="h-11 text-lg font-semibold flex-1 rounded-lg [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  />
                   {selectedToken && (
-                    <div className="bg-primary/10 text-primary px-4 py-3 rounded-xl border border-primary/20">
-                      <span className="font-bold text-sm">{selectedToken}</span>
+                    <div className="h-11 px-4 bg-slate-100 rounded-lg flex items-center">
+                      <span className="font-medium text-sm">{selectedToken}</span>
                     </div>
                   )}
                 </div>
               </div>
 
-              <div className="space-y-3">
-                <Label className="text-sm font-medium text-foreground">Select Token</Label>
-                <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label className="text-sm">Token</Label>
+                <div className="grid grid-cols-2 gap-2">
                   {TOKENS.map((token) => (
                     <button
                       key={token.symbol}
                       type="button"
                       onClick={() => setSelectedToken(token.symbol)}
-                      className={`flex items-center gap-3 p-4 rounded-xl border-2 transition-all duration-200 ${
+                      className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${
                         selectedToken === token.symbol
-                          ? "border-primary bg-primary/5 shadow-md shadow-primary/10"
-                          : "border-border/50 hover:border-primary/30 hover:bg-muted/50"
+                          ? "border-slate-900 bg-slate-50"
+                          : "border-border hover:border-slate-300"
                       }`}
                     >
-                      <div className="w-10 h-10 rounded-lg flex items-center justify-center overflow-hidden bg-muted">
+                      <div className="w-8 h-8 rounded-md bg-slate-100 flex items-center justify-center overflow-hidden">
                         <img 
                           src={`/tokenicon/${token.symbol.toLowerCase()}.svg`}
                           alt={token.symbol}
-                          className="w-7 h-7 object-contain"
+                          className="w-5 h-5 object-contain"
                           onError={(e) => {
                             e.currentTarget.style.display = 'none';
-                            e.currentTarget.nextElementSibling?.classList.remove('hidden');
                           }}
                         />
-                        <span className="text-xl hidden">{token.icon}</span>
                       </div>
                       <div className="text-left">
-                        <p className="font-bold text-sm text-foreground">{token.symbol}</p>
+                        <p className="font-medium text-sm">{token.symbol}</p>
                         <p className="text-[10px] text-muted-foreground">{token.name}</p>
                       </div>
                     </button>
@@ -326,18 +259,14 @@ export function CreateLinkModal({ open, onOpenChange, onCreateLink }: CreateLink
           {/* Step 2: Network */}
           {step === "network" && (
             <div className="space-y-5">
-              <div className="bg-gradient-to-r from-primary/10 to-primary/5 rounded-xl p-4 border border-primary/20">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Receiving</span>
-                  <span className="font-heading font-bold text-lg">{amount} {selectedToken}</span>
-                </div>
+              <div className="bg-slate-50 rounded-lg p-3 flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Amount</span>
+                <span className="font-semibold">{amount} {selectedToken}</span>
               </div>
 
-              <div className="space-y-3">
-                <Label className="text-sm font-medium text-foreground">
-                  Which networks do you accept?
-                </Label>
-                <div className="space-y-3">
+              <div className="space-y-2">
+                <Label className="text-sm">Network</Label>
+                <div className="space-y-2">
                   {NETWORKS.map((network) => {
                     const isSelected = selectedNetworks.includes(network.name);
                     const supportedNetworks = TOKEN_NETWORK_SUPPORT[selectedToken] || [];
@@ -356,35 +285,21 @@ export function CreateLinkModal({ open, onOpenChange, onCreateLink }: CreateLink
                               : [...prev, network.name]
                           );
                         }}
-                        className={`w-full flex items-center gap-4 p-4 rounded-xl border-2 transition-all duration-200 ${
+                        className={`w-full flex items-center justify-between p-4 rounded-lg border transition-colors ${
                           isDisabled
-                            ? "border-border bg-muted/30 cursor-not-allowed opacity-50"
+                            ? "border-border bg-slate-50 cursor-not-allowed opacity-50"
                             : isSelected
-                            ? "border-primary bg-primary/5 shadow-md shadow-primary/10"
-                            : "border-border/50 hover:border-primary/30 hover:bg-muted/30"
+                            ? "border-slate-900 bg-slate-50"
+                            : "border-border hover:border-slate-300"
                         }`}
                       >
-                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                          isDisabled ? "bg-muted" : "bg-gradient-to-br from-primary/10 to-accent/10"
+                        <span className={`font-medium text-sm ${isDisabled ? "text-muted-foreground" : ""}`}>
+                          {network.name}
+                        </span>
+                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                          isSelected ? "border-slate-900 bg-slate-900" : "border-slate-300"
                         }`}>
-                          <Globe className={`h-6 w-6 ${isDisabled ? "text-muted-foreground" : "text-primary"}`} />
-                        </div>
-                        <div className="flex-1 text-left">
-                          <span className={`font-semibold ${isDisabled ? "text-muted-foreground" : "text-foreground"}`}>
-                            {network.name}
-                          </span>
-                          {isDisabled && (
-                            <p className="text-xs text-muted-foreground">Not available for {selectedToken}</p>
-                          )}
-                        </div>
-                        <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
-                          isDisabled 
-                            ? "border-muted-foreground/30"
-                            : isSelected 
-                            ? "border-primary bg-primary" 
-                            : "border-muted-foreground/50"
-                        }`}>
-                          {isSelected && !isDisabled && <CheckCircle2 className="h-4 w-4 text-white" />}
+                          {isSelected && <Check className="h-3 w-3 text-white" />}
                         </div>
                       </button>
                     );
@@ -397,38 +312,33 @@ export function CreateLinkModal({ open, onOpenChange, onCreateLink }: CreateLink
           {/* Step 3: Expiration */}
           {step === "expiration" && (
             <div className="space-y-5">
-              <div className="bg-gradient-to-r from-primary/10 to-primary/5 rounded-xl p-4 border border-primary/20">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Receiving</span>
-                  <span className="font-heading font-bold text-lg">{amount} {selectedToken}</span>
-                </div>
+              <div className="bg-slate-50 rounded-lg p-3 flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Amount</span>
+                <span className="font-semibold">{amount} {selectedToken}</span>
               </div>
 
-              <div className="space-y-3">
-                <Label className="text-sm font-medium text-foreground">
-                  When should this link expire?
-                </Label>
-                <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-2">
+                <Label className="text-sm">Expiration</Label>
+                <div className="grid grid-cols-3 gap-2">
                   {[
-                    { value: "1", label: "24", sublabel: "Hours" },
-                    { value: "7", label: "7", sublabel: "Days" },
-                    { value: "30", label: "30", sublabel: "Days" },
+                    { value: "1", label: "24h" },
+                    { value: "7", label: "7 days" },
+                    { value: "30", label: "30 days" },
                   ].map((option) => (
                     <button
                       key={option.value}
                       type="button"
                       onClick={() => setExpiresInDays(option.value)}
-                      className={`p-5 rounded-xl border-2 transition-all duration-200 flex flex-col items-center ${
+                      className={`p-4 rounded-lg border transition-colors ${
                         expiresInDays === option.value
-                          ? "border-primary bg-primary/5 shadow-md shadow-primary/10"
-                          : "border-border/50 hover:border-primary/30 hover:bg-muted/30"
+                          ? "border-slate-900 bg-slate-50"
+                          : "border-border hover:border-slate-300"
                       }`}
                     >
-                      <Clock className={`h-6 w-6 mb-2 ${
-                        expiresInDays === option.value ? "text-primary" : "text-muted-foreground"
+                      <Clock className={`h-5 w-5 mx-auto mb-2 ${
+                        expiresInDays === option.value ? "text-slate-900" : "text-muted-foreground"
                       }`} />
-                      <span className="text-2xl font-heading font-bold text-foreground">{option.label}</span>
-                      <span className="text-xs text-muted-foreground">{option.sublabel}</span>
+                      <span className="text-sm font-medium">{option.label}</span>
                     </button>
                   ))}
                 </div>
@@ -439,55 +349,39 @@ export function CreateLinkModal({ open, onOpenChange, onCreateLink }: CreateLink
           {/* Step 4: Details */}
           {step === "details" && (
             <div className="space-y-5">
-              {/* Summary Card */}
-              <div className="bg-gradient-to-br from-primary/10 to-accent/5 rounded-xl p-5 border border-primary/20">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-xs font-medium text-primary uppercase tracking-wide">Payment Summary</span>
-                  <span className="text-xs bg-primary/20 text-primary px-2.5 py-1 rounded-full font-medium">
-                    {expiresInDays === "1" ? "24 hours" : `${expiresInDays} days`}
-                  </span>
+              <div className="bg-slate-50 rounded-lg p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs text-muted-foreground">Amount</span>
+                  <span className="text-xs text-muted-foreground">{expiresInDays === "1" ? "24h" : `${expiresInDays} days`}</span>
                 </div>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-3xl font-heading font-bold text-foreground">{amount}</span>
-                  <span className="text-lg font-semibold text-muted-foreground">{selectedToken}</span>
-                </div>
-                <div className="text-xs text-muted-foreground mt-2 flex items-center gap-1.5">
-                  <Globe className="h-3 w-3" />
-                  {selectedNetworks.join(", ")}
-                </div>
+                <p className="text-2xl font-heading font-bold">{amount} {selectedToken}</p>
+                <p className="text-xs text-muted-foreground mt-1">{selectedNetworks.join(", ")}</p>
               </div>
 
-              {/* Transfer To */}
               <div className="space-y-2">
-                <Label htmlFor="address" className="flex items-center gap-2 text-sm font-medium text-foreground">
-                  <Wallet className="h-4 w-4 text-primary" />
-                  Transfer to
+                <Label htmlFor="address" className="text-sm flex items-center gap-2">
+                  <Wallet className="h-4 w-4 text-muted-foreground" />
+                  Receive to
                 </Label>
                 <Input
                   id="address"
                   placeholder="0x..."
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
-                  className="font-mono text-sm h-12 rounded-xl border-border/50 focus:border-primary"
+                  className="font-mono text-sm h-11 rounded-lg"
                 />
-                <p className="text-[11px] text-muted-foreground">
-                  Payments will be sent to this wallet address
-                </p>
               </div>
 
-              {/* Description */}
               <div className="space-y-2">
-                <Label htmlFor="description" className="flex items-center gap-2 text-sm font-medium text-foreground">
-                  <FileText className="h-4 w-4 text-primary" />
-                  Description
-                  <span className="text-xs text-muted-foreground font-normal">(optional)</span>
+                <Label htmlFor="description" className="text-sm">
+                  Description <span className="text-muted-foreground">(optional)</span>
                 </Label>
                 <Textarea
                   id="description"
                   placeholder="What is this payment for?"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  className="resize-none text-sm rounded-xl border-border/50 focus:border-primary"
+                  className="resize-none text-sm rounded-lg"
                   rows={2}
                 />
               </div>
@@ -496,38 +390,34 @@ export function CreateLinkModal({ open, onOpenChange, onCreateLink }: CreateLink
 
           {/* Step 5: Generated */}
           {step === "generated" && (
-            <div className="space-y-6">
-              <div className="flex flex-col items-center text-center py-4">
-                <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-green-500/10 to-emerald-500/20 flex items-center justify-center mb-5 shadow-lg shadow-green-500/20">
-                  <Sparkles className="h-10 w-10 text-green-600" />
+            <div className="space-y-5">
+              <div className="text-center py-4">
+                <div className="w-14 h-14 rounded-full bg-emerald-50 flex items-center justify-center mx-auto mb-4">
+                  <Check className="h-7 w-7 text-emerald-600" />
                 </div>
-                <h3 className="text-xl font-heading font-bold text-foreground mb-2">Your link is ready!</h3>
                 <p className="text-sm text-muted-foreground">
-                  Share it with anyone to receive {amount} {selectedToken}
+                  Share this link to receive {amount} {selectedToken}
                 </p>
               </div>
 
-              <div className="bg-muted/50 rounded-xl p-4 border border-border/50">
-                <div className="flex items-center gap-3">
-                  <code className="flex-1 text-sm font-mono break-all bg-white rounded-lg p-3 border border-border/50">
+              <div className="bg-slate-50 rounded-lg p-3">
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 text-xs font-mono break-all bg-white rounded-md p-3 border border-border">
                     {generatedLink}
                   </code>
                   <Button 
                     size="icon" 
                     variant="outline" 
                     onClick={handleCopy}
-                    className="h-12 w-12 shrink-0 rounded-xl hover:bg-primary/5 hover:border-primary/30"
+                    className="h-10 w-10 shrink-0 rounded-lg"
                   >
-                    <Copy className="h-5 w-5" />
+                    <Copy className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
 
-              <Button 
-                onClick={handleCopy} 
-                className="w-full h-14 gap-2 rounded-xl font-semibold text-base bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-lg shadow-primary/25"
-              >
-                <Copy className="h-5 w-5" />
+              <Button onClick={handleCopy} className="w-full h-11 gap-2 rounded-lg bg-slate-900 hover:bg-slate-800">
+                <Copy className="h-4 w-4" />
                 Copy Link
               </Button>
             </div>
@@ -536,12 +426,12 @@ export function CreateLinkModal({ open, onOpenChange, onCreateLink }: CreateLink
 
         {/* Footer */}
         {step !== "generated" && (
-          <DialogFooter className="px-6 py-4 bg-muted/30 border-t border-border/50">
-            <div className="flex w-full gap-3">
+          <DialogFooter className="px-6 py-4 border-t border-border bg-slate-50">
+            <div className="flex w-full gap-2">
               <Button 
                 variant="ghost" 
                 onClick={handleClose}
-                className="gap-1.5 text-muted-foreground hover:text-foreground"
+                className="gap-1 text-muted-foreground"
               >
                 <X className="h-4 w-4" />
                 Cancel
@@ -550,42 +440,39 @@ export function CreateLinkModal({ open, onOpenChange, onCreateLink }: CreateLink
               <div className="flex-1" />
               
               {step !== "amount-token" && (
-                <Button variant="outline" onClick={handleBack} className="gap-1.5 rounded-xl">
+                <Button variant="outline" onClick={handleBack} className="gap-1 rounded-lg">
                   <ArrowLeft className="h-4 w-4" />
                   Back
                 </Button>
               )}
               
               {step === "amount-token" && (
-                <Button onClick={handleContinueToNetwork} className="gap-1.5 rounded-xl bg-primary hover:bg-primary/90">
+                <Button onClick={handleContinueToNetwork} className="gap-1 rounded-lg bg-slate-900 hover:bg-slate-800">
                   Continue
                   <ArrowRight className="h-4 w-4" />
                 </Button>
               )}
               {step === "network" && (
-                <Button onClick={handleContinueToExpiration} className="gap-1.5 rounded-xl bg-primary hover:bg-primary/90">
+                <Button onClick={handleContinueToExpiration} className="gap-1 rounded-lg bg-slate-900 hover:bg-slate-800">
                   Continue
                   <ArrowRight className="h-4 w-4" />
                 </Button>
               )}
               {step === "expiration" && (
-                <Button onClick={handleContinueToDetails} className="gap-1.5 rounded-xl bg-primary hover:bg-primary/90">
+                <Button onClick={handleContinueToDetails} className="gap-1 rounded-lg bg-slate-900 hover:bg-slate-800">
                   Continue
                   <ArrowRight className="h-4 w-4" />
                 </Button>
               )}
               {step === "details" && (
-                <Button onClick={handleCreate} disabled={isLoading} className="gap-1.5 rounded-xl bg-primary hover:bg-primary/90">
+                <Button onClick={handleCreate} disabled={isLoading} className="gap-1 rounded-lg bg-slate-900 hover:bg-slate-800">
                   {isLoading ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin" />
                       Creating...
                     </>
                   ) : (
-                    <>
-                      <Sparkles className="h-4 w-4" />
-                      Create Link
-                    </>
+                    "Create Link"
                   )}
                 </Button>
               )}
@@ -593,10 +480,9 @@ export function CreateLinkModal({ open, onOpenChange, onCreateLink }: CreateLink
           </DialogFooter>
         )}
 
-        {/* Close button for generated step */}
         {step === "generated" && (
-          <DialogFooter className="px-6 py-4 bg-muted/30 border-t border-border/50">
-            <Button variant="outline" onClick={handleClose} className="w-full rounded-xl">
+          <DialogFooter className="px-6 py-4 border-t border-border bg-slate-50">
+            <Button variant="outline" onClick={handleClose} className="w-full rounded-lg">
               Done
             </Button>
           </DialogFooter>
