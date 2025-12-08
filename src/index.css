@@ -2,64 +2,57 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
-
 @layer base {
   :root {
-    /* Payme Design System - White & Blue Theme */
+    /* Clean White & Blue Theme */
     --background: 0 0% 100%;
-    --foreground: 214 74% 15%;
+    --foreground: 222 47% 11%;
     
     --card: 0 0% 100%;
-    --card-foreground: 214 74% 15%;
+    --card-foreground: 222 47% 11%;
     
     --popover: 0 0% 100%;
-    --popover-foreground: 214 74% 15%;
+    --popover-foreground: 222 47% 11%;
     
-    /* Primary Blue - Main brand color */
-    --primary: 214 99% 52%;
+    /* Primary Blue */
+    --primary: 221 83% 53%;
     --primary-foreground: 0 0% 100%;
     
-    /* Dark Blue - Hover states */
-    --secondary: 214 88% 35%;
-    --secondary-foreground: 0 0% 100%;
+    /* Secondary */
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222 47% 11%;
     
-    /* Muted - Light backgrounds */
-    --muted: 214 100% 95%;
-    --muted-foreground: 214 32% 41%;
+    /* Muted */
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
     
-    /* Accent - Highlights */
-    --accent: 214 100% 75%;
-    --accent-foreground: 214 74% 15%;
+    /* Accent */
+    --accent: 210 40% 96%;
+    --accent-foreground: 222 47% 11%;
     
-    --destructive: 0 84.2% 60.2%;
+    --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
     
-    /* Borders - Light blue */
-    --border: 214 100% 95%;
-    --input: 214 100% 95%;
-    --ring: 214 100% 75%;
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 221 83% 53%;
     
     --radius: 0.5rem;
     
-    /* Sidebar specific */
-    --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 214 74% 15%;
-    --sidebar-primary: 214 99% 52%;
+    /* Sidebar */
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 222 47% 11%;
+    --sidebar-primary: 221 83% 53%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 214 100% 95%;
-    --sidebar-accent-foreground: 214 74% 15%;
-    --sidebar-border: 214 100% 95%;
-    --sidebar-ring: 214 100% 75%;
+    --sidebar-accent: 210 40% 96%;
+    --sidebar-accent-foreground: 222 47% 11%;
+    --sidebar-border: 214 32% 91%;
+    --sidebar-ring: 221 83% 53%;
     
-    /* Success green */
+    /* Success/Warning */
     --success: 142 76% 36%;
     --success-foreground: 0 0% 100%;
-    
-    /* Warning yellow */
-    --warning: 45 93% 47%;
+    --warning: 38 92% 50%;
     --warning-foreground: 0 0% 100%;
   }
 }
@@ -70,10 +63,11 @@ All colors MUST be HSL.
   }
 
   body {
-    @apply bg-background text-foreground font-geist;
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Inter', sans-serif;
   }
 
   h1, h2, h3, h4, h5, h6 {
-    @apply font-syne;
+    font-family: 'Space Grotesk', sans-serif;
   }
 }

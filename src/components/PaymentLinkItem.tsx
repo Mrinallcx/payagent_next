@@ -59,21 +59,21 @@ export function PaymentLinkItem({ id, title, amount, token, status, link, onDele
     switch (status) {
       case 'PAID':
         return (
-          <Badge className="bg-green-500 text-white border-0 shadow-md shadow-green-500/30 text-[10px] h-5 font-semibold">
+          <Badge className="bg-green-500 text-white border-0 text-[10px]">
             <CheckCircle2 className="h-3 w-3 mr-1" />
             Paid
           </Badge>
         );
       case 'EXPIRED':
         return (
-          <Badge className="bg-red-500 text-white border-0 shadow-md shadow-red-500/30 text-[10px] h-5 font-semibold">
+          <Badge className="bg-red-500 text-white border-0 text-[10px]">
             <XCircle className="h-3 w-3 mr-1" />
             Expired
           </Badge>
         );
       default:
         return (
-          <Badge className="bg-amber-500 text-white border-0 shadow-md shadow-amber-500/30 text-[10px] h-5 font-semibold">
+          <Badge className="bg-amber-500 text-white border-0 text-[10px]">
             <Clock className="h-3 w-3 mr-1" />
             Pending
           </Badge>
@@ -81,49 +81,37 @@ export function PaymentLinkItem({ id, title, amount, token, status, link, onDele
     }
   };
 
-  const getIconStyles = () => {
-    switch (status) {
-      case 'PAID':
-        return 'bg-gradient-to-br from-green-500/10 to-emerald-500/20 text-green-600';
-      case 'EXPIRED':
-        return 'bg-gradient-to-br from-red-500/10 to-rose-500/20 text-red-500';
-      default:
-        return 'bg-gradient-to-br from-primary/10 to-accent/20 text-primary';
-    }
-  };
-
   return (
     <>
-      <div className="flex items-center justify-between py-3 border-b last:border-0 border-border/50 hover:bg-gradient-to-r hover:from-transparent hover:to-primary/5 transition-colors duration-200 -mx-2 px-2 rounded-lg">
+      <div className="flex items-center justify-between py-3 border-b last:border-0 border-border">
         <div className="flex items-center gap-3">
-          <div className={`p-2.5 rounded-xl ${getIconStyles()} shadow-sm`}>
-            <Link2 className="h-4 w-4" />
+          <div className={`p-2 rounded-lg ${
+            status === 'PAID' ? 'bg-green-500/10' : status === 'EXPIRED' ? 'bg-red-500/10' : 'bg-primary/10'
+          }`}>
+            <Link2 className={`h-4 w-4 ${
+              status === 'PAID' ? 'text-green-600' : status === 'EXPIRED' ? 'text-red-500' : 'text-primary'
+            }`} />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <p className="text-sm font-semibold text-foreground">{amount} {token}</p>
+              <p className="text-sm font-medium text-foreground">{amount} {token}</p>
               {getStatusBadge()}
             </div>
           </div>
         </div>
         <div className="flex items-center gap-1">
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="h-8 w-8 hover:bg-primary/10 hover:text-primary transition-colors rounded-lg" 
-            onClick={handleCopy}
-          >
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleCopy}>
             <Copy className="h-4 w-4" />
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-muted transition-colors rounded-lg">
+              <Button variant="ghost" size="icon" className="h-8 w-8">
                 <MoreVertical className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-40 rounded-xl shadow-lg border-border/50">
+            <DropdownMenuContent align="end" className="w-40">
               <DropdownMenuItem 
-                className="text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer text-xs rounded-lg"
+                className="text-destructive focus:text-destructive cursor-pointer text-xs"
                 onClick={() => setShowDeleteDialog(true)}
               >
                 <Trash2 className="h-3 w-3 mr-2" />
@@ -135,19 +123,19 @@ export function PaymentLinkItem({ id, title, amount, token, status, link, onDele
       </div>
 
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <AlertDialogContent className="rounded-2xl border-border/50">
+        <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle className="font-syne">Remove Payment Link?</AlertDialogTitle>
+            <AlertDialogTitle>Remove Payment Link?</AlertDialogTitle>
             <AlertDialogDescription>
               Are you sure you want to remove this {amount} {token} payment link? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting} className="rounded-xl">Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
             <AlertDialogAction 
               onClick={handleRemoveLink} 
               disabled={isDeleting}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl"
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {isDeleting ? "Removing..." : "Remove"}
             </AlertDialogAction>

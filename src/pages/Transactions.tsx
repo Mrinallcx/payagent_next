@@ -128,7 +128,7 @@ const Transactions = () => {
                   <TrendingUp className="w-3 h-3 text-primary" />
                   <span className="text-xs font-medium text-foreground/70">Transaction History</span>
                 </div>
-                <h1 className="text-3xl sm:text-4xl font-syne font-bold text-foreground mb-2">Transactions</h1>
+                <h1 className="text-3xl sm:text-4xl font-heading font-bold text-foreground mb-2">Transactions</h1>
                 <p className="text-muted-foreground">
                   {isConnected 
                     ? 'Completed payments made through PayMe'
@@ -142,7 +142,7 @@ const Transactions = () => {
                   <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary/10 to-accent/20 flex items-center justify-center mx-auto mb-6 shadow-lg shadow-primary/10">
                     <Wallet className="h-10 w-10 text-primary" />
                   </div>
-                  <h3 className="text-2xl font-syne font-bold mb-3">Connect Your Wallet</h3>
+                  <h3 className="text-2xl font-heading font-bold mb-3">Connect Your Wallet</h3>
                   <p className="text-muted-foreground mb-8 max-w-md mx-auto">
                     Connect your wallet to view your transaction history
                   </p>
@@ -166,12 +166,12 @@ const Transactions = () => {
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
                     <div className="bg-white rounded-2xl p-5 border border-gray-200 shadow-lg">
                       <p className="text-sm text-gray-500 mb-1 font-medium">Total Transactions</p>
-                      <p className="text-3xl font-syne font-bold text-gray-900">{transactions.length}</p>
+                      <p className="text-3xl font-heading font-bold text-gray-900">{transactions.length}</p>
                     </div>
                     {Object.entries(tokenTotals).slice(0, 3).map(([token, total]) => (
                       <div key={token} className="bg-green-50 rounded-2xl p-5 border border-green-200 shadow-lg">
                         <p className="text-sm text-green-700 mb-1 font-medium">Total {token}</p>
-                        <p className="text-3xl font-syne font-bold text-green-600">
+                        <p className="text-3xl font-heading font-bold text-green-600">
                           {total.toFixed(2)}
                         </p>
                       </div>
@@ -197,11 +197,11 @@ const Transactions = () => {
                         <TableHeader>
                           <TableRow className="border-border/50 hover:bg-transparent">
                             <TableHead className="w-[50px]"></TableHead>
-                            <TableHead className="font-syne font-bold">Details</TableHead>
-                            <TableHead className="hidden md:table-cell font-syne font-bold">Receiver</TableHead>
-                            <TableHead className="hidden lg:table-cell font-syne font-bold">Network</TableHead>
-                            <TableHead className="text-right font-syne font-bold">Amount</TableHead>
-                            <TableHead className="text-center w-[100px] font-syne font-bold">Status</TableHead>
+                            <TableHead className="font-heading font-bold">Details</TableHead>
+                            <TableHead className="hidden md:table-cell font-heading font-bold">Receiver</TableHead>
+                            <TableHead className="hidden lg:table-cell font-heading font-bold">Network</TableHead>
+                            <TableHead className="text-right font-heading font-bold">Amount</TableHead>
+                            <TableHead className="text-center w-[100px] font-heading font-bold">Status</TableHead>
                             <TableHead className="w-[50px]"></TableHead>
                           </TableRow>
                         </TableHeader>
@@ -315,7 +315,7 @@ const Transactions = () => {
                   <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-muted to-muted/50 flex items-center justify-center mx-auto mb-6 shadow-inner">
                     <Receipt className="h-10 w-10 text-muted-foreground" />
                   </div>
-                  <h3 className="text-xl font-syne font-bold mb-2">No transactions yet</h3>
+                  <h3 className="text-xl font-heading font-bold mb-2">No transactions yet</h3>
                   <p className="text-muted-foreground">
                     Completed payments will appear here
                   </p>

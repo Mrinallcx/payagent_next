@@ -166,7 +166,7 @@ const PaymentLinks = () => {
                     <Link2 className="w-3 h-3 text-primary" />
                     <span className="text-xs font-medium text-foreground/70">Manage Links</span>
                   </div>
-                  <h1 className="text-4xl font-syne font-bold text-foreground mb-2">Payment Links</h1>
+                  <h1 className="text-4xl font-heading font-bold text-foreground mb-2">Payment Links</h1>
                   <p className="text-muted-foreground">
                     {!isConnected 
                       ? 'Connect your wallet to view your payment links'
@@ -194,7 +194,7 @@ const PaymentLinks = () => {
                   <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary/10 to-accent/20 flex items-center justify-center mx-auto mb-6 shadow-lg shadow-primary/10">
                     <Wallet className="h-10 w-10 text-primary" />
                   </div>
-                  <h3 className="text-2xl font-syne font-bold mb-3">Connect Your Wallet</h3>
+                  <h3 className="text-2xl font-heading font-bold mb-3">Connect Your Wallet</h3>
                   <p className="text-muted-foreground mb-8 max-w-md mx-auto">
                     Connect your wallet to create and manage your payment links
                   </p>
@@ -214,17 +214,17 @@ const PaymentLinks = () => {
                 <div className="grid grid-cols-3 gap-4 mb-8">
                   <div className="bg-white rounded-2xl p-5 border border-gray-200 shadow-lg">
                     <p className="text-sm text-gray-500 mb-1 font-medium">Total Links</p>
-                    <p className="text-3xl font-syne font-bold text-gray-900">{paymentLinks.length}</p>
+                    <p className="text-3xl font-heading font-bold text-gray-900">{paymentLinks.length}</p>
                   </div>
                   <div className="bg-green-50 rounded-2xl p-5 border border-green-200 shadow-lg">
                     <p className="text-sm text-green-700 mb-1 font-medium">Paid</p>
-                    <p className="text-3xl font-syne font-bold text-green-600">
+                    <p className="text-3xl font-heading font-bold text-green-600">
                       {paymentLinks.filter(l => l.status === 'PAID').length}
                     </p>
                   </div>
                   <div className="bg-amber-50 rounded-2xl p-5 border border-amber-200 shadow-lg">
                     <p className="text-sm text-amber-700 mb-1 font-medium">Pending</p>
-                    <p className="text-3xl font-syne font-bold text-amber-600">
+                    <p className="text-3xl font-heading font-bold text-amber-600">
                       {paymentLinks.filter(l => l.status === 'PENDING' && (!l.expiresAt || Date.now() < l.expiresAt)).length}
                     </p>
                   </div>
@@ -273,7 +273,7 @@ const PaymentLinks = () => {
                                       : 'text-primary'
                                 }`} />
                               </div>
-                              <h3 className="text-xl font-syne font-bold text-foreground">
+                              <h3 className="text-xl font-heading font-bold text-foreground">
                                 {link.amount} {link.token}
                           </h3>
                               {getStatusBadge(link)}
@@ -367,7 +367,7 @@ const PaymentLinks = () => {
                       <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-muted to-muted/50 flex items-center justify-center mx-auto mb-6 shadow-inner">
                         <LinkIcon className="h-10 w-10 text-muted-foreground" />
                       </div>
-                      <h3 className="text-xl font-syne font-bold mb-2">No payment links yet</h3>
+                      <h3 className="text-xl font-heading font-bold mb-2">No payment links yet</h3>
                       <p className="text-muted-foreground mb-8 max-w-sm mx-auto">
                         Create your first payment link to start receiving crypto payments
                       </p>
@@ -393,7 +393,7 @@ const PaymentLinks = () => {
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
         <AlertDialogContent className="rounded-2xl border-border/50">
           <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2 font-syne">
+            <AlertDialogTitle className="flex items-center gap-2 font-heading">
               <AlertCircle className="h-5 w-5 text-destructive" />
               Delete Payment Link
             </AlertDialogTitle>

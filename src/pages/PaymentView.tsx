@@ -485,7 +485,7 @@ export default function PaymentView() {
           <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-red-500/10 to-rose-500/20 flex items-center justify-center mx-auto mb-4">
             <AlertCircle className="h-8 w-8 text-destructive" />
           </div>
-          <h2 className="text-2xl font-syne font-bold mb-2">Payment Not Found</h2>
+          <h2 className="text-2xl font-heading font-bold mb-2">Payment Not Found</h2>
           <p className="text-muted-foreground mb-6">
             {error || "This payment link is invalid or has expired."}
           </p>
@@ -517,7 +517,7 @@ export default function PaymentView() {
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center shadow-lg shadow-primary/25">
               <Wallet className="w-5 h-5 text-white" />
             </div>
-            <span className="text-2xl font-syne font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+            <span className="text-2xl font-heading font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
               PayMe
             </span>
           </div>
@@ -582,7 +582,7 @@ export default function PaymentView() {
                     <span className="text-xs font-medium text-primary">Payment Terminal</span>
                   </div>
                   <div className="flex items-center justify-center gap-3 mb-2">
-                    <p className="text-5xl font-syne font-bold text-foreground tracking-tight">
+                    <p className="text-5xl font-heading font-bold text-foreground tracking-tight">
                       {paymentRequest.amount}
                     </p>
                     <Badge className="text-base px-4 py-1.5 bg-gradient-to-r from-primary to-secondary border-0 shadow-lg shadow-primary/25">
@@ -795,7 +795,7 @@ export default function PaymentView() {
                     </p>
                 </div>
                 <div className="text-right">
-                    <p className={`text-xl font-syne font-bold tabular-nums ${timeRemaining < 30 ? "text-destructive" : "text-primary"}`}>
+                    <p className={`text-xl font-heading font-bold tabular-nums ${timeRemaining < 30 ? "text-destructive" : "text-primary"}`}>
                     {formatTime(timeRemaining)}
                   </p>
                     <Button 
@@ -814,7 +814,7 @@ export default function PaymentView() {
 
               <div className="text-center">
                 <div className="flex items-center justify-center gap-2 mb-4">
-                    <p className="text-2xl font-syne font-bold text-foreground">{paymentRequest.amount} {paymentRequest.token}</p>
+                    <p className="text-2xl font-heading font-bold text-foreground">{paymentRequest.amount} {paymentRequest.token}</p>
                     <Badge variant="secondary" className="text-xs rounded-lg">{selectedNetwork}</Badge>
                   </div>
                   {paymentRequest.description && (
@@ -921,7 +921,7 @@ export default function PaymentView() {
                   <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-green-500/10 to-emerald-500/20 rounded-2xl mb-4 shadow-lg shadow-green-500/20">
                     <CheckCircle2 className="w-10 h-10 text-green-600" />
                 </div>
-                  <h2 className="text-2xl font-syne font-bold text-foreground mb-2">
+                  <h2 className="text-2xl font-heading font-bold text-foreground mb-2">
                     {paymentRequest.status === 'PAID' ? 'Payment Verified!' : 'Payment Noted!'}
                   </h2>
                 <p className="text-sm text-muted-foreground">
