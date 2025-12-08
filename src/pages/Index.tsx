@@ -90,7 +90,7 @@ const Index = () => {
       <div className="flex min-h-screen w-full">
         <AppSidebar />
         
-        <div className="flex-1 flex flex-col bg-slate-50">
+        <div className="flex-1 flex flex-col bg-slate-50/50">
           <AppNavbar />
           
           <main className="flex-1 p-6 lg:p-8">
@@ -106,7 +106,7 @@ const Index = () => {
                 {isConnected && (
                   <Button 
                     onClick={handleCreateLinkClick}
-                    className="gap-2 bg-slate-900 hover:bg-slate-800 rounded-lg"
+                    className="gap-2 bg-violet-600 hover:bg-violet-700 rounded-lg"
                   >
                     <Plus className="h-4 w-4" />
                     Create Link
@@ -117,8 +117,8 @@ const Index = () => {
               {/* Connect Prompt */}
               {!isConnected ? (
                 <div className="bg-white rounded-2xl border border-border p-12 text-center">
-                  <div className="w-14 h-14 rounded-xl bg-slate-100 flex items-center justify-center mx-auto mb-5">
-                    <Wallet className="h-6 w-6 text-slate-600" />
+                  <div className="w-14 h-14 rounded-xl bg-violet-50 flex items-center justify-center mx-auto mb-5">
+                    <Wallet className="h-6 w-6 text-violet-600" />
                   </div>
                   <h3 className="text-lg font-heading font-semibold mb-2">Connect Your Wallet</h3>
                   <p className="text-sm text-muted-foreground mb-6 max-w-sm mx-auto">
@@ -126,7 +126,7 @@ const Index = () => {
                   </p>
                   <Button 
                     onClick={() => openConnectModal?.()} 
-                    className="gap-2 bg-slate-900 hover:bg-slate-800 rounded-lg"
+                    className="gap-2 bg-violet-600 hover:bg-violet-700 rounded-lg"
                   >
                     <Wallet className="h-4 w-4" />
                     Connect Wallet
@@ -137,14 +137,17 @@ const Index = () => {
                   {/* Stats */}
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     {[
-                      { label: "Total Links", value: paymentLinks.length },
-                      { label: "Completed", value: recentTransactions.length },
-                      { label: "Pending", value: pendingLinks },
-                      { label: "Total Received", value: totalReceived > 0 ? totalReceived.toFixed(2) : "0" },
+                      { label: "Total Links", value: paymentLinks.length, color: "violet" },
+                      { label: "Completed", value: recentTransactions.length, color: "emerald" },
+                      { label: "Pending", value: pendingLinks, color: "amber" },
+                      { label: "Total Received", value: totalReceived > 0 ? totalReceived.toFixed(2) : "0", color: "violet" },
                     ].map((stat) => (
                       <div key={stat.label} className="bg-white rounded-xl border border-border p-5">
                         <p className="text-xs text-muted-foreground mb-1">{stat.label}</p>
-                        <p className="text-2xl font-heading font-bold text-foreground">{stat.value}</p>
+                        <p className={`text-2xl font-heading font-bold ${
+                          stat.color === "emerald" ? "text-emerald-600" : 
+                          stat.color === "amber" ? "text-amber-600" : "text-foreground"
+                        }`}>{stat.value}</p>
                       </div>
                     ))}
                   </div>
@@ -157,7 +160,7 @@ const Index = () => {
                         <Button 
                           variant="ghost" 
                           size="sm" 
-                          className="text-xs text-muted-foreground hover:text-foreground gap-1 h-8"
+                          className="text-xs text-muted-foreground hover:text-violet-600 gap-1 h-8"
                           onClick={() => navigate('/transactions')}
                         >
                           View All
@@ -167,7 +170,7 @@ const Index = () => {
                     >
                       {isLoading ? (
                         <div className="flex items-center justify-center py-12">
-                          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                          <Loader2 className="h-5 w-5 animate-spin text-violet-600" />
                         </div>
                       ) : recentTransactions.length > 0 ? (
                         <div className="space-y-0">
@@ -202,7 +205,7 @@ const Index = () => {
                                     href={`${getExplorerUrl(txn.network)}/tx/${txn.txHash}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="p-1.5 rounded-md hover:bg-slate-100 transition-colors"
+                                    className="p-1.5 rounded-md hover:bg-violet-50 transition-colors"
                                   >
                                     <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />
                                   </a>
@@ -213,8 +216,8 @@ const Index = () => {
                         </div>
                       ) : (
                         <div className="flex flex-col items-center justify-center py-12 text-center">
-                          <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center mb-3">
-                            <ArrowDownLeft className="h-5 w-5 text-muted-foreground" />
+                          <div className="w-12 h-12 rounded-xl bg-violet-50 flex items-center justify-center mb-3">
+                            <ArrowDownLeft className="h-5 w-5 text-violet-400" />
                           </div>
                           <p className="text-sm text-muted-foreground">No transactions yet</p>
                         </div>
@@ -228,7 +231,7 @@ const Index = () => {
                         <Button 
                           variant="ghost" 
                           size="sm" 
-                          className="text-xs gap-1 text-muted-foreground hover:text-foreground h-8"
+                          className="text-xs gap-1 text-muted-foreground hover:text-violet-600 h-8"
                           onClick={handleCreateLinkClick}
                         >
                           <Plus className="h-3 w-3" />
@@ -238,7 +241,7 @@ const Index = () => {
                     >
                       {isLoading ? (
                         <div className="flex items-center justify-center py-12">
-                          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                          <Loader2 className="h-5 w-5 animate-spin text-violet-600" />
                         </div>
                       ) : paymentLinks.length > 0 ? (
                         <div className="space-y-0">
@@ -257,15 +260,15 @@ const Index = () => {
                         </div>
                       ) : (
                         <div className="flex flex-col items-center justify-center py-12 text-center">
-                          <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center mb-3">
-                            <Link2 className="h-5 w-5 text-muted-foreground" />
+                          <div className="w-12 h-12 rounded-xl bg-violet-50 flex items-center justify-center mb-3">
+                            <Link2 className="h-5 w-5 text-violet-400" />
                           </div>
                           <p className="text-sm text-muted-foreground mb-3">No payment links yet</p>
                           <Button 
                             variant="outline" 
                             size="sm" 
                             onClick={handleCreateLinkClick}
-                            className="gap-1 rounded-lg text-xs"
+                            className="gap-1 rounded-lg text-xs border-violet-200 text-violet-600 hover:bg-violet-50"
                           >
                             <Plus className="h-3 w-3" />
                             Create Link
@@ -279,25 +282,25 @@ const Index = () => {
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <button 
                       onClick={handleCreateLinkClick}
-                      className="group bg-slate-900 rounded-xl p-5 text-left text-white hover:bg-slate-800 transition-colors"
+                      className="group bg-violet-600 rounded-xl p-5 text-left text-white hover:bg-violet-700 transition-colors"
                     >
                       <div className="flex items-center justify-between mb-3">
-                        <div className="w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center">
+                        <div className="w-10 h-10 rounded-lg bg-white/20 flex items-center justify-center">
                           <Plus className="h-5 w-5" />
                         </div>
-                        <ArrowRight className="h-4 w-4 opacity-40 group-hover:opacity-100 transition-opacity" />
+                        <ArrowRight className="h-4 w-4 opacity-60 group-hover:opacity-100 transition-opacity" />
                       </div>
                       <h3 className="font-medium mb-0.5">Create Payment Link</h3>
-                      <p className="text-sm text-white/60">Generate a new link</p>
+                      <p className="text-sm text-white/70">Generate a new link</p>
                     </button>
 
                     <button 
                       onClick={() => navigate('/payment-links')}
-                      className="group bg-white rounded-xl p-5 text-left border border-border hover:border-slate-300 transition-colors"
+                      className="group bg-white rounded-xl p-5 text-left border border-border hover:border-violet-200 transition-colors"
                     >
                       <div className="flex items-center justify-between mb-3">
-                        <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center">
-                          <Link2 className="h-5 w-5 text-slate-600" />
+                        <div className="w-10 h-10 rounded-lg bg-violet-50 flex items-center justify-center">
+                          <Link2 className="h-5 w-5 text-violet-600" />
                         </div>
                         <ArrowRight className="h-4 w-4 text-muted-foreground opacity-40 group-hover:opacity-100 transition-opacity" />
                       </div>
@@ -307,11 +310,11 @@ const Index = () => {
 
                     <button 
                       onClick={() => navigate('/transactions')}
-                      className="group bg-white rounded-xl p-5 text-left border border-border hover:border-slate-300 transition-colors"
+                      className="group bg-white rounded-xl p-5 text-left border border-border hover:border-violet-200 transition-colors"
                     >
                       <div className="flex items-center justify-between mb-3">
-                        <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center">
-                          <ArrowDownLeft className="h-5 w-5 text-slate-600" />
+                        <div className="w-10 h-10 rounded-lg bg-violet-50 flex items-center justify-center">
+                          <ArrowDownLeft className="h-5 w-5 text-violet-600" />
                         </div>
                         <ArrowRight className="h-4 w-4 text-muted-foreground opacity-40 group-hover:opacity-100 transition-opacity" />
                       </div>

@@ -11,11 +11,11 @@ const NotFound = () => {
   }, [location.pathname]);
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
+    <div className="min-h-screen bg-white flex flex-col">
       {/* Header */}
       <header className="p-6">
         <Link to="/" className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-lg bg-slate-900 flex items-center justify-center">
+          <div className="w-9 h-9 rounded-lg bg-violet-600 flex items-center justify-center">
             <Wallet className="w-4 h-4 text-white" />
           </div>
           <span className="text-lg font-heading font-semibold text-foreground">
@@ -27,7 +27,7 @@ const NotFound = () => {
       {/* Main */}
       <main className="flex-1 flex flex-col items-center justify-center px-6 pb-20">
         <div className="max-w-md w-full text-center space-y-6">
-          <div className="text-[120px] font-heading font-bold text-slate-200 leading-none">
+          <div className="text-[120px] font-heading font-bold text-violet-100 leading-none">
             404
           </div>
           
@@ -38,13 +38,13 @@ const NotFound = () => {
             <p className="text-muted-foreground text-sm">
               The page you're looking for doesn't exist or has been moved.
             </p>
-            <code className="text-xs text-muted-foreground bg-white border border-border px-3 py-1.5 rounded-md inline-block font-mono mt-2">
+            <code className="text-xs text-muted-foreground bg-violet-50 border border-violet-100 px-3 py-1.5 rounded-md inline-block font-mono mt-2">
               {location.pathname}
             </code>
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3 justify-center pt-4">
-            <Button asChild className="bg-slate-900 hover:bg-slate-800 rounded-lg">
+            <Button asChild className="bg-violet-600 hover:bg-violet-700 rounded-lg">
               <Link to="/" className="gap-2">
                 <Home className="w-4 h-4" />
                 Go Home

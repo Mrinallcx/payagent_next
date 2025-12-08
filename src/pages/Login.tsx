@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAccount } from "wagmi";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
-import { Wallet, ArrowRight, Shield, Lock } from "lucide-react";
+import { Wallet, ArrowRight, Lock } from "lucide-react";
 
 const QUOTES = [
   {
@@ -46,19 +46,20 @@ const Login = () => {
 
   return (
     <div className="min-h-screen flex">
-      {/* Left Side - Minimal Dark */}
-      <div className="hidden lg:flex lg:w-1/2 xl:w-3/5 relative overflow-hidden bg-slate-950">
-        {/* Subtle gradient */}
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-transparent to-transparent" />
+      {/* Left Side - Violet gradient */}
+      <div className="hidden lg:flex lg:w-1/2 xl:w-3/5 relative overflow-hidden bg-gradient-to-br from-violet-600 via-violet-700 to-purple-800">
+        {/* Subtle pattern */}
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff08_1px,transparent_1px),linear-gradient(to_bottom,#ffffff08_1px,transparent_1px)] bg-[size:80px_80px]" />
         
-        {/* Minimal grid */}
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff06_1px,transparent_1px),linear-gradient(to_bottom,#ffffff06_1px,transparent_1px)] bg-[size:80px_80px]" />
+        {/* Decorative circles */}
+        <div className="absolute top-20 right-20 w-64 h-64 bg-white/5 rounded-full blur-3xl" />
+        <div className="absolute bottom-20 left-20 w-48 h-48 bg-purple-400/10 rounded-full blur-2xl" />
 
         {/* Content */}
         <div className="relative z-10 flex flex-col justify-between p-16 xl:p-20 w-full">
           {/* Logo */}
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur flex items-center justify-center">
               <Wallet className="w-5 h-5 text-white" />
             </div>
             <span className="text-xl font-heading font-semibold text-white">
@@ -74,30 +75,30 @@ const Login = () => {
                 <br />
                 payments for
                 <br />
-                <span className="text-white/40">everyone.</span>
+                <span className="text-white/60">everyone.</span>
               </h1>
-              <p className="text-lg text-white/50 leading-relaxed max-w-md">
+              <p className="text-lg text-white/70 leading-relaxed max-w-md">
                 Create payment links in seconds. Accept crypto from anyone, anywhere.
               </p>
             </div>
 
             {/* Quote */}
             <div className={`transition-opacity duration-400 ${isQuoteFading ? 'opacity-0' : 'opacity-100'}`}>
-              <p className="text-white/70 text-lg italic">
+              <p className="text-white/80 text-lg italic">
                 "{currentQuote.text}"
               </p>
-              <p className="text-white/30 mt-3 text-sm">
+              <p className="text-white/50 mt-3 text-sm">
                 — {currentQuote.author}
               </p>
             </div>
           </div>
 
           {/* Bottom */}
-          <div className="flex items-center gap-8 text-sm text-white/30">
+          <div className="flex items-center gap-8 text-sm text-white/50">
             <span>Ethereum</span>
-            <span className="w-1 h-1 rounded-full bg-white/20" />
+            <span className="w-1 h-1 rounded-full bg-white/30" />
             <span>BNB Chain</span>
-            <span className="w-1 h-1 rounded-full bg-white/20" />
+            <span className="w-1 h-1 rounded-full bg-white/30" />
             <span>Polygon</span>
           </div>
         </div>
@@ -108,7 +109,7 @@ const Login = () => {
         {/* Mobile header */}
         <header className="lg:hidden p-6">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-slate-900 flex items-center justify-center">
+            <div className="w-9 h-9 rounded-lg bg-violet-600 flex items-center justify-center">
               <Wallet className="w-4 h-4 text-white" />
             </div>
             <span className="text-lg font-heading font-semibold text-foreground">
@@ -145,13 +146,13 @@ const Login = () => {
                     >
                       <button
                         onClick={openConnectModal}
-                        className="w-full flex items-center justify-between px-5 py-4 bg-slate-900 text-white font-medium rounded-xl hover:bg-slate-800 transition-colors group"
+                        className="w-full flex items-center justify-between px-5 py-4 bg-violet-600 text-white font-medium rounded-xl hover:bg-violet-700 transition-colors group"
                       >
                         <div className="flex items-center gap-3">
                           <Wallet className="w-5 h-5" />
                           <span>Connect Wallet</span>
                         </div>
-                        <ArrowRight className="w-4 h-4 opacity-50 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
+                        <ArrowRight className="w-4 h-4 opacity-70 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
                       </button>
                     </div>
                   );
@@ -177,8 +178,8 @@ const Login = () => {
             {/* Features - Minimal */}
             <div className="space-y-4">
               <div className="flex items-center gap-4 py-3">
-                <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
-                  <span className="text-sm font-semibold text-slate-600">01</span>
+                <div className="w-10 h-10 rounded-lg bg-violet-50 flex items-center justify-center shrink-0">
+                  <span className="text-sm font-semibold text-violet-600">01</span>
                 </div>
                 <div>
                   <h4 className="font-medium text-foreground text-sm">Payment Links</h4>
@@ -187,8 +188,8 @@ const Login = () => {
               </div>
 
               <div className="flex items-center gap-4 py-3">
-                <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
-                  <span className="text-sm font-semibold text-slate-600">02</span>
+                <div className="w-10 h-10 rounded-lg bg-violet-50 flex items-center justify-center shrink-0">
+                  <span className="text-sm font-semibold text-violet-600">02</span>
                 </div>
                 <div>
                   <h4 className="font-medium text-foreground text-sm">Track Payments</h4>
@@ -197,8 +198,8 @@ const Login = () => {
               </div>
 
               <div className="flex items-center gap-4 py-3">
-                <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
-                  <span className="text-sm font-semibold text-slate-600">03</span>
+                <div className="w-10 h-10 rounded-lg bg-violet-50 flex items-center justify-center shrink-0">
+                  <span className="text-sm font-semibold text-violet-600">03</span>
                 </div>
                 <div>
                   <h4 className="font-medium text-foreground text-sm">Multi-Chain</h4>

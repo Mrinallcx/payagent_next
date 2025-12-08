@@ -214,7 +214,7 @@ export function CreateLinkModal({ open, onOpenChange, onCreateLink }: CreateLink
                     className="h-11 text-lg font-semibold flex-1 rounded-lg [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   />
                   {selectedToken && (
-                    <div className="h-11 px-4 bg-slate-100 rounded-lg flex items-center">
+                    <div className="h-11 px-4 bg-violet-50 text-violet-700 rounded-lg flex items-center">
                       <span className="font-medium text-sm">{selectedToken}</span>
                     </div>
                   )}
@@ -231,8 +231,8 @@ export function CreateLinkModal({ open, onOpenChange, onCreateLink }: CreateLink
                       onClick={() => setSelectedToken(token.symbol)}
                       className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${
                         selectedToken === token.symbol
-                          ? "border-slate-900 bg-slate-50"
-                          : "border-border hover:border-slate-300"
+                          ? "border-violet-600 bg-violet-50"
+                          : "border-border hover:border-violet-300"
                       }`}
                     >
                       <div className="w-8 h-8 rounded-md bg-slate-100 flex items-center justify-center overflow-hidden">
@@ -259,9 +259,9 @@ export function CreateLinkModal({ open, onOpenChange, onCreateLink }: CreateLink
           {/* Step 2: Network */}
           {step === "network" && (
             <div className="space-y-5">
-              <div className="bg-slate-50 rounded-lg p-3 flex items-center justify-between">
+              <div className="bg-violet-50 rounded-lg p-3 flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Amount</span>
-                <span className="font-semibold">{amount} {selectedToken}</span>
+                <span className="font-semibold text-violet-700">{amount} {selectedToken}</span>
               </div>
 
               <div className="space-y-2">
@@ -289,15 +289,15 @@ export function CreateLinkModal({ open, onOpenChange, onCreateLink }: CreateLink
                           isDisabled
                             ? "border-border bg-slate-50 cursor-not-allowed opacity-50"
                             : isSelected
-                            ? "border-slate-900 bg-slate-50"
-                            : "border-border hover:border-slate-300"
+                            ? "border-violet-600 bg-violet-50"
+                            : "border-border hover:border-violet-300"
                         }`}
                       >
                         <span className={`font-medium text-sm ${isDisabled ? "text-muted-foreground" : ""}`}>
                           {network.name}
                         </span>
                         <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                          isSelected ? "border-slate-900 bg-slate-900" : "border-slate-300"
+                          isSelected ? "border-violet-600 bg-violet-600" : "border-slate-300"
                         }`}>
                           {isSelected && <Check className="h-3 w-3 text-white" />}
                         </div>
@@ -312,9 +312,9 @@ export function CreateLinkModal({ open, onOpenChange, onCreateLink }: CreateLink
           {/* Step 3: Expiration */}
           {step === "expiration" && (
             <div className="space-y-5">
-              <div className="bg-slate-50 rounded-lg p-3 flex items-center justify-between">
+              <div className="bg-violet-50 rounded-lg p-3 flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Amount</span>
-                <span className="font-semibold">{amount} {selectedToken}</span>
+                <span className="font-semibold text-violet-700">{amount} {selectedToken}</span>
               </div>
 
               <div className="space-y-2">
@@ -331,12 +331,12 @@ export function CreateLinkModal({ open, onOpenChange, onCreateLink }: CreateLink
                       onClick={() => setExpiresInDays(option.value)}
                       className={`p-4 rounded-lg border transition-colors ${
                         expiresInDays === option.value
-                          ? "border-slate-900 bg-slate-50"
-                          : "border-border hover:border-slate-300"
+                          ? "border-violet-600 bg-violet-50"
+                          : "border-border hover:border-violet-300"
                       }`}
                     >
                       <Clock className={`h-5 w-5 mx-auto mb-2 ${
-                        expiresInDays === option.value ? "text-slate-900" : "text-muted-foreground"
+                        expiresInDays === option.value ? "text-violet-600" : "text-muted-foreground"
                       }`} />
                       <span className="text-sm font-medium">{option.label}</span>
                     </button>
@@ -349,12 +349,12 @@ export function CreateLinkModal({ open, onOpenChange, onCreateLink }: CreateLink
           {/* Step 4: Details */}
           {step === "details" && (
             <div className="space-y-5">
-              <div className="bg-slate-50 rounded-lg p-4">
+              <div className="bg-violet-50 rounded-lg p-4">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs text-muted-foreground">Amount</span>
                   <span className="text-xs text-muted-foreground">{expiresInDays === "1" ? "24h" : `${expiresInDays} days`}</span>
                 </div>
-                <p className="text-2xl font-heading font-bold">{amount} {selectedToken}</p>
+                <p className="text-2xl font-heading font-bold text-violet-700">{amount} {selectedToken}</p>
                 <p className="text-xs text-muted-foreground mt-1">{selectedNetworks.join(", ")}</p>
               </div>
 
@@ -400,23 +400,23 @@ export function CreateLinkModal({ open, onOpenChange, onCreateLink }: CreateLink
                 </p>
               </div>
 
-              <div className="bg-slate-50 rounded-lg p-3">
+              <div className="bg-violet-50 rounded-lg p-3">
                 <div className="flex items-center gap-2">
-                  <code className="flex-1 text-xs font-mono break-all bg-white rounded-md p-3 border border-border">
+                  <code className="flex-1 text-xs font-mono break-all bg-white rounded-md p-3 border border-violet-100">
                     {generatedLink}
                   </code>
                   <Button 
                     size="icon" 
                     variant="outline" 
                     onClick={handleCopy}
-                    className="h-10 w-10 shrink-0 rounded-lg"
+                    className="h-10 w-10 shrink-0 rounded-lg border-violet-200 hover:bg-violet-100"
                   >
                     <Copy className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
 
-              <Button onClick={handleCopy} className="w-full h-11 gap-2 rounded-lg bg-slate-900 hover:bg-slate-800">
+              <Button onClick={handleCopy} className="w-full h-11 gap-2 rounded-lg bg-violet-600 hover:bg-violet-700">
                 <Copy className="h-4 w-4" />
                 Copy Link
               </Button>
@@ -426,7 +426,7 @@ export function CreateLinkModal({ open, onOpenChange, onCreateLink }: CreateLink
 
         {/* Footer */}
         {step !== "generated" && (
-          <DialogFooter className="px-6 py-4 border-t border-border bg-slate-50">
+          <DialogFooter className="px-6 py-4 border-t border-border bg-slate-50/50">
             <div className="flex w-full gap-2">
               <Button 
                 variant="ghost" 
@@ -447,25 +447,25 @@ export function CreateLinkModal({ open, onOpenChange, onCreateLink }: CreateLink
               )}
               
               {step === "amount-token" && (
-                <Button onClick={handleContinueToNetwork} className="gap-1 rounded-lg bg-slate-900 hover:bg-slate-800">
+                <Button onClick={handleContinueToNetwork} className="gap-1 rounded-lg bg-violet-600 hover:bg-violet-700">
                   Continue
                   <ArrowRight className="h-4 w-4" />
                 </Button>
               )}
               {step === "network" && (
-                <Button onClick={handleContinueToExpiration} className="gap-1 rounded-lg bg-slate-900 hover:bg-slate-800">
+                <Button onClick={handleContinueToExpiration} className="gap-1 rounded-lg bg-violet-600 hover:bg-violet-700">
                   Continue
                   <ArrowRight className="h-4 w-4" />
                 </Button>
               )}
               {step === "expiration" && (
-                <Button onClick={handleContinueToDetails} className="gap-1 rounded-lg bg-slate-900 hover:bg-slate-800">
+                <Button onClick={handleContinueToDetails} className="gap-1 rounded-lg bg-violet-600 hover:bg-violet-700">
                   Continue
                   <ArrowRight className="h-4 w-4" />
                 </Button>
               )}
               {step === "details" && (
-                <Button onClick={handleCreate} disabled={isLoading} className="gap-1 rounded-lg bg-slate-900 hover:bg-slate-800">
+                <Button onClick={handleCreate} disabled={isLoading} className="gap-1 rounded-lg bg-violet-600 hover:bg-violet-700">
                   {isLoading ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -481,7 +481,7 @@ export function CreateLinkModal({ open, onOpenChange, onCreateLink }: CreateLink
         )}
 
         {step === "generated" && (
-          <DialogFooter className="px-6 py-4 border-t border-border bg-slate-50">
+          <DialogFooter className="px-6 py-4 border-t border-border bg-slate-50/50">
             <Button variant="outline" onClick={handleClose} className="w-full rounded-lg">
               Done
             </Button>
