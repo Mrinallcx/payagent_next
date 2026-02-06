@@ -65,7 +65,7 @@ app.post('/api/create', async (req, res) => {
       receiver,
       payer: null,
       description: description || '',
-      network: network || 'Sepolia (ETH Testnet)',
+      network: (network || 'sepolia').toLowerCase(),
       status: 'PENDING',
       expires_at: expiresAt,
       tx_hash: null,
@@ -212,7 +212,21 @@ app.delete('/api/request/:id', async (req, res) => {
   }
 });
 
-// Verify payment
+// Verify payment (with on-chain verification)
+const { verifyTransaction } = require('../lib/blockchain');
+
+function getTokenAddressForVerify(tokenSymbol, network) {
+  const symbol = (tokenSymbol || 'USDC').toUpperCase();
+  const net = (network || 'sepolia').toLowerCase();
+  if (symbol !== 'USDC') {
+    return process.env.NEXT_PUBLIC_USDT_ADDRESS || null;
+  }
+  if (net.includes('bnb') && net.includes('test')) {
+    return process.env.NEXT_PUBLIC_BNB_TESTNET_USDC_ADDRESS || process.env.NEXT_PUBLIC_USDC_ADDRESS;
+  }
+  return process.env.NEXT_PUBLIC_USDC_ADDRESS || '0x3402d41aa8e34e0df605c12109de2f8f4ff33a87';
+}
+
 app.post('/api/verify', async (req, res) => {
   try {
     const { requestId, txHash } = req.body;
@@ -221,7 +235,53 @@ app.post('/api/verify', async (req, res) => {
       return res.status(400).json({ error: 'Missing requestId or txHash' });
     }
 
-    // Mark as paid (simplified - in production, verify on-chain)
+    let request;
+    if (supabase) {
+      const { data, error } = await supabase
+        .from('payment_requests')
+        .select('*')
+        .eq('id', requestId)
+        .single();
+      if (error && error.code === 'PGRST116') {
+        return res.status(404).json({ error: 'Payment request not found' });
+      }
+      if (error) throw error;
+      request = toCamelCase(data);
+    } else {
+      request = memoryStore.requests[requestId];
+      if (!request) {
+        return res.status(404).json({ error: 'Payment request not found' });
+      }
+      request = toCamelCase(request);
+    }
+
+    if (request.status === 'PAID') {
+      return res.status(400).json({ error: 'Request already paid' });
+    }
+
+    const network = (request.network || 'sepolia').toLowerCase();
+    const tokenSymbol = (request.token || 'USDC').toUpperCase();
+    const isNative = tokenSymbol === 'ETH' || (tokenSymbol === 'BNB' && network.includes('bnb'));
+    const tokenAddress = isNative ? null : getTokenAddressForVerify(request.token, request.network);
+
+    const verification = await verifyTransaction(
+      txHash,
+      request.amount,
+      tokenAddress,
+      request.receiver,
+      tokenSymbol,
+      network
+    );
+
+    if (!verification.valid) {
+      console.error('Payment verification failed:', verification.error, verification.details || '');
+      return res.status(400).json({
+        error: 'Payment verification failed',
+        details: verification.error,
+        verificationDetails: verification.details || undefined
+      });
+    }
+
     if (supabase) {
       const { data, error } = await supabase
         .from('payment_requests')
@@ -239,16 +299,22 @@ app.post('/api/verify', async (req, res) => {
       return res.json({
         success: true,
         status: 'PAID',
-        request: toCamelCase(data)
+        request: toCamelCase(data),
+        verification
       });
     } else {
-      const request = memoryStore.requests[requestId];
-      if (request) {
-        request.status = 'PAID';
-        request.tx_hash = txHash;
-        request.paid_at = new Date().toISOString();
+      const r = memoryStore.requests[requestId];
+      if (r) {
+        r.status = 'PAID';
+        r.tx_hash = txHash;
+        r.paid_at = new Date().toISOString();
       }
-      return res.json({ success: true, status: 'PAID', request: toCamelCase(request) });
+      return res.json({
+        success: true,
+        status: 'PAID',
+        request: toCamelCase(r || request),
+        verification
+      });
     }
   } catch (error) {
     console.error('Verify error:', error);

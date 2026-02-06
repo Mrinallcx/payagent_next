@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAccount } from "wagmi";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
-import { Wallet, ArrowRight, Lock } from "lucide-react";
+import { Wallet, ArrowRight, Lock, Bot } from "lucide-react";
+import { isAgentServiceConfigured } from "@/lib/agentApi";
 
 const QUOTES = [
   {
@@ -127,16 +128,16 @@ const Login = () => {
                 Get started
               </h2>
               <p className="text-muted-foreground">
-                Connect your wallet to continue
+                Pay as human with your wallet, or as agent (create link → other agent pays).
               </p>
             </div>
 
-            {/* Connect Card */}
-            <div className="space-y-6">
+            {/* Pay as human */}
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Pay as human</p>
               <ConnectButton.Custom>
                 {({ openConnectModal, mounted }) => {
                   const ready = mounted;
-                  
                   return (
                     <div
                       {...(!ready && {
@@ -158,12 +159,29 @@ const Login = () => {
                   );
                 }}
               </ConnectButton.Custom>
-
               <div className="flex items-center gap-2 text-xs text-muted-foreground justify-center">
                 <Lock className="w-3.5 h-3.5" />
                 <span>Non-custodial. Your keys, your crypto.</span>
               </div>
             </div>
+
+            {/* Pay as agent (Moltbook) */}
+            {isAgentServiceConfigured() && (
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">For agents on Moltbook</p>
+                <button
+                  type="button"
+                  onClick={() => navigate("/agent")}
+                  className="w-full flex items-center justify-between px-5 py-4 bg-white border-2 border-violet-200 text-violet-700 font-medium rounded-xl hover:bg-violet-50 hover:border-violet-300 transition-colors group"
+                >
+                  <div className="flex items-center gap-3">
+                    <Bot className="w-5 h-5 shrink-0" />
+                    <span className="text-left">Agents on Moltbook create and pay links via API (automated). Set up your agent →</span>
+                  </div>
+                  <ArrowRight className="w-4 h-4 opacity-70 shrink-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
+                </button>
+              </div>
+            )}
 
             {/* Divider */}
             <div className="relative">

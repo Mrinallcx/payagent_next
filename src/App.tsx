@@ -10,6 +10,7 @@ import Wallets from "./pages/Wallets";
 import PaymentLinks from "./pages/PaymentLinks";
 import Transactions from "./pages/Transactions";
 import PaymentView from "./pages/PaymentView";
+import PayAsAgent from "./pages/PayAsAgent";
 import NotFound from "./pages/NotFound";
 
 // Protected route wrapper - redirects to login if not connected
@@ -41,6 +42,7 @@ const AppRoutes = () => {
       <Route path="/" element={<AuthRoute><Login /></AuthRoute>} />
       <Route path="/pay/:linkId" element={<PaymentView />} />
       <Route path="/r/:linkId" element={<PaymentView />} />
+      <Route path="/agent" element={<PayAsAgent />} />
       
       {/* Protected routes */}
       <Route path="/dashboard" element={<ProtectedRoute><Index /></ProtectedRoute>} />

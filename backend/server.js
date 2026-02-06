@@ -20,11 +20,43 @@ app.use(cors({
     origin: [
       'http://localhost:8080',
       'http://localhost:5173',
+      'http://localhost:3001',
       'https://payme-your-simple-payment-hub.vercel.app'
     ],
     credentials: true
   }));
 app.use(express.json());
+
+// Optional: Moltbook identity verification (when MOLTBOOK_APP_KEY is set)
+const MOLTBOOK_APP_KEY = process.env.MOLTBOOK_APP_KEY;
+const MOLTBOOK_AUDIENCE = process.env.MOLTBOOK_VERIFY_AUDIENCE || 'payme';
+
+async function verifyMoltbookIdentity(req, res, next) {
+  if (!MOLTBOOK_APP_KEY) return next();
+  const token = req.headers['x-moltbook-identity'];
+  if (!token) {
+    return res.status(401).json({ error: 'Missing X-Moltbook-Identity header' });
+  }
+  try {
+    const response = await fetch('https://moltbook.com/api/v1/agents/verify-identity', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Moltbook-App-Key': MOLTBOOK_APP_KEY
+      },
+      body: JSON.stringify({ token, audience: MOLTBOOK_AUDIENCE })
+    });
+    const data = await response.json();
+    if (!data.valid || !data.agent) {
+      return res.status(401).json({ error: data.error || 'Invalid Moltbook identity', hint: data.hint });
+    }
+    req.moltbookAgent = data.agent;
+    next();
+  } catch (err) {
+    console.error('Moltbook verify error:', err);
+    return res.status(500).json({ error: 'Identity verification failed' });
+  }
+}
 
 // Health check endpoint
 app.get('/', (req, res) => {

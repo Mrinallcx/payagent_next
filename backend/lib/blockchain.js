@@ -1,6 +1,7 @@
 const { ethers } = require('ethers');
 
-// RPC endpoints
+// RPC endpoints (Sepolia for verify when request is on Sepolia)
+const SEPOLIA_RPC = process.env.SEPOLIA_RPC_URL || process.env.NEXT_PUBLIC_ETH_RPC_URL || process.env.NEXT_PUBLIC_POLYGON_RPC_URL;
 const ETH_RPC = process.env.NEXT_PUBLIC_ETH_RPC_URL || process.env.NEXT_PUBLIC_POLYGON_RPC_URL;
 const BNB_TESTNET_RPC = process.env.NEXT_PUBLIC_BNB_TESTNET_RPC_URL || 'https://data-seed-prebsc-1-s1.binance.org:8545/';
 const USDC_ADDRESS = process.env.NEXT_PUBLIC_USDC_ADDRESS;
@@ -21,7 +22,12 @@ function getProvider(network) {
     return new ethers.JsonRpcProvider(BNB_TESTNET_RPC);
   }
   
-  // Default to ETH/Sepolia
+  // Use Sepolia RPC when request is for Sepolia (so verification finds the tx)
+  if (networkLower.includes('sepolia')) {
+    return new ethers.JsonRpcProvider(SEPOLIA_RPC);
+  }
+  
+  // Default to ETH mainnet
   return new ethers.JsonRpcProvider(ETH_RPC);
 }
 
@@ -134,12 +140,13 @@ async function verifyEthTransfer(txHash, expectedAmount, expectedReceiver, provi
  */
 async function verifyErc20Transfer(txHash, expectedAmount, expectedToken, expectedReceiver, provider, receipt) {
   try {
-    // Parse transfer logs
+    const expectedTokenLower = expectedToken.toLowerCase();
     const contract = new ethers.Contract(expectedToken, ERC20_ABI, provider);
     const decimals = await contract.decimals();
 
-    // Find Transfer event in logs
-    const transferLog = receipt.logs.find(log => {
+    // Only consider logs from the expected token contract
+    const tokenLogs = receipt.logs.filter(log => log.address && log.address.toLowerCase() === expectedTokenLower);
+    const transferLog = tokenLogs.find(log => {
       try {
         const parsed = contract.interface.parseLog(log);
         return parsed?.name === 'Transfer';
@@ -149,16 +156,19 @@ async function verifyErc20Transfer(txHash, expectedAmount, expectedToken, expect
     });
 
     if (!transferLog) {
-      return { valid: false, error: 'No transfer event found' };
+      return { valid: false, error: 'No transfer event found for this token contract' };
     }
 
     const parsedLog = contract.interface.parseLog(transferLog);
     const transferredAmount = ethers.formatUnits(parsedLog.args.value, decimals);
-    const transferredTo = parsedLog.args.to.toLowerCase();
+    const transferredTo = (parsedLog.args.to || '').toLowerCase();
+    const expectedReceiverLower = (expectedReceiver || '').toLowerCase();
 
-    // Validate amount and receiver
-    const amountValid = parseFloat(transferredAmount) >= parseFloat(expectedAmount);
-    const receiverValid = transferredTo === expectedReceiver.toLowerCase();
+    // Validate amount (allow tiny tolerance for float) and receiver
+    const expectedNum = parseFloat(expectedAmount);
+    const actualNum = parseFloat(transferredAmount);
+    const amountValid = !isNaN(expectedNum) && !isNaN(actualNum) && actualNum >= expectedNum - 1e-6;
+    const receiverValid = transferredTo === expectedReceiverLower;
 
     if (!amountValid || !receiverValid) {
       return {

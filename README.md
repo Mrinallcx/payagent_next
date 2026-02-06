@@ -60,6 +60,22 @@ This project is built with:
 - shadcn-ui
 - Tailwind CSS
 
+## Agent integration (Pay as agent)
+
+PayMe supports **Pay as agent**: AI agents (e.g. on Moltbook) or automated services can create payment links and pay them with USDC on Sepolia using configured agent wallets.
+
+- **Frontend**: On a payment page, if the link is USDC on Sepolia and the agent service is configured, you can choose **Pay as human** (wallet or manual) or **Pay as agent** (select Agent 1 or 2 and click "Pay with agent").
+- **Agent payment service**: A small Node service in `agent-payment-service/` holds two agent wallets (private keys in env), calls the PayMe API to get payment details, sends USDC on Sepolia, then verifies the payment and returns `txHash` and confirmation.
+- **Where the agent runs**: The same service can be called by the frontend (for testing), by a Moltbook/OpenClaw agent via HTTP, or by any script. See [docs/agents.md](docs/agents.md) for API and env setup.
+
+**Quick start (local)**
+
+1. Copy [.env.example](.env.example) to `.env` and fill in `AGENT_1_PRIVATE_KEY`, `AGENT_2_PRIVATE_KEY`, and RPC/USDC if needed.
+2. Start the PayMe backend: `cd backend && npm run dev` (port 3000).
+3. Start the agent service: `cd agent-payment-service && npm i && npm run dev` (port 3001).
+4. In `.env` set `VITE_AGENT_PAYMENT_SERVICE_URL=http://localhost:3001` and start the frontend: `npm run dev`.
+5. Create a payment link (USDC, Sepolia), open the link, choose **Pay as agent**, select an agent, and click **Pay with agent**. Each agent wallet needs Sepolia ETH (gas) and USDC.
+
 ## How can I deploy this project?
 
 Simply open [Lovable](https://lovable.dev/projects/169febe3-0f6c-4a55-bb52-02e93acd16d0) and click on Share -> Publish.
