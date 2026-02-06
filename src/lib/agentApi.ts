@@ -35,7 +35,7 @@ export interface PayLinkResponse {
 }
 
 export async function getAgents(): Promise<AgentsResponse> {
-  const res = await fetch(`${AGENT_SERVICE_URL}/agents`, { credentials: 'include' });
+  const res = await fetch(`${AGENT_SERVICE_URL}/agents`);
   if (!res.ok) throw new Error('Failed to fetch agents');
   return res.json();
 }
@@ -56,7 +56,6 @@ export async function createLink(params: {
 }): Promise<CreateLinkResponse> {
   const res = await fetch(`${AGENT_SERVICE_URL}/create-link`, {
     method: 'POST',
-    credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       amount: params.amount,
@@ -74,7 +73,6 @@ export async function createLink(params: {
 export async function payLink(linkId: string, agentId: 1 | 2): Promise<PayLinkResponse> {
   const res = await fetch(`${AGENT_SERVICE_URL}/pay-link`, {
     method: 'POST',
-    credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ linkId, agentId })
   });
