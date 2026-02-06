@@ -1,4 +1,8 @@
-const AGENT_SERVICE_URL = import.meta.env.VITE_AGENT_PAYMENT_SERVICE_URL || 'http://localhost:3001';
+const API_BASE = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
+const AGENT_BASE = (import.meta.env.VITE_AGENT_PAYMENT_SERVICE_URL || 'http://localhost:3001').replace(/\/$/, '');
+// When agent API is on the same backend (production), paths are under /api
+const AGENT_SERVICE_URL =
+  API_BASE && AGENT_BASE === API_BASE ? `${AGENT_BASE}/api` : AGENT_BASE;
 
 export interface AgentInfo {
   id: number;
@@ -30,7 +34,7 @@ export interface PayLinkResponse {
 }
 
 export async function getAgents(): Promise<AgentsResponse> {
-  const res = await fetch(`${AGENT_SERVICE_URL}/agents`);
+  const res = await fetch(`${AGENT_SERVICE_URL}/agents`, { credentials: 'include' });
   if (!res.ok) throw new Error('Failed to fetch agents');
   return res.json();
 }
@@ -51,6 +55,7 @@ export async function createLink(params: {
 }): Promise<CreateLinkResponse> {
   const res = await fetch(`${AGENT_SERVICE_URL}/create-link`, {
     method: 'POST',
+    credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       amount: params.amount,
@@ -68,6 +73,7 @@ export async function createLink(params: {
 export async function payLink(linkId: string, agentId: 1 | 2): Promise<PayLinkResponse> {
   const res = await fetch(`${AGENT_SERVICE_URL}/pay-link`, {
     method: 'POST',
+    credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ linkId, agentId })
   });
@@ -77,5 +83,5 @@ export async function payLink(linkId: string, agentId: 1 | 2): Promise<PayLinkRe
 }
 
 export function isAgentServiceConfigured(): boolean {
-  return Boolean(import.meta.env.VITE_AGENT_PAYMENT_SERVICE_URL);
+  return Boolean(import.meta.env.VITE_AGENT_PAYMENT_SERVICE_URL || import.meta.env.VITE_API_URL);
 }

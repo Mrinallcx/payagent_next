@@ -9,7 +9,9 @@ import cors from 'cors';
 import { ethers } from 'ethers';
 
 const PORT = process.env.AGENT_SERVICE_PORT || 3001;
-const PAYME_API_URL = (process.env.PAYME_API_URL || 'http://localhost:3000').replace(/\/$/, '');
+const rawPaymeUrl = (process.env.PAYME_API_URL || 'http://localhost:3000').replace(/\/$/, '');
+// Use 127.0.0.1 so fetch reaches PayMe backend (localhost can fail with IPv6 / ECONNREFUSED)
+const PAYME_API_URL = rawPaymeUrl.replace(/localhost/, '127.0.0.1');
 const SEPOLIA_RPC = process.env.SEPOLIA_RPC_URL;
 const USDC_ADDRESS = process.env.SEPOLIA_USDC_ADDRESS || '0x3402d41aa8e34e0df605c12109de2f8f4ff33a87';
 const USDC_DECIMALS = 6;
@@ -89,19 +91,28 @@ app.post('/create-link', async (req, res) => {
         error: 'Missing receiver or receiverAgentId. Send receiverAgentId: 1 or 2, or receiver: "0x..."'
       });
     }
-    const response = await fetch(`${PAYME_API_URL}/api/create`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        token: 'USDC',
-        amount: amountStr,
-        receiver: receiverAddress,
-        description: description || '',
-        network: 'sepolia',
-        expiresInDays: expiresInDays ?? 7,
-        creatorWallet: creatorWallet || null
-      })
-    });
+    let response;
+    try {
+      response = await fetch(`${PAYME_API_URL}/api/create`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          token: 'USDC',
+          amount: amountStr,
+          receiver: receiverAddress,
+          description: description || '',
+          network: 'sepolia',
+          expiresInDays: expiresInDays ?? 7,
+          creatorWallet: creatorWallet || null
+        })
+      });
+    } catch (fetchErr) {
+      const msg = fetchErr.cause?.code === 'ECONNREFUSED' || fetchErr.message?.includes('fetch failed')
+        ? `PayMe backend unreachable at ${PAYME_API_URL}. Start it: cd backend && npm run dev`
+        : fetchErr.message;
+      console.error('Create link error:', msg);
+      return res.status(503).json({ error: msg });
+    }
     const data = await response.json();
     if (!response.ok) {
       return res.status(response.status).json(data);
@@ -197,7 +208,18 @@ app.post('/pay-link', async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`Agent payment service running on port ${PORT}`);
   console.log(`Agents configured: ${agents.length}`);
+  console.log(`  PayMe backend: ${PAYME_API_URL} (must be running for create-link / pay-link)`);
+  console.log('  Keep this terminal open; Agent 2 and Agent 1 depend on it.');
+});
+
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(`Port ${PORT} is already in use. Stop the other process or set AGENT_SERVICE_PORT in .env.`);
+  } else {
+    console.error('Server error:', err);
+  }
+  process.exit(1);
 });

@@ -76,6 +76,19 @@ PayMe supports **Pay as agent**: AI agents (e.g. on Moltbook) or automated servi
 4. In `.env` set `VITE_AGENT_PAYMENT_SERVICE_URL=http://localhost:3001` and start the frontend: `npm run dev`.
 5. Create a payment link (USDC, Sepolia), open the link, choose **Pay as agent**, select an agent, and click **Pay with agent**. Each agent wallet needs Sepolia ETH (gas) and USDC.
 
+**Agent 1 (Payer) and Agent 2 (Payee) – separate apps**
+
+Two small apps implement the “Agent 2 provides link, Agent 1 pays” flow:
+
+- **agent2/** (Payee): Express server with `POST /request-payment`. When called with `{ amount }`, it creates a PayMe link (receiver = Agent 2) via the agent payment service and returns `link_id` and `payment_link`. Run: `cd agent2 && npm i && cp .env.example .env && npm run dev` (port 3002).
+- **agent1/** (Payer): Scripts that call Agent 2 to get a link, then call the agent payment service to pay it (Agent 1’s wallet). Run: `cd agent1 && npm i && cp .env.example .env && npm run pay [amount]` (e.g. `npm run pay 1` for 1 USDC). Requires Agent 2 and agent-payment-service to be running.
+
+Full stack order: (1) Backend (3000), (2) agent-payment-service (3001), (3) Agent 2 (3002), then from agent1 run `npm run pay 1`.
+
+## Deploying (Vercel)
+
+Frontend and backend deploy on Vercel. The **agent payment API** (create-link, pay-link) is part of the **backend** (same deployment). Set env vars so production uses your backend URL only (no localhost). See **[docs/deployment.md](docs/deployment.md)** for step-by-step backend + frontend env vars and optional Agent 2/Agent 1 production URLs.
+
 ## How can I deploy this project?
 
 Simply open [Lovable](https://lovable.dev/projects/169febe3-0f6c-4a55-bb52-02e93acd16d0) and click on Share -> Publish.

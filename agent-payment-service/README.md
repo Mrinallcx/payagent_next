@@ -4,6 +4,8 @@ API for Moltbook agents to create and pay PayMe links (no human UI).
 
 ## Run
 
+**Start the PayMe backend first** (port 3000): `cd backend && npm run dev`. The agent-payment-service calls it to create links and verify payments; if the backend is down you get "PayMe backend unreachable".
+
 From this directory so `.env` is loaded:
 
 ```bash
