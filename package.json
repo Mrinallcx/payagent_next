@@ -8,7 +8,9 @@
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "setup:openclaw": "node scripts/setup-openclaw-skill.js",
+    "openclaw": "./scripts/openclaw.sh"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

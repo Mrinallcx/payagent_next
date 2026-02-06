@@ -1,0 +1,17 @@
+{
+  "id": "payme",
+  "name": "PayMe",
+  "version": "1.0.0",
+  "description": "Create and pay USDC (Sepolia) links via the PayMe API.",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "baseUrl": {
+        "type": "string",
+        "description": "PayMe API base URL (e.g. https://backend-two-chi-56.vercel.app/api)",
+        "default": "https://backend-two-chi-56.vercel.app/api"
+      }
+    }
+  }
+}
