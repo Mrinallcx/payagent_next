@@ -128,6 +128,66 @@ export default function PayAsAgent() {
           </p>
         </Card>
 
+        {/* Moltbook skill – copy-paste ready for agent Instructions */}
+        <Card className="p-6 bg-amber-50/50 border-amber-200">
+          <h3 className="font-heading font-semibold text-lg mb-2">Moltbook skill (copy for your agent)</h3>
+          <p className="text-sm text-muted-foreground mb-3">
+            Paste this into your Moltbook agent&apos;s <strong>Instructions</strong> or <strong>Skill</strong>. Sign in to Moltbook later and add it.
+          </p>
+          <pre className="bg-muted p-4 rounded-lg overflow-x-auto text-xs whitespace-pre-wrap font-sans border border-amber-200/50">
+{`You have access to the PayMe API for creating and paying USDC (Sepolia) links.
+
+Base URL: ${AGENT_SERVICE_BASE}
+
+**Create payment link**
+- When: You need to create a payment link so Agent 1 or Agent 2 receives USDC.
+- POST ${AGENT_SERVICE_BASE}/create-link
+- Headers: Content-Type: application/json
+- Body (JSON): amount (string, e.g. "5"), receiverAgentId (number: 1 or 2), description (optional)
+- Response: success, linkId, link. Share linkId with whoever should pay it.
+
+**Pay payment link**
+- When: You have a linkId and need to pay it (send USDC from an agent wallet).
+- POST ${AGENT_SERVICE_BASE}/pay-link
+- Headers: Content-Type: application/json
+- Body (JSON): linkId (string), agentId (number: 1 or 2 – who pays)
+- Response: success, txHash, explorerUrl; or alreadyPaid: true if already paid.
+
+Example: Create link for 3 USDC to Agent 2 → POST ${AGENT_SERVICE_BASE}/create-link with {"amount":"3","receiverAgentId":2}. Pay that link as Agent 1 → POST ${AGENT_SERVICE_BASE}/pay-link with {"linkId":"REQ-XXXXX","agentId":1}.`}
+          </pre>
+          <Button
+            variant="outline"
+            size="sm"
+            className="mt-3 border-amber-300 bg-amber-50 hover:bg-amber-100"
+            onClick={() => {
+              const skillText = `You have access to the PayMe API for creating and paying USDC (Sepolia) links.
+
+Base URL: ${AGENT_SERVICE_BASE}
+
+**Create payment link**
+- When: You need to create a payment link so Agent 1 or Agent 2 receives USDC.
+- POST ${AGENT_SERVICE_BASE}/create-link
+- Headers: Content-Type: application/json
+- Body (JSON): amount (string, e.g. "5"), receiverAgentId (number: 1 or 2), description (optional)
+- Response: success, linkId, link. Share linkId with whoever should pay it.
+
+**Pay payment link**
+- When: You have a linkId and need to pay it (send USDC from an agent wallet).
+- POST ${AGENT_SERVICE_BASE}/pay-link
+- Headers: Content-Type: application/json
+- Body (JSON): linkId (string), agentId (number: 1 or 2 – who pays)
+- Response: success, txHash, explorerUrl; or alreadyPaid: true if already paid.
+
+Example: Create link for 3 USDC to Agent 2 → POST ${AGENT_SERVICE_BASE}/create-link with {"amount":"3","receiverAgentId":2}. Pay that link as Agent 1 → POST ${AGENT_SERVICE_BASE}/pay-link with {"linkId":"REQ-XXXXX","agentId":1}.`;
+              navigator.clipboard.writeText(skillText);
+              toast.success("Moltbook skill copied! Paste it into your agent's Instructions on Moltbook.");
+            }}
+          >
+            <Copy className="h-4 w-4 mr-2" />
+            Copy Moltbook skill
+          </Button>
+        </Card>
+
         {/* API reference */}
         <Card className="p-6">
           <h3 className="font-heading font-semibold text-lg mb-2">API reference (for Moltbook agent setup)</h3>
@@ -182,20 +242,20 @@ Content-Type: application/json
           </Button>
         </Card>
 
-        {/* Test API (debug) - collapsible */}
+        {/* Test API – verify agent is ready before adding to Moltbook */}
         <Card className="p-4">
           <button
             type="button"
             className="w-full flex items-center justify-between font-medium text-foreground"
             onClick={() => setShowTestSection(!showTestSection)}
           >
-            Test API (debug only)
+            Test API (create link + pay link – confirm ready for Moltbook)
             {showTestSection ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
           </button>
           {showTestSection && (
             <div className="mt-4 pt-4 border-t border-border space-y-6">
               {!isAgentServiceConfigured() ? (
-                <p className="text-sm text-muted-foreground">Set VITE_AGENT_PAYMENT_SERVICE_URL to test.</p>
+                <p className="text-sm text-muted-foreground">Set VITE_API_URL (or VITE_AGENT_PAYMENT_SERVICE_URL for local) so the Test API can run.</p>
               ) : (
                 <>
                   <div>
