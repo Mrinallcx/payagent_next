@@ -1,6 +1,7 @@
 const API_BASE = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
-const AGENT_BASE = (import.meta.env.VITE_AGENT_PAYMENT_SERVICE_URL || 'http://localhost:3001').replace(/\/$/, '');
-// When agent API is on the same backend (production), paths are under /api
+// Default agent API to backend URL so production works with only VITE_API_URL set (agent routes live at /api/create-link etc.)
+const AGENT_BASE = (import.meta.env.VITE_AGENT_PAYMENT_SERVICE_URL || import.meta.env.VITE_API_URL || 'http://localhost:3001').replace(/\/$/, '');
+// When agent API is on the same backend (production or same URL), paths are under /api
 const AGENT_SERVICE_URL =
   API_BASE && AGENT_BASE === API_BASE ? `${AGENT_BASE}/api` : AGENT_BASE;
 
