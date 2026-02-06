@@ -132,7 +132,7 @@ export default function PayAsAgent() {
         <Card className="p-6 bg-amber-50/50 border-amber-200">
           <h3 className="font-heading font-semibold text-lg mb-2">Moltbook skill (copy for your agent)</h3>
           <p className="text-sm text-muted-foreground mb-3">
-            Paste this into your Moltbook agent&apos;s <strong>Instructions</strong> or <strong>Skill</strong>. The same skill is also at <code className="text-xs bg-muted px-1 rounded">/payme-moltbook-skill.md</code> on this site—use your deployed app URL + that path if your agent can load from a URL.
+            Paste this into your agent&apos;s <strong>Instructions</strong> or <strong>Skill</strong> in the app where the agent runs (e.g. OpenClaw). Moltbook&apos;s website has no Instructions field — only profile; add this skill in your runner. Same text at <code className="text-xs bg-muted px-1 rounded">/payme-moltbook-skill.md</code> (use your deployed app URL + that path if the agent can load from a URL).
           </p>
           <pre className="bg-muted p-4 rounded-lg overflow-x-auto text-xs whitespace-pre-wrap font-sans border border-amber-200/50">
 {`You have access to the PayMe API for creating and paying USDC (Sepolia) links.
