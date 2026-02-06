@@ -1,9 +1,9 @@
+// Backend URL (PayMe API). In production set VITE_API_URL in Vercel env.
 const API_BASE = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
-// Default agent API to backend URL so production works with only VITE_API_URL set (agent routes live at /api/create-link etc.)
-const AGENT_BASE = (import.meta.env.VITE_AGENT_PAYMENT_SERVICE_URL || import.meta.env.VITE_API_URL || 'http://localhost:3001').replace(/\/$/, '');
-// When agent API is on the same backend (production or same URL), paths are under /api
-const AGENT_SERVICE_URL =
-  API_BASE && AGENT_BASE === API_BASE ? `${AGENT_BASE}/api` : AGENT_BASE;
+// Agent API: use backend URL + /api when backend is set (prod); else standalone agent service or localhost
+const AGENT_SERVICE_URL = API_BASE
+  ? `${API_BASE}/api`
+  : (import.meta.env.VITE_AGENT_PAYMENT_SERVICE_URL || 'http://localhost:3001').replace(/\/$/, '');
 
 export interface AgentInfo {
   id: number;

@@ -8,7 +8,10 @@ import { toast } from "sonner";
 import { Bot, Link2, Copy, ExternalLink, Loader2, ArrowLeft, CheckCircle2, ChevronDown, ChevronUp } from "lucide-react";
 import { createLink, payLink, getAgents, isAgentServiceConfigured } from "@/lib/agentApi";
 
-const AGENT_SERVICE_BASE = import.meta.env.VITE_AGENT_PAYMENT_SERVICE_URL || "http://localhost:3001";
+// Same as agentApi: backend URL when set, else standalone agent service (local)
+const AGENT_SERVICE_BASE = import.meta.env.VITE_API_URL
+  ? `${(import.meta.env.VITE_API_URL as string).replace(/\/$/, '')}/api`
+  : (import.meta.env.VITE_AGENT_PAYMENT_SERVICE_URL || "http://localhost:3001");
 
 export default function PayAsAgent() {
   const navigate = useNavigate();
