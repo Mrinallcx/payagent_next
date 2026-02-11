@@ -168,7 +168,7 @@ const PaymentLinks = () => {
                     </Button>
                     <Button 
                       onClick={handleCreateLinkClick}
-                      className="gap-2 bg-violet-600 hover:bg-violet-700 rounded-lg h-9"
+                      className="gap-2 bg-blue-600 hover:bg-blue-700 rounded-lg h-9"
                     >
                       <Plus className="h-4 w-4" />
                       Create Link
@@ -180,8 +180,8 @@ const PaymentLinks = () => {
               {/* Connect Wallet */}
               {!isConnected && (
                 <div className="bg-white rounded-xl border border-border p-12 text-center">
-                  <div className="w-14 h-14 rounded-xl bg-violet-50 flex items-center justify-center mx-auto mb-5">
-                    <Wallet className="h-6 w-6 text-violet-600" />
+                  <div className="w-14 h-14 rounded-xl bg-blue-50 flex items-center justify-center mx-auto mb-5">
+                    <Wallet className="h-6 w-6 text-blue-600" />
                   </div>
                   <h3 className="text-lg font-heading font-semibold mb-2">Connect Your Wallet</h3>
                   <p className="text-sm text-muted-foreground mb-6">
@@ -189,7 +189,7 @@ const PaymentLinks = () => {
                   </p>
                   <Button 
                     onClick={() => openConnectModal?.()} 
-                    className="gap-2 bg-violet-600 hover:bg-violet-700 rounded-lg"
+                    className="gap-2 bg-blue-600 hover:bg-blue-700 rounded-lg"
                   >
                     <Wallet className="h-4 w-4" />
                     Connect Wallet
@@ -222,7 +222,7 @@ const PaymentLinks = () => {
               {/* Loading */}
               {isConnected && isLoading && (
                 <div className="flex flex-col items-center justify-center py-20">
-                  <Loader2 className="h-6 w-6 animate-spin text-violet-600 mb-3" />
+                  <Loader2 className="h-6 w-6 animate-spin text-blue-600 mb-3" />
                   <p className="text-sm text-muted-foreground">Loading...</p>
                 </div>
               )}
@@ -233,7 +233,7 @@ const PaymentLinks = () => {
                   {paymentLinks.map(link => (
                     <div 
                       key={link.id} 
-                      className="bg-white rounded-xl border border-border p-5 hover:border-violet-200 transition-colors"
+                      className="bg-white rounded-xl border border-border p-5 hover:border-blue-200 transition-colors"
                     >
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex items-start gap-4 flex-1 min-w-0">
@@ -242,14 +242,14 @@ const PaymentLinks = () => {
                               ? 'bg-emerald-50' 
                               : link.expiresAt && Date.now() > link.expiresAt
                                 ? 'bg-red-50'
-                                : 'bg-violet-50'
+                                : 'bg-blue-50'
                           }`}>
                             <LinkIcon className={`h-5 w-5 ${
                               link.status === 'PAID' 
                                 ? 'text-emerald-600' 
                                 : link.expiresAt && Date.now() > link.expiresAt
                                   ? 'text-red-500'
-                                  : 'text-violet-600'
+                                  : 'text-blue-600'
                             }`} />
                           </div>
                           <div className="flex-1 min-w-0">
@@ -277,7 +277,7 @@ const PaymentLinks = () => {
                             size="icon" 
                             variant="ghost" 
                             onClick={() => handleCopyLink(link.id)} 
-                            className="h-8 w-8 rounded-md hover:bg-violet-50 hover:text-violet-600"
+                            className="h-8 w-8 rounded-md hover:bg-blue-50 hover:text-blue-600"
                           >
                             <Copy className="h-4 w-4" />
                           </Button>
@@ -285,7 +285,7 @@ const PaymentLinks = () => {
                             size="icon"
                             variant="ghost" 
                             onClick={() => handleViewLink(link.id)}
-                            className="h-8 w-8 rounded-md hover:bg-violet-50 hover:text-violet-600"
+                            className="h-8 w-8 rounded-md hover:bg-blue-50 hover:text-blue-600"
                           >
                             <ExternalLink className="h-4 w-4" />
                           </Button>
@@ -311,7 +311,7 @@ const PaymentLinks = () => {
                             href={`${getExplorerUrl(link.network)}/tx/${link.txHash}`} 
                             target="_blank" 
                             rel="noopener noreferrer" 
-                            className="text-violet-600 hover:underline flex items-center gap-1"
+                            className="text-blue-600 hover:underline flex items-center gap-1"
                           >
                             <code className="font-mono">{truncateAddress(link.txHash)}</code>
                             <ExternalLink className="h-3 w-3" />
@@ -323,8 +323,8 @@ const PaymentLinks = () => {
 
                   {paymentLinks.length === 0 && (
                     <div className="text-center py-16 bg-white rounded-xl border border-border">
-                      <div className="w-12 h-12 rounded-xl bg-violet-50 flex items-center justify-center mx-auto mb-4">
-                        <LinkIcon className="h-5 w-5 text-violet-400" />
+                      <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center mx-auto mb-4">
+                        <LinkIcon className="h-5 w-5 text-blue-400" />
                       </div>
                       <h3 className="font-semibold mb-1">No payment links</h3>
                       <p className="text-sm text-muted-foreground mb-4">
@@ -332,7 +332,7 @@ const PaymentLinks = () => {
                       </p>
                       <Button 
                         onClick={handleCreateLinkClick} 
-                        className="gap-2 bg-violet-600 hover:bg-violet-700 rounded-lg"
+                        className="gap-2 bg-blue-600 hover:bg-blue-700 rounded-lg"
                       >
                         <Plus className="h-4 w-4" />
                         Create Link

@@ -18,6 +18,10 @@ export default {
         heading: ['Space Grotesk', 'sans-serif'],
       },
       colors: {
+        blue: {
+          600: '#365EF7',
+          700: '#2B4CD6',
+        },
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",

@@ -1,113 +1,30 @@
-import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Bot, Link2, Copy, ExternalLink, Loader2, ArrowLeft, CheckCircle2, ChevronDown, ChevronUp } from "lucide-react";
-import { createLink, payLink, getAgents, isAgentServiceConfigured } from "@/lib/agentApi";
+import { Bot, Copy, ArrowLeft, Code2, Key, Webhook, MessageSquare } from "lucide-react";
 
-// Same as agentApi: backend URL when set, else standalone agent service (local)
-const AGENT_SERVICE_BASE = import.meta.env.VITE_API_URL
+const API_BASE = import.meta.env.VITE_API_URL
   ? `${(import.meta.env.VITE_API_URL as string).replace(/\/$/, '')}/api`
-  : (import.meta.env.VITE_AGENT_PAYMENT_SERVICE_URL || "http://localhost:3001");
+  : "http://localhost:3000/api";
 
 export default function PayAsAgent() {
   const navigate = useNavigate();
-  const [showTestSection, setShowTestSection] = useState(false);
-  const [agents, setAgents] = useState<{ id: number; address: string }[]>([]);
 
-  const [receiverAgentId, setReceiverAgentId] = useState<1 | 2>(1);
-  const [amount, setAmount] = useState("");
-  const [description, setDescription] = useState("");
-  const [createLoading, setCreateLoading] = useState(false);
-  const [createdLinkId, setCreatedLinkId] = useState<string | null>(null);
-  const [createdLinkPath, setCreatedLinkPath] = useState<string | null>(null);
-
-  const [linkIdInput, setLinkIdInput] = useState("");
-  const [payerAgentId, setPayerAgentId] = useState<1 | 2>(2);
-  const [payLoading, setPayLoading] = useState(false);
-  const [payResult, setPayResult] = useState<{ txHash?: string; explorerUrl?: string; alreadyPaid?: boolean } | null>(null);
-
-  useEffect(() => {
-    if (!isAgentServiceConfigured()) return;
-    getAgents()
-      .then((r) => setAgents(r.agents || []))
-      .catch(() => setAgents([]));
-  }, []);
-
-  const handleCreateLink = async () => {
-    const amt = amount.trim();
-    if (!amt || isNaN(Number(amt)) || Number(amt) <= 0) {
-      toast.error("Enter a valid amount");
-      return;
-    }
-    try {
-      setCreateLoading(true);
-      setPayResult(null);
-      const result = await createLink({
-        amount: amt,
-        receiverAgentId,
-        description: description.trim() || undefined,
-        expiresInDays: 7
-      });
-      if (result.success && result.linkId && result.link) {
-        setCreatedLinkId(result.linkId);
-        setCreatedLinkPath(result.link);
-        setLinkIdInput(result.linkId);
-        toast.success("Link created.");
-      }
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to create link");
-    } finally {
-      setCreateLoading(false);
-    }
-  };
-
-  const handlePayLink = async () => {
-    let id = linkIdInput.trim();
-    const match = id.match(/REQ-[A-Z0-9]+/i);
-    if (match) id = match[0];
-    if (!id) {
-      toast.error("Enter a link ID or paste the full link");
-      return;
-    }
-    try {
-      setPayLoading(true);
-      setPayResult(null);
-      const result = await payLink(id, payerAgentId);
-      if (result.success) {
-        setPayResult({
-          txHash: result.txHash,
-          explorerUrl: result.explorerUrl,
-          alreadyPaid: result.alreadyPaid
-        });
-        toast.success(result.alreadyPaid ? "Already paid." : "Payment confirmed!");
-      }
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Pay failed");
-    } finally {
-      setPayLoading(false);
-    }
-  };
-
-  const copyLink = () => {
-    if (!createdLinkPath) return;
-    const url = `${window.location.origin}${createdLinkPath}`;
-    navigator.clipboard.writeText(url);
-    toast.success("Link copied!");
+  const copyText = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    toast.success(`${label} copied!`);
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-violet-50/50 via-white to-slate-50">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50/50 via-white to-slate-50">
       <nav className="border-b border-border bg-white/80 backdrop-blur px-4 py-4">
-        <div className="max-w-2xl mx-auto flex items-center justify-between">
+        <div className="max-w-3xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-violet-600 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center">
               <Bot className="w-5 h-5 text-white" />
             </div>
-            <span className="text-xl font-heading font-semibold text-foreground">Pay as agent (Moltbook)</span>
+            <span className="text-xl font-heading font-semibold text-foreground">PayMe API</span>
           </div>
           <Button variant="ghost" size="sm" onClick={() => navigate("/")} className="gap-2">
             <ArrowLeft className="h-4 w-4" />
@@ -116,237 +33,188 @@ export default function PayAsAgent() {
         </div>
       </nav>
 
-      <main className="max-w-2xl mx-auto p-4 md:p-8 space-y-6">
-        {/* Main message: agents run on Moltbook, use API only */}
-        <Card className="p-6 bg-violet-50/50 border-violet-200">
-          <h2 className="font-heading font-semibold text-lg mb-2">Links are created and paid by agents on Moltbook</h2>
-          <p className="text-sm text-muted-foreground mb-4">
-            Agents run on Moltbook only. They do not use this website. One agent creates a payment link by calling our API; the other agent pays it by calling our API. The flow is fully automated on Moltbook.
-          </p>
-          <p className="text-sm text-muted-foreground">
-            Use the API reference below to configure your agent on Moltbook so it can create and pay PayMe links. The agent payment service holds two wallets (Agent 1, Agent 2); your Moltbook agents trigger create/pay by HTTP.
-          </p>
-        </Card>
-
-        {/* Moltbook skill – copy-paste ready for agent Instructions */}
-        <Card className="p-6 bg-amber-50/50 border-amber-200">
-          <h3 className="font-heading font-semibold text-lg mb-2">Moltbook skill (copy for your agent)</h3>
+      <main className="max-w-3xl mx-auto p-4 md:p-8 space-y-6">
+        {/* Overview */}
+        <Card className="p-6 bg-blue-50/50 border-blue-200">
+          <h2 className="font-heading font-semibold text-lg mb-2">Stripe for AI Agents</h2>
           <p className="text-sm text-muted-foreground mb-3">
-            Paste this into your agent&apos;s <strong>Instructions</strong> or <strong>Skill</strong> in the app where the agent runs (e.g. OpenClaw). Moltbook&apos;s website has no Instructions field — only profile; add this skill in your runner. Same text at <code className="text-xs bg-muted px-1 rounded">/payme-moltbook-skill.md</code> (use your deployed app URL + that path if the agent can load from a URL).
+            PayMe is a crypto payment infrastructure platform for AI agents. Register your agent, get an API key, and let your agents create and pay payment links programmatically.
           </p>
-          <pre className="bg-muted p-4 rounded-lg overflow-x-auto text-xs whitespace-pre-wrap font-sans border border-amber-200/50">
-{`You have access to the PayMe API for creating and paying USDC (Sepolia) links.
-
-Base URL: ${AGENT_SERVICE_BASE}
-
-**Create payment link**
-- When: You need to create a payment link so Agent 1 or Agent 2 receives USDC.
-- POST ${AGENT_SERVICE_BASE}/create-link
-- Headers: Content-Type: application/json
-- Body (JSON): amount (string, e.g. "5"), receiverAgentId (number: 1 or 2), description (optional)
-- Response: success, linkId, link. Share linkId with whoever should pay it.
-
-**Pay payment link**
-- When: You have a linkId and need to pay it (send USDC from an agent wallet).
-- POST ${AGENT_SERVICE_BASE}/pay-link
-- Headers: Content-Type: application/json
-- Body (JSON): linkId (string), agentId (number: 1 or 2 – who pays)
-- Response: success, txHash, explorerUrl; or alreadyPaid: true if already paid.
-
-Example: Create link for 3 USDC to Agent 2 → POST ${AGENT_SERVICE_BASE}/create-link with {"amount":"3","receiverAgentId":2}. Pay that link as Agent 1 → POST ${AGENT_SERVICE_BASE}/pay-link with {"linkId":"REQ-XXXXX","agentId":1}.`}
-          </pre>
-          <Button
-            variant="outline"
-            size="sm"
-            className="mt-3 border-amber-300 bg-amber-50 hover:bg-amber-100"
-            onClick={() => {
-              const skillText = `You have access to the PayMe API for creating and paying USDC (Sepolia) links.
-
-Base URL: ${AGENT_SERVICE_BASE}
-
-**Create payment link**
-- When: You need to create a payment link so Agent 1 or Agent 2 receives USDC.
-- POST ${AGENT_SERVICE_BASE}/create-link
-- Headers: Content-Type: application/json
-- Body (JSON): amount (string, e.g. "5"), receiverAgentId (number: 1 or 2), description (optional)
-- Response: success, linkId, link. Share linkId with whoever should pay it.
-
-**Pay payment link**
-- When: You have a linkId and need to pay it (send USDC from an agent wallet).
-- POST ${AGENT_SERVICE_BASE}/pay-link
-- Headers: Content-Type: application/json
-- Body (JSON): linkId (string), agentId (number: 1 or 2 – who pays)
-- Response: success, txHash, explorerUrl; or alreadyPaid: true if already paid.
-
-Example: Create link for 3 USDC to Agent 2 → POST ${AGENT_SERVICE_BASE}/create-link with {"amount":"3","receiverAgentId":2}. Pay that link as Agent 1 → POST ${AGENT_SERVICE_BASE}/pay-link with {"linkId":"REQ-XXXXX","agentId":1}.`;
-              navigator.clipboard.writeText(skillText);
-              toast.success("Moltbook skill copied! Paste it into your agent's Instructions on Moltbook.");
-            }}
-          >
-            <Copy className="h-4 w-4 mr-2" />
-            Copy Moltbook skill
-          </Button>
-        </Card>
-
-        {/* API reference */}
-        <Card className="p-6">
-          <h3 className="font-heading font-semibold text-lg mb-2">API reference (for Moltbook agent setup)</h3>
-          <p className="text-sm text-muted-foreground mb-4">Base URL: <code className="bg-muted px-1.5 py-0.5 rounded text-xs break-all">{AGENT_SERVICE_BASE}</code></p>
-
-          <div className="space-y-4 text-sm">
-            <div>
-              <p className="font-medium text-foreground mb-1">Create link (one agent creates)</p>
-              <pre className="bg-muted p-3 rounded-lg overflow-x-auto text-xs">
-{`POST ${AGENT_SERVICE_BASE}/create-link
-Content-Type: application/json
-
-{
-  "amount": "5",
-  "receiverAgentId": 1,
-  "description": "Optional"
-}
-
-→ { "success": true, "linkId": "REQ-...", "link": "/r/REQ-..." }`}
-              </pre>
-              <p className="text-muted-foreground mt-1">receiverAgentId: 1 or 2 (who receives USDC).</p>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Key className="h-4 w-4 text-blue-500" />
+              <span>API Key Auth</span>
             </div>
-
-            <div>
-              <p className="font-medium text-foreground mb-1">Pay link (other agent pays)</p>
-              <pre className="bg-muted p-3 rounded-lg overflow-x-auto text-xs">
-{`POST ${AGENT_SERVICE_BASE}/pay-link
-Content-Type: application/json
-
-{
-  "linkId": "REQ-XXXXXXXXX",
-  "agentId": 2
-}
-
-→ { "success": true, "txHash": "0x...", "explorerUrl": "..." }`}
-              </pre>
-              <p className="text-muted-foreground mt-1">agentId: 1 or 2 (who sends USDC from their wallet).</p>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <MessageSquare className="h-4 w-4 text-blue-500" />
+              <span>AI Chat</span>
+            </div>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Webhook className="h-4 w-4 text-blue-500" />
+              <span>Webhooks</span>
+            </div>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Code2 className="h-4 w-4 text-blue-500" />
+              <span>REST API</span>
             </div>
           </div>
+        </Card>
 
-          <Button
-            variant="outline"
-            size="sm"
-            className="mt-4"
-            onClick={() => {
-              navigator.clipboard.writeText(`${AGENT_SERVICE_BASE}`);
-              toast.success("Base URL copied");
-            }}
-          >
+        {/* Step 1: Register */}
+        <Card className="p-6">
+          <h3 className="font-heading font-semibold text-lg mb-3 flex items-center gap-2">
+            <span className="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center text-sm font-bold text-blue-600">1</span>
+            Register Your Agent
+          </h3>
+          <p className="text-sm text-muted-foreground mb-4">No UI needed. Register via cURL and get your credentials.</p>
+          <pre className="bg-muted p-4 rounded-lg overflow-x-auto text-xs whitespace-pre-wrap font-mono border">
+{`curl -X POST ${API_BASE}/agents/register \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "username": "my-agent",
+    "email": "dev@example.com",
+    "wallet_address": "0xYourWalletAddress"
+  }'
+
+# Response (save these — shown ONCE):
+# {
+#   "agent_id": "agent_my-agent_a1b2c3",
+#   "api_key": "pk_live_abc123...",
+#   "webhook_secret": "whsec_xyz789..."
+# }`}
+          </pre>
+          <Button variant="outline" size="sm" className="mt-3" onClick={() => copyText(
+            `curl -X POST ${API_BASE}/agents/register -H "Content-Type: application/json" -d '{"username": "my-agent", "email": "dev@example.com", "wallet_address": "0xYourWalletAddress"}'`,
+            "Register command"
+          )}>
             <Copy className="h-4 w-4 mr-2" />
-            Copy base URL
+            Copy cURL
           </Button>
         </Card>
 
-        {/* Test API – verify agent is ready before adding to Moltbook */}
-        <Card className="p-4">
-          <button
-            type="button"
-            className="w-full flex items-center justify-between font-medium text-foreground"
-            onClick={() => setShowTestSection(!showTestSection)}
-          >
-            Test API (create link + pay link – confirm ready for Moltbook)
-            {showTestSection ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-          </button>
-          {showTestSection && (
-            <div className="mt-4 pt-4 border-t border-border space-y-6">
-              {!isAgentServiceConfigured() ? (
-                <p className="text-sm text-muted-foreground">Set VITE_API_URL (or VITE_AGENT_PAYMENT_SERVICE_URL for local) so the Test API can run.</p>
-              ) : (
-                <>
-                  <div>
-                    <h4 className="text-sm font-medium mb-2">Create link</h4>
-                    <div className="flex flex-wrap gap-2 items-end">
-                      <div>
-                        <Label className="text-xs">Receiver</Label>
-                        <select
-                          className="mt-1 h-9 rounded border px-2 text-sm"
-                          value={receiverAgentId}
-                          onChange={(e) => setReceiverAgentId(Number(e.target.value) as 1 | 2)}
-                        >
-                          {agents.map((a) => (
-                            <option key={a.id} value={a.id}>Agent {a.id}</option>
-                          ))}
-                          {agents.length === 0 && (
-                            <>
-                              <option value={1}>Agent 1</option>
-                              <option value={2}>Agent 2</option>
-                            </>
-                          )}
-                        </select>
-                      </div>
-                      <div>
-                        <Label className="text-xs">Amount</Label>
-                        <Input type="text" placeholder="1" value={amount} onChange={(e) => setAmount(e.target.value)} className="mt-1 h-9 w-24" />
-                      </div>
-                      <Button size="sm" onClick={handleCreateLink} disabled={createLoading}>
-                        {createLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Create"}
-                      </Button>
-                    </div>
-                    {createdLinkId && (
-                      <div className="mt-2 flex items-center gap-2 text-xs">
-                        <code className="bg-muted px-2 py-1 rounded">{createdLinkId}</code>
-                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={copyLink}><Copy className="h-3 w-3" /></Button>
-                      </div>
-                    )}
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-medium mb-2">Pay link</h4>
-                    <div className="flex flex-wrap gap-2 items-end">
-                      <div>
-                        <Label className="text-xs">Link ID</Label>
-                        <Input type="text" placeholder="REQ-..." value={linkIdInput} onChange={(e) => setLinkIdInput(e.target.value)} className="mt-1 h-9 w-40 font-mono text-xs" />
-                      </div>
-                      <div>
-                        <Label className="text-xs">Pay with</Label>
-                        <select
-                          className="mt-1 h-9 rounded border px-2 text-sm"
-                          value={payerAgentId}
-                          onChange={(e) => setPayerAgentId(Number(e.target.value) as 1 | 2)}
-                        >
-                          {agents.map((a) => (
-                            <option key={a.id} value={a.id}>Agent {a.id}</option>
-                          ))}
-                          {agents.length === 0 && (
-                            <>
-                              <option value={1}>Agent 1</option>
-                              <option value={2}>Agent 2</option>
-                            </>
-                          )}
-                        </select>
-                      </div>
-                      <Button size="sm" onClick={handlePayLink} disabled={payLoading}>
-                        {payLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Pay"}
-                      </Button>
-                    </div>
-                    {payResult && (
-                      <div className="mt-2 flex items-center gap-2 text-xs text-green-700">
-                        {payResult.alreadyPaid ? "Already paid" : payResult.txHash && (
-                          <>
-                            <span>{payResult.txHash.slice(0, 10)}...</span>
-                            {payResult.explorerUrl && (
-                              <a href={payResult.explorerUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1">
-                                Explorer <ExternalLink className="h-3 w-3" />
-                              </a>
-                            )}
-                          </>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </>
-              )}
-            </div>
-          )}
+        {/* Step 2: Create Link */}
+        <Card className="p-6">
+          <h3 className="font-heading font-semibold text-lg mb-3 flex items-center gap-2">
+            <span className="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center text-sm font-bold text-blue-600">2</span>
+            Create a Payment Link
+          </h3>
+          <pre className="bg-muted p-4 rounded-lg overflow-x-auto text-xs whitespace-pre-wrap font-mono border">
+{`curl -X POST ${API_BASE}/create-link \\
+  -H "Content-Type: application/json" \\
+  -H "x-api-key: pk_live_YOUR_API_KEY" \\
+  -d '{ "amount": "10", "description": "Service fee" }'
+
+# Response:
+# { "success": true, "linkId": "REQ-ABC123", "link": "/r/REQ-ABC123" }`}
+          </pre>
         </Card>
 
-        <p className="text-xs text-muted-foreground text-center">
-          Full doc: <code className="bg-muted px-1 rounded">docs/moltbook-agents.md</code>
-        </p>
+        {/* Step 3: Pay a Link */}
+        <Card className="p-6">
+          <h3 className="font-heading font-semibold text-lg mb-3 flex items-center gap-2">
+            <span className="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center text-sm font-bold text-blue-600">3</span>
+            Pay a Link
+          </h3>
+          <p className="text-sm text-muted-foreground mb-4">
+            Get payment instructions (non-custodial), execute transfers, then verify.
+          </p>
+          <pre className="bg-muted p-4 rounded-lg overflow-x-auto text-xs whitespace-pre-wrap font-mono border">
+{`# Get payment instructions + fee breakdown
+curl -X POST ${API_BASE}/pay-link \\
+  -H "Content-Type: application/json" \\
+  -H "x-api-key: pk_live_YOUR_API_KEY" \\
+  -d '{ "linkId": "REQ-ABC123" }'
+
+# Response includes transfers to make and fee breakdown
+# Then after submitting tx on-chain:
+
+curl -X POST ${API_BASE}/verify \\
+  -H "Content-Type: application/json" \\
+  -H "x-api-key: pk_live_YOUR_API_KEY" \\
+  -d '{ "requestId": "REQ-ABC123", "txHash": "0x..." }'`}
+          </pre>
+        </Card>
+
+        {/* Step 4: AI Chat */}
+        <Card className="p-6">
+          <h3 className="font-heading font-semibold text-lg mb-3 flex items-center gap-2">
+            <span className="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center text-sm font-bold text-blue-600">4</span>
+            AI Chat (Natural Language)
+          </h3>
+          <p className="text-sm text-muted-foreground mb-4">
+            Talk to PayMe AI (powered by Grok 4 Fast Thinking). It can create links, check status, and more.
+          </p>
+          <pre className="bg-muted p-4 rounded-lg overflow-x-auto text-xs whitespace-pre-wrap font-mono border">
+{`curl -X POST ${API_BASE}/chat \\
+  -H "Content-Type: application/json" \\
+  -H "x-api-key: pk_live_YOUR_API_KEY" \\
+  -d '{ "message": "Create a 5 USDC payment link" }'
+
+# Response:
+# { "message": "Payment link created!", "action": "create_link",
+#   "result": { "linkId": "REQ-XYZ", "link": "/r/REQ-XYZ" } }`}
+          </pre>
+        </Card>
+
+        {/* Step 5: Webhooks */}
+        <Card className="p-6">
+          <h3 className="font-heading font-semibold text-lg mb-3 flex items-center gap-2">
+            <span className="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center text-sm font-bold text-blue-600">5</span>
+            Register Webhooks
+          </h3>
+          <pre className="bg-muted p-4 rounded-lg overflow-x-auto text-xs whitespace-pre-wrap font-mono border">
+{`curl -X POST ${API_BASE}/webhooks \\
+  -H "Content-Type: application/json" \\
+  -H "x-api-key: pk_live_YOUR_API_KEY" \\
+  -d '{
+    "url": "https://your-agent.com/webhook",
+    "events": ["payment.paid", "payment.created"]
+  }'
+
+# Events: payment.created, payment.paid, payment.expired
+# Payloads include HMAC-SHA256 signature in X-PayMe-Signature header`}
+          </pre>
+        </Card>
+
+        {/* Fee Model */}
+        <Card className="p-6 bg-amber-50/50 border-amber-200">
+          <h3 className="font-heading font-semibold text-lg mb-3">Fee Model (LCX / USDC)</h3>
+          <p className="text-sm text-muted-foreground mb-3">
+            The payee covers the fee. Fee can be paid in LCX token (preferred) or USDC (fallback).
+          </p>
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between py-2 border-b border-amber-200/50">
+              <span className="text-muted-foreground">If payee has ≥ 4 LCX</span>
+              <span className="font-medium">4 LCX fee (2 platform + 2 creator reward)</span>
+            </div>
+            <div className="flex justify-between py-2">
+              <span className="text-muted-foreground">If payee has &lt; 4 LCX</span>
+              <span className="font-medium">USDC equiv of 4 LCX (50/50 split)</span>
+            </div>
+          </div>
+        </Card>
+
+        {/* All Endpoints */}
+        <Card className="p-6">
+          <h3 className="font-heading font-semibold text-lg mb-3">All Endpoints</h3>
+          <div className="space-y-2 text-xs font-mono">
+            <div className="flex gap-3 py-1.5"><span className="text-green-600 font-bold w-14">POST</span><span className="text-muted-foreground">/api/agents/register</span><span className="text-foreground ml-auto">Register (no auth)</span></div>
+            <div className="flex gap-3 py-1.5 border-t"><span className="text-blue-600 font-bold w-14">GET</span><span className="text-muted-foreground">/api/agents/me</span><span className="text-foreground ml-auto">My profile</span></div>
+            <div className="flex gap-3 py-1.5 border-t"><span className="text-green-600 font-bold w-14">POST</span><span className="text-muted-foreground">/api/agents/wallet</span><span className="text-foreground ml-auto">Update wallet</span></div>
+            <div className="flex gap-3 py-1.5 border-t"><span className="text-green-600 font-bold w-14">POST</span><span className="text-muted-foreground">/api/create-link</span><span className="text-foreground ml-auto">Create payment link</span></div>
+            <div className="flex gap-3 py-1.5 border-t"><span className="text-green-600 font-bold w-14">POST</span><span className="text-muted-foreground">/api/pay-link</span><span className="text-foreground ml-auto">Get pay instructions</span></div>
+            <div className="flex gap-3 py-1.5 border-t"><span className="text-green-600 font-bold w-14">POST</span><span className="text-muted-foreground">/api/verify</span><span className="text-foreground ml-auto">Verify payment</span></div>
+            <div className="flex gap-3 py-1.5 border-t"><span className="text-green-600 font-bold w-14">POST</span><span className="text-muted-foreground">/api/chat</span><span className="text-foreground ml-auto">AI chat</span></div>
+            <div className="flex gap-3 py-1.5 border-t"><span className="text-blue-600 font-bold w-14">GET</span><span className="text-muted-foreground">/api/requests</span><span className="text-foreground ml-auto">My payment links</span></div>
+            <div className="flex gap-3 py-1.5 border-t"><span className="text-blue-600 font-bold w-14">GET</span><span className="text-muted-foreground">/api/request/:id</span><span className="text-foreground ml-auto">Get link (public)</span></div>
+            <div className="flex gap-3 py-1.5 border-t"><span className="text-green-600 font-bold w-14">POST</span><span className="text-muted-foreground">/api/webhooks</span><span className="text-foreground ml-auto">Register webhook</span></div>
+            <div className="flex gap-3 py-1.5 border-t"><span className="text-blue-600 font-bold w-14">GET</span><span className="text-muted-foreground">/api/webhooks</span><span className="text-foreground ml-auto">List webhooks</span></div>
+          </div>
+          <Button variant="outline" size="sm" className="mt-4" onClick={() => copyText(API_BASE, "Base URL")}>
+            <Copy className="h-4 w-4 mr-2" />
+            Copy Base URL ({API_BASE})
+          </Button>
+        </Card>
       </main>
     </div>
   );

@@ -114,8 +114,8 @@ const Transactions = () => {
               {/* Connect Wallet */}
               {!isConnected ? (
                 <div className="bg-white rounded-xl border border-border p-12 text-center">
-                  <div className="w-14 h-14 rounded-xl bg-violet-50 flex items-center justify-center mx-auto mb-5">
-                    <Wallet className="h-6 w-6 text-violet-600" />
+                  <div className="w-14 h-14 rounded-xl bg-blue-50 flex items-center justify-center mx-auto mb-5">
+                    <Wallet className="h-6 w-6 text-blue-600" />
                   </div>
                   <h3 className="text-lg font-heading font-semibold mb-2">Connect Your Wallet</h3>
                   <p className="text-sm text-muted-foreground mb-6">
@@ -123,7 +123,7 @@ const Transactions = () => {
                   </p>
                   <Button 
                     onClick={() => openConnectModal?.()} 
-                    className="gap-2 bg-violet-600 hover:bg-violet-700 rounded-lg"
+                    className="gap-2 bg-blue-600 hover:bg-blue-700 rounded-lg"
                   >
                     <Wallet className="h-4 w-4" />
                     Connect Wallet
@@ -131,7 +131,7 @@ const Transactions = () => {
                 </div>
               ) : isLoading ? (
                 <div className="flex flex-col items-center justify-center py-20">
-                  <Loader2 className="h-6 w-6 animate-spin text-violet-600 mb-3" />
+                  <Loader2 className="h-6 w-6 animate-spin text-blue-600 mb-3" />
                   <p className="text-sm text-muted-foreground">Loading...</p>
                 </div>
               ) : transactions.length > 0 ? (
@@ -181,7 +181,7 @@ const Transactions = () => {
                       </TableHeader>
                       <TableBody>
                         {paginatedTransactions.map((transaction) => (
-                          <TableRow key={transaction.id} className="hover:bg-violet-50/50">
+                          <TableRow key={transaction.id} className="hover:bg-blue-50/50">
                             <TableCell>
                               <div className="w-9 h-9 rounded-lg bg-emerald-50 flex items-center justify-center">
                                 <ArrowDownLeft className="h-4 w-4 text-emerald-600" />
@@ -226,9 +226,9 @@ const Transactions = () => {
                                   href={`${getExplorerUrl(transaction.network)}/tx/${transaction.txHash}`}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="p-2 rounded-md hover:bg-violet-50 inline-flex"
+                                  className="p-2 rounded-md hover:bg-blue-50 inline-flex"
                                 >
-                                  <ExternalLink className="h-4 w-4 text-muted-foreground hover:text-violet-600" />
+                                  <ExternalLink className="h-4 w-4 text-muted-foreground hover:text-blue-600" />
                                 </a>
                               )}
                             </TableCell>
@@ -258,7 +258,7 @@ const Transactions = () => {
                             variant={currentPage === page ? "default" : "ghost"}
                             size="sm"
                             onClick={() => setCurrentPage(page)}
-                            className={`h-9 w-9 p-0 rounded-lg ${currentPage === page ? 'bg-violet-600 hover:bg-violet-700' : ''}`}
+                            className={`h-9 w-9 p-0 rounded-lg ${currentPage === page ? 'bg-blue-600 hover:bg-blue-700' : ''}`}
                           >
                             {page}
                           </Button>
@@ -279,8 +279,8 @@ const Transactions = () => {
                 </>
               ) : (
                 <div className="bg-white rounded-xl border border-border p-12 text-center">
-                  <div className="w-12 h-12 rounded-xl bg-violet-50 flex items-center justify-center mx-auto mb-4">
-                    <ArrowDownLeft className="h-5 w-5 text-violet-400" />
+                  <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center mx-auto mb-4">
+                    <ArrowDownLeft className="h-5 w-5 text-blue-400" />
                   </div>
                   <h3 className="font-semibold mb-1">No transactions</h3>
                   <p className="text-sm text-muted-foreground">

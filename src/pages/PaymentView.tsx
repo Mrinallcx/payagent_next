@@ -6,12 +6,11 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Copy, CheckCircle2, Circle, Loader2, AlertCircle, Wallet, Clock, ExternalLink, Sparkles, ArrowRight, Shield, Bot } from "lucide-react";
+import { Copy, CheckCircle2, Circle, Loader2, AlertCircle, Wallet, Clock, ExternalLink, Sparkles, ArrowRight, Shield } from "lucide-react";
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { useAccount, useWriteContract, useWaitForTransactionReceipt, useSwitchChain, useSendTransaction } from 'wagmi';
 import { parseUnits, parseEther } from 'viem';
 import { getPaymentRequest, verifyPayment, type PaymentRequest } from "@/lib/api";
-import { getAgents, payLink, isAgentServiceConfigured, type AgentInfo } from "@/lib/agentApi";
 import { ERC20_ABI, getTokenAddress, getChainId, getTokenDecimals, isNativeToken as checkIsNativeToken, getExplorerUrl } from "@/lib/contracts";
 
 type PaymentStep = "select-network" | "payment" | "success";
@@ -36,11 +35,6 @@ export default function PaymentView() {
   const [processingPayment, setProcessingPayment] = useState(false);
   const [isNativeToken, setIsNativeToken] = useState(false);
   const [expiryTimeRemaining, setExpiryTimeRemaining] = useState<number | null>(null);
-  // Pay as human vs Pay as agent
-  const [paymentMode, setPaymentMode] = useState<'human' | 'agent'>('human');
-  const [agentList, setAgentList] = useState<AgentInfo[]>([]);
-  const [selectedAgentId, setSelectedAgentId] = useState<1 | 2>(1);
-  const [agentPayLoading, setAgentPayLoading] = useState(false);
   
   // Wagmi hooks for ERC20 token transfers
   const { data: hash, writeContract, isPending: isWritePending, error: writeError } = useWriteContract();
@@ -156,14 +150,6 @@ export default function PaymentView() {
 
     return () => clearInterval(timer);
   }, [paymentRequest?.expiresAt]);
-
-  // Fetch agents when Pay as agent is available
-  useEffect(() => {
-    if (!isAgentServiceConfigured() || paymentMode !== 'agent') return;
-    getAgents()
-      .then((r) => setAgentList(r.agents || []))
-      .catch(() => setAgentList([]));
-  }, [paymentMode]);
 
   // Countdown timer
   useEffect(() => {
@@ -320,35 +306,6 @@ export default function PaymentView() {
       toast.dismiss();
       toast.error(err instanceof Error ? err.message : "Failed to initiate payment");
       setProcessingPayment(false);
-    }
-  };
-
-  const handlePayWithAgent = async () => {
-    if (!paymentRequest?.id || agentPayLoading) return;
-    try {
-      setAgentPayLoading(true);
-      toast.loading("Agent is paying...");
-      const result = await payLink(paymentRequest.id, selectedAgentId);
-      toast.dismiss();
-      if (result.success && result.request) {
-        setPaymentRequest({
-          ...paymentRequest,
-          ...result.request,
-          status: 'PAID',
-          txHash: result.txHash || result.request.txHash || null,
-          paidAt: result.request.paidAt ?? Date.now()
-        });
-        setStep("success");
-        toast.success(result.alreadyPaid ? "Already paid." : "Payment confirmed!");
-        if (result.txHash && result.explorerUrl) {
-          toast.success("View on Explorer", { action: { label: "Open", onClick: () => window.open(result.explorerUrl) } });
-        }
-      }
-    } catch (err) {
-      toast.dismiss();
-      toast.error(err instanceof Error ? err.message : "Agent payment failed");
-    } finally {
-      setAgentPayLoading(false);
     }
   };
 
@@ -680,88 +637,6 @@ export default function PaymentView() {
                   </div>
                 </div>
 
-                {/* Payment method: Pay as human vs Pay as agent */}
-                {(() => {
-                  const isUsdcSepolia = paymentRequest.token?.toUpperCase() === 'USDC' &&
-                    paymentRequest.network?.toLowerCase().includes('sepolia');
-                  const showAgentOption = isUsdcSepolia && isAgentServiceConfigured();
-                  return (
-                    <div>
-                      <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider mb-3">
-                        How do you want to pay?
-                      </p>
-                      <div className="flex gap-2">
-                        <Button
-                          type="button"
-                          variant={paymentMode === 'human' ? 'default' : 'outline'}
-                          size="sm"
-                          className="flex-1 rounded-xl"
-                          onClick={() => setPaymentMode('human')}
-                        >
-                          <Wallet className="h-4 w-4 mr-1.5" />
-                          Pay as human
-                        </Button>
-                        {showAgentOption && (
-                          <Button
-                            type="button"
-                            variant={paymentMode === 'agent' ? 'default' : 'outline'}
-                            size="sm"
-                            className="flex-1 rounded-xl"
-                            onClick={() => setPaymentMode('agent')}
-                          >
-                            <Bot className="h-4 w-4 mr-1.5" />
-                            Pay as agent
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })()}
-
-                {/* Pay as agent: dropdown + button */}
-                {paymentMode === 'agent' && isAgentServiceConfigured() && (
-                  <div className="space-y-3 rounded-2xl border border-primary/20 bg-primary/5 p-4">
-                    <p className="text-xs text-muted-foreground font-medium">Select agent wallet (USDC on Sepolia)</p>
-                    <div className="flex flex-col sm:flex-row gap-3">
-                      <select
-                        className="flex h-10 rounded-xl border border-border bg-background px-3 text-sm"
-                        value={selectedAgentId}
-                        onChange={(e) => setSelectedAgentId(Number(e.target.value) as 1 | 2)}
-                      >
-                        {agentList.map((a) => (
-                          <option key={a.id} value={a.id}>Agent {a.id} ({a.address})</option>
-                        ))}
-                        {agentList.length === 0 && (
-                          <>
-                            <option value={1}>Agent 1</option>
-                            <option value={2}>Agent 2</option>
-                          </>
-                        )}
-                      </select>
-                      <Button
-                        className="flex-1 rounded-xl bg-primary hover:bg-primary/90 gap-2"
-                        onClick={handlePayWithAgent}
-                        disabled={agentPayLoading || (expiryTimeRemaining !== null && expiryTimeRemaining <= 0)}
-                      >
-                        {agentPayLoading ? (
-                          <>
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                            Paying...
-                          </>
-                        ) : (
-                          <>
-                            <Bot className="h-4 w-4" />
-                            Pay with agent
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-                )}
-
-                {/* Pay as human: Wallet + Manual (only when paymentMode is human) */}
-                {paymentMode === 'human' && (
-                  <>
                 {/* Network Selection - Only if multiple */}
                 {networks.length > 1 && (
                   <div>
@@ -905,8 +780,6 @@ export default function PaymentView() {
                     Continue to Manual Payment
                   </Button>
                 </div>
-                  </>
-                )}
               </div>
             </Card>
           )}

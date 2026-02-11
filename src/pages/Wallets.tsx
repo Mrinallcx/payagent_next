@@ -14,23 +14,7 @@ interface WalletData {
   tokens: string[];
 }
 
-const mockWallets: WalletData[] = [
-  {
-    id: "1",
-    address: "0xaBC744CF9a5D42030A85e69fC2816F033a3AFe7E",
-    tokens: ["USDT", "ERC20"],
-  },
-  {
-    id: "2",
-    address: "TH5hnhU4c5cUoiPuEoeEe7oVgfcdv4sgEb",
-    tokens: ["USDT", "TRC20"],
-  },
-  {
-    id: "3",
-    address: "0x1234567890AbCdEf1234567890AbCdEf123456",
-    tokens: ["ETH", "ERC20"],
-  },
-];
+const mockWallets: WalletData[] = [];
 
 const Wallets = () => {
   const [wallets, setWallets] = useState<WalletData[]>(mockWallets);

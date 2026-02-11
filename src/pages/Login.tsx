@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { useAccount } from "wagmi";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { Wallet, ArrowRight, Lock, Bot } from "lucide-react";
-import { isAgentServiceConfigured } from "@/lib/agentApi";
 
 const QUOTES = [
   {
@@ -47,14 +46,14 @@ const Login = () => {
 
   return (
     <div className="min-h-screen flex">
-      {/* Left Side - Violet gradient */}
-      <div className="hidden lg:flex lg:w-1/2 xl:w-3/5 relative overflow-hidden bg-gradient-to-br from-violet-600 via-violet-700 to-purple-800">
+      {/* Left Side - Brand blue gradient */}
+      <div className="hidden lg:flex lg:w-1/2 xl:w-3/5 relative overflow-hidden bg-gradient-to-br from-blue-600 via-blue-700 to-blue-800">
         {/* Subtle pattern */}
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff08_1px,transparent_1px),linear-gradient(to_bottom,#ffffff08_1px,transparent_1px)] bg-[size:80px_80px]" />
         
         {/* Decorative circles */}
         <div className="absolute top-20 right-20 w-64 h-64 bg-white/5 rounded-full blur-3xl" />
-        <div className="absolute bottom-20 left-20 w-48 h-48 bg-purple-400/10 rounded-full blur-2xl" />
+        <div className="absolute bottom-20 left-20 w-48 h-48 bg-blue-400/10 rounded-full blur-2xl" />
 
         {/* Content */}
         <div className="relative z-10 flex flex-col justify-between p-16 xl:p-20 w-full">
@@ -110,7 +109,7 @@ const Login = () => {
         {/* Mobile header */}
         <header className="lg:hidden p-6">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-violet-600 flex items-center justify-center">
+            <div className="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center">
               <Wallet className="w-4 h-4 text-white" />
             </div>
             <span className="text-lg font-heading font-semibold text-foreground">
@@ -147,7 +146,7 @@ const Login = () => {
                     >
                       <button
                         onClick={openConnectModal}
-                        className="w-full flex items-center justify-between px-5 py-4 bg-violet-600 text-white font-medium rounded-xl hover:bg-violet-700 transition-colors group"
+                        className="w-full flex items-center justify-between px-5 py-4 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-colors group"
                       >
                         <div className="flex items-center gap-3">
                           <Wallet className="w-5 h-5" />
@@ -165,23 +164,21 @@ const Login = () => {
               </div>
             </div>
 
-            {/* Pay as agent (Moltbook) */}
-            {isAgentServiceConfigured() && (
-              <div className="space-y-2">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">For agents on Moltbook</p>
-                <button
-                  type="button"
-                  onClick={() => navigate("/agent")}
-                  className="w-full flex items-center justify-between px-5 py-4 bg-white border-2 border-violet-200 text-violet-700 font-medium rounded-xl hover:bg-violet-50 hover:border-violet-300 transition-colors group"
-                >
-                  <div className="flex items-center gap-3">
-                    <Bot className="w-5 h-5 shrink-0" />
-                    <span className="text-left">Agents on Moltbook create and pay links via API (automated). Set up your agent →</span>
-                  </div>
-                  <ArrowRight className="w-4 h-4 opacity-70 shrink-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
-                </button>
-              </div>
-            )}
+            {/* For AI Agents */}
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">For AI agents</p>
+              <button
+                type="button"
+                onClick={() => navigate("/agent")}
+                className="w-full flex items-center justify-between px-5 py-4 bg-white border-2 border-blue-200 text-blue-700 font-medium rounded-xl hover:bg-blue-50 hover:border-blue-300 transition-colors group"
+              >
+                <div className="flex items-center gap-3">
+                  <Bot className="w-5 h-5 shrink-0" />
+                  <span className="text-left">AI agents create and pay links via API. View docs & register →</span>
+                </div>
+                <ArrowRight className="w-4 h-4 opacity-70 shrink-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
+              </button>
+            </div>
 
             {/* Divider */}
             <div className="relative">
@@ -196,8 +193,8 @@ const Login = () => {
             {/* Features - Minimal */}
             <div className="space-y-4">
               <div className="flex items-center gap-4 py-3">
-                <div className="w-10 h-10 rounded-lg bg-violet-50 flex items-center justify-center shrink-0">
-                  <span className="text-sm font-semibold text-violet-600">01</span>
+                <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
+                  <span className="text-sm font-semibold text-blue-600">01</span>
                 </div>
                 <div>
                   <h4 className="font-medium text-foreground text-sm">Payment Links</h4>
@@ -206,8 +203,8 @@ const Login = () => {
               </div>
 
               <div className="flex items-center gap-4 py-3">
-                <div className="w-10 h-10 rounded-lg bg-violet-50 flex items-center justify-center shrink-0">
-                  <span className="text-sm font-semibold text-violet-600">02</span>
+                <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
+                  <span className="text-sm font-semibold text-blue-600">02</span>
                 </div>
                 <div>
                   <h4 className="font-medium text-foreground text-sm">Track Payments</h4>
@@ -216,8 +213,8 @@ const Login = () => {
               </div>
 
               <div className="flex items-center gap-4 py-3">
-                <div className="w-10 h-10 rounded-lg bg-violet-50 flex items-center justify-center shrink-0">
-                  <span className="text-sm font-semibold text-violet-600">03</span>
+                <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
+                  <span className="text-sm font-semibold text-blue-600">03</span>
                 </div>
                 <div>
                   <h4 className="font-medium text-foreground text-sm">Multi-Chain</h4>

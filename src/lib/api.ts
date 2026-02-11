@@ -208,30 +208,22 @@ export async function verifyPayment(data: VerifyPaymentData): Promise<VerifyPaym
 }
 
 /**
- * Process payment via LCX (wallet connection)
+ * Get platform stats (for dashboard)
  */
-export async function processLcxPayment(requestId: string, walletAddress: string): Promise<VerifyPaymentResponse> {
+export interface PlatformStats {
+  totalAgents: number;
+  totalPayments: number;
+  totalFeesCollected: number;
+}
+
+export async function getPlatformStats(): Promise<PlatformStats> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/lcx-pay`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        requestId,
-        lcxUserId: walletAddress,
-      }),
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Payment processing failed');
-    }
-
+    const response = await fetch(`${API_BASE_URL}/api/stats`);
+    if (!response.ok) throw new Error('Failed to fetch stats');
     const result = await response.json();
-    return result;
+    return result.stats;
   } catch (error) {
-    console.error('Error processing LCX payment:', error);
-    throw error;
+    console.error('Error fetching platform stats:', error);
+    return { totalAgents: 0, totalPayments: 0, totalFeesCollected: 0 };
   }
 }

@@ -4,7 +4,7 @@
 
 @layer base {
   :root {
-    /* Clean White & Blue Theme */
+    /* Clean White & Brand Blue (#365EF7) Theme */
     --background: 0 0% 100%;
     --foreground: 222 47% 11%;
     
@@ -14,20 +14,20 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
     
-    /* Primary Blue */
-    --primary: 221 83% 53%;
+    /* Primary Brand — #365EF7 */
+    --primary: 228 92% 59%;
     --primary-foreground: 0 0% 100%;
     
     /* Secondary */
-    --secondary: 210 40% 96%;
+    --secondary: 214 40% 96%;
     --secondary-foreground: 222 47% 11%;
     
     /* Muted */
-    --muted: 210 40% 96%;
+    --muted: 214 40% 96%;
     --muted-foreground: 215 16% 47%;
     
     /* Accent */
-    --accent: 210 40% 96%;
+    --accent: 214 40% 96%;
     --accent-foreground: 222 47% 11%;
     
     --destructive: 0 84% 60%;
@@ -35,19 +35,19 @@
     
     --border: 214 32% 91%;
     --input: 214 32% 91%;
-    --ring: 221 83% 53%;
+    --ring: 228 92% 59%;
     
     --radius: 0.5rem;
     
     /* Sidebar */
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 222 47% 11%;
-    --sidebar-primary: 221 83% 53%;
+    --sidebar-primary: 228 92% 59%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 210 40% 96%;
+    --sidebar-accent: 214 40% 96%;
     --sidebar-accent-foreground: 222 47% 11%;
     --sidebar-border: 214 32% 91%;
-    --sidebar-ring: 221 83% 53%;
+    --sidebar-ring: 228 92% 59%;
     
     /* Success/Warning */
     --success: 142 76% 36%;

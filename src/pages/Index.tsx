@@ -17,11 +17,13 @@ import {
   ExternalLink, 
   Wallet,
   ArrowRight,
-  ArrowUpRight
+  ArrowUpRight,
+  Bot,
+  Users
 } from "lucide-react";
 import { useAccount } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
-import { getAllPaymentRequests } from "@/lib/api";
+import { getAllPaymentRequests, getPlatformStats, type PlatformStats } from "@/lib/api";
 import { getExplorerUrl } from "@/lib/contracts";
 
 const formatDate = (timestamp: number) => {
@@ -62,6 +64,13 @@ const Index = () => {
     refetchOnWindowFocus: true,
     refetchInterval: 30000,
     refetchIntervalInBackground: false,
+  });
+
+  const { data: platformStats } = useQuery<PlatformStats>({
+    queryKey: ['platformStats'],
+    queryFn: getPlatformStats,
+    staleTime: 30000,
+    refetchInterval: 60000,
   });
 
   const paymentLinks = data?.requests?.slice(0, 5) ?? [];
@@ -106,7 +115,7 @@ const Index = () => {
                 {isConnected && (
                   <Button 
                     onClick={handleCreateLinkClick}
-                    className="gap-2 bg-violet-600 hover:bg-violet-700 rounded-lg"
+                    className="gap-2 bg-blue-600 hover:bg-blue-700 rounded-lg"
                   >
                     <Plus className="h-4 w-4" />
                     Create Link
@@ -114,11 +123,32 @@ const Index = () => {
                 )}
               </div>
 
+              {/* Platform Stats Banner */}
+              {platformStats && (
+                <div className="bg-gradient-to-r from-blue-600 to-blue-600 rounded-xl p-5 text-white">
+                  <p className="text-sm text-white/70 mb-3">Platform Overview</p>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <p className="text-2xl font-heading font-bold">{platformStats.totalAgents}</p>
+                      <p className="text-xs text-white/60">Registered Agents</p>
+                    </div>
+                    <div>
+                      <p className="text-2xl font-heading font-bold">{platformStats.totalPayments}</p>
+                      <p className="text-xs text-white/60">Total Payments</p>
+                    </div>
+                    <div>
+                      <p className="text-2xl font-heading font-bold">{platformStats.totalFeesCollected > 0 ? platformStats.totalFeesCollected.toFixed(2) : '0'}</p>
+                      <p className="text-xs text-white/60">Fees Collected</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Connect Prompt */}
               {!isConnected ? (
                 <div className="bg-white rounded-2xl border border-border p-12 text-center">
-                  <div className="w-14 h-14 rounded-xl bg-violet-50 flex items-center justify-center mx-auto mb-5">
-                    <Wallet className="h-6 w-6 text-violet-600" />
+                  <div className="w-14 h-14 rounded-xl bg-blue-50 flex items-center justify-center mx-auto mb-5">
+                    <Wallet className="h-6 w-6 text-blue-600" />
                   </div>
                   <h3 className="text-lg font-heading font-semibold mb-2">Connect Your Wallet</h3>
                   <p className="text-sm text-muted-foreground mb-6 max-w-sm mx-auto">
@@ -126,7 +156,7 @@ const Index = () => {
                   </p>
                   <Button 
                     onClick={() => openConnectModal?.()} 
-                    className="gap-2 bg-violet-600 hover:bg-violet-700 rounded-lg"
+                    className="gap-2 bg-blue-600 hover:bg-blue-700 rounded-lg"
                   >
                     <Wallet className="h-4 w-4" />
                     Connect Wallet
@@ -137,10 +167,10 @@ const Index = () => {
                   {/* Stats */}
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     {[
-                      { label: "Total Links", value: paymentLinks.length, color: "violet" },
+                      { label: "Total Links", value: paymentLinks.length, color: "blue" },
                       { label: "Completed", value: recentTransactions.length, color: "emerald" },
                       { label: "Pending", value: pendingLinks, color: "amber" },
-                      { label: "Total Received", value: totalReceived > 0 ? totalReceived.toFixed(2) : "0", color: "violet" },
+                      { label: "Total Received", value: totalReceived > 0 ? totalReceived.toFixed(2) : "0", color: "blue" },
                     ].map((stat) => (
                       <div key={stat.label} className="bg-white rounded-xl border border-border p-5">
                         <p className="text-xs text-muted-foreground mb-1">{stat.label}</p>
@@ -160,7 +190,7 @@ const Index = () => {
                         <Button 
                           variant="ghost" 
                           size="sm" 
-                          className="text-xs text-muted-foreground hover:text-violet-600 gap-1 h-8"
+                          className="text-xs text-muted-foreground hover:text-blue-600 gap-1 h-8"
                           onClick={() => navigate('/transactions')}
                         >
                           View All
@@ -170,7 +200,7 @@ const Index = () => {
                     >
                       {isLoading ? (
                         <div className="flex items-center justify-center py-12">
-                          <Loader2 className="h-5 w-5 animate-spin text-violet-600" />
+                          <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
                         </div>
                       ) : recentTransactions.length > 0 ? (
                         <div className="space-y-0">
@@ -205,7 +235,7 @@ const Index = () => {
                                     href={`${getExplorerUrl(txn.network)}/tx/${txn.txHash}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="p-1.5 rounded-md hover:bg-violet-50 transition-colors"
+                                    className="p-1.5 rounded-md hover:bg-blue-50 transition-colors"
                                   >
                                     <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />
                                   </a>
@@ -216,8 +246,8 @@ const Index = () => {
                         </div>
                       ) : (
                         <div className="flex flex-col items-center justify-center py-12 text-center">
-                          <div className="w-12 h-12 rounded-xl bg-violet-50 flex items-center justify-center mb-3">
-                            <ArrowDownLeft className="h-5 w-5 text-violet-400" />
+                          <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center mb-3">
+                            <ArrowDownLeft className="h-5 w-5 text-blue-400" />
                           </div>
                           <p className="text-sm text-muted-foreground">No transactions yet</p>
                         </div>
@@ -231,7 +261,7 @@ const Index = () => {
                         <Button 
                           variant="ghost" 
                           size="sm" 
-                          className="text-xs gap-1 text-muted-foreground hover:text-violet-600 h-8"
+                          className="text-xs gap-1 text-muted-foreground hover:text-blue-600 h-8"
                           onClick={handleCreateLinkClick}
                         >
                           <Plus className="h-3 w-3" />
@@ -241,7 +271,7 @@ const Index = () => {
                     >
                       {isLoading ? (
                         <div className="flex items-center justify-center py-12">
-                          <Loader2 className="h-5 w-5 animate-spin text-violet-600" />
+                          <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
                         </div>
                       ) : paymentLinks.length > 0 ? (
                         <div className="space-y-0">
@@ -260,15 +290,15 @@ const Index = () => {
                         </div>
                       ) : (
                         <div className="flex flex-col items-center justify-center py-12 text-center">
-                          <div className="w-12 h-12 rounded-xl bg-violet-50 flex items-center justify-center mb-3">
-                            <Link2 className="h-5 w-5 text-violet-400" />
+                          <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center mb-3">
+                            <Link2 className="h-5 w-5 text-blue-400" />
                           </div>
                           <p className="text-sm text-muted-foreground mb-3">No payment links yet</p>
                           <Button 
                             variant="outline" 
                             size="sm" 
                             onClick={handleCreateLinkClick}
-                            className="gap-1 rounded-lg text-xs border-violet-200 text-violet-600 hover:bg-violet-50"
+                            className="gap-1 rounded-lg text-xs border-blue-200 text-blue-600 hover:bg-blue-50"
                           >
                             <Plus className="h-3 w-3" />
                             Create Link
@@ -282,7 +312,7 @@ const Index = () => {
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <button 
                       onClick={handleCreateLinkClick}
-                      className="group bg-violet-600 rounded-xl p-5 text-left text-white hover:bg-violet-700 transition-colors"
+                      className="group bg-blue-600 rounded-xl p-5 text-left text-white hover:bg-blue-700 transition-colors"
                     >
                       <div className="flex items-center justify-between mb-3">
                         <div className="w-10 h-10 rounded-lg bg-white/20 flex items-center justify-center">
@@ -296,11 +326,11 @@ const Index = () => {
 
                     <button 
                       onClick={() => navigate('/payment-links')}
-                      className="group bg-white rounded-xl p-5 text-left border border-border hover:border-violet-200 transition-colors"
+                      className="group bg-white rounded-xl p-5 text-left border border-border hover:border-blue-200 transition-colors"
                     >
                       <div className="flex items-center justify-between mb-3">
-                        <div className="w-10 h-10 rounded-lg bg-violet-50 flex items-center justify-center">
-                          <Link2 className="h-5 w-5 text-violet-600" />
+                        <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
+                          <Link2 className="h-5 w-5 text-blue-600" />
                         </div>
                         <ArrowRight className="h-4 w-4 text-muted-foreground opacity-40 group-hover:opacity-100 transition-opacity" />
                       </div>
@@ -310,16 +340,47 @@ const Index = () => {
 
                     <button 
                       onClick={() => navigate('/transactions')}
-                      className="group bg-white rounded-xl p-5 text-left border border-border hover:border-violet-200 transition-colors"
+                      className="group bg-white rounded-xl p-5 text-left border border-border hover:border-blue-200 transition-colors"
                     >
                       <div className="flex items-center justify-between mb-3">
-                        <div className="w-10 h-10 rounded-lg bg-violet-50 flex items-center justify-center">
-                          <ArrowDownLeft className="h-5 w-5 text-violet-600" />
+                        <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
+                          <ArrowDownLeft className="h-5 w-5 text-blue-600" />
                         </div>
                         <ArrowRight className="h-4 w-4 text-muted-foreground opacity-40 group-hover:opacity-100 transition-opacity" />
                       </div>
                       <h3 className="font-medium text-foreground mb-0.5">Transactions</h3>
                       <p className="text-sm text-muted-foreground">View payment history</p>
+                    </button>
+                  </div>
+
+                  {/* Agent Quick Actions */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <button 
+                      onClick={() => navigate('/agent')}
+                      className="group bg-white rounded-xl p-5 text-left border border-border hover:border-blue-200 transition-colors"
+                    >
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
+                          <Bot className="h-5 w-5 text-blue-600" />
+                        </div>
+                        <ArrowRight className="h-4 w-4 text-muted-foreground opacity-40 group-hover:opacity-100 transition-opacity" />
+                      </div>
+                      <h3 className="font-medium text-foreground mb-0.5">API Documentation</h3>
+                      <p className="text-sm text-muted-foreground">Register agents, create links via API</p>
+                    </button>
+
+                    <button 
+                      onClick={() => navigate('/agents')}
+                      className="group bg-white rounded-xl p-5 text-left border border-border hover:border-blue-200 transition-colors"
+                    >
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
+                          <Users className="h-5 w-5 text-blue-600" />
+                        </div>
+                        <ArrowRight className="h-4 w-4 text-muted-foreground opacity-40 group-hover:opacity-100 transition-opacity" />
+                      </div>
+                      <h3 className="font-medium text-foreground mb-0.5">Agents Dashboard</h3>
+                      <p className="text-sm text-muted-foreground">View registered agents & fee analytics</p>
                     </button>
                   </div>
                 </>

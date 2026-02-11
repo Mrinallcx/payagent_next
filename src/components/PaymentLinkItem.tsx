@@ -96,10 +96,10 @@ export function PaymentLinkItem({ id, amount, token, status, link, onDelete }: P
               ? 'bg-emerald-50' 
               : status === 'EXPIRED' 
               ? 'bg-red-50' 
-              : 'bg-violet-50'
+              : 'bg-blue-50'
           }`}>
             <Link2 className={`h-4 w-4 ${
-              status === 'PAID' ? 'text-emerald-600' : status === 'EXPIRED' ? 'text-red-500' : 'text-violet-600'
+              status === 'PAID' ? 'text-emerald-600' : status === 'EXPIRED' ? 'text-red-500' : 'text-blue-600'
             }`} />
           </div>
           <div>
@@ -113,7 +113,7 @@ export function PaymentLinkItem({ id, amount, token, status, link, onDelete }: P
           <Button 
             variant="ghost" 
             size="icon" 
-            className="h-8 w-8 rounded-md hover:bg-violet-50 hover:text-violet-600" 
+            className="h-8 w-8 rounded-md hover:bg-blue-50 hover:text-blue-600" 
             onClick={handleCopy}
           >
             <Copy className="h-3.5 w-3.5" />
@@ -121,7 +121,7 @@ export function PaymentLinkItem({ id, amount, token, status, link, onDelete }: P
           <Button 
             variant="ghost" 
             size="icon" 
-            className="h-8 w-8 rounded-md hover:bg-violet-50 hover:text-violet-600" 
+            className="h-8 w-8 rounded-md hover:bg-blue-50 hover:text-blue-600" 
             onClick={handleOpenLink}
           >
             <ExternalLink className="h-3.5 w-3.5" />

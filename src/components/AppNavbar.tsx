@@ -36,7 +36,7 @@ export function AppNavbar() {
             </div>
             <Button 
               size="sm" 
-              className="gap-2 bg-violet-600 hover:bg-violet-700 rounded-lg h-9"
+              className="gap-2 bg-blue-600 hover:bg-blue-700 rounded-lg h-9"
               onClick={handleCreateLinkClick}
             >
               <Plus className="h-4 w-4" />

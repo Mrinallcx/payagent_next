@@ -8,10 +8,12 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.86.0",
+    "bcrypt": "^6.0.0",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "ethers": "^6.15.0",
-    "express": "^5.1.0"
+    "express": "^5.1.0",
+    "openai": "^6.21.0"
   },
   "devDependencies": {
     "@types/node": "24.9.1",
