@@ -19,7 +19,7 @@ const NotFound = () => {
             <Wallet className="w-4 h-4 text-white" />
           </div>
           <span className="text-lg font-heading font-semibold text-foreground">
-            PayMe
+            PayAgent
           </span>
         </Link>
       </header>
@@ -60,7 +60,7 @@ const NotFound = () => {
 
       <footer className="p-6 text-center">
         <p className="text-xs text-muted-foreground">
-          PayMe — Simple crypto payments
+          PayAgent — Simple crypto payments
         </p>
       </footer>
     </div>

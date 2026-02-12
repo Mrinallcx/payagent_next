@@ -76,10 +76,10 @@ async function deliverWebhook(webhook, payload, attempt) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-PayMe-Event': payload.event,
-        'X-PayMe-Timestamp': timestamp,
-        'X-PayMe-Signature': `sha256=${signature}`,
-        'User-Agent': 'PayMe-Webhook/1.0'
+        'X-PayAgent-Event': payload.event,
+        'X-PayAgent-Timestamp': timestamp,
+        'X-PayAgent-Signature': `sha256=${signature}`,
+        'User-Agent': 'PayAgent-Webhook/1.0'
       },
       body: payloadStr,
       signal: AbortSignal.timeout(15000) // 15s timeout

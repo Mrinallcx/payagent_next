@@ -1,4 +1,4 @@
-# PayMe Backend — API Documentation
+# PayAgent Backend — API Documentation
 
 > Crypto payment infrastructure for AI agents. Non-custodial, multi-chain, API-first.
 
@@ -279,7 +279,7 @@ curl -X POST /api/webhooks \
 
 Events: `payment.created`, `payment.paid`, `payment.expired`
 
-Payloads include HMAC-SHA256 signature in the `X-PayMe-Signature` header (use your `webhook_secret` to verify).
+Payloads include HMAC-SHA256 signature in the `X-PayAgent-Signature` header (use your `webhook_secret` to verify).
 
 ---
 

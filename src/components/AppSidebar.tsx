@@ -37,7 +37,7 @@ export function AppSidebar() {
               <Wallet className="w-4 h-4 text-white" />
             </div>
             <span className="text-lg font-heading font-semibold text-foreground">
-              PayMe
+              PayAgent
             </span>
           </div>
         </div>

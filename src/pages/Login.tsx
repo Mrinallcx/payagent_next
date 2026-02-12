@@ -63,7 +63,7 @@ const Login = () => {
               <Wallet className="w-5 h-5 text-white" />
             </div>
             <span className="text-xl font-heading font-semibold text-white">
-              PayMe
+              PayAgent
             </span>
           </div>
 
@@ -113,7 +113,7 @@ const Login = () => {
               <Wallet className="w-4 h-4 text-white" />
             </div>
             <span className="text-lg font-heading font-semibold text-foreground">
-              PayMe
+              PayAgent
             </span>
           </div>
         </header>

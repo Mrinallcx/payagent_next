@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * PayMe Agent Registration CLI
+ * PayAgent Agent Registration CLI
  *
  * Usage: node scripts/register-agent.js
  *
@@ -10,7 +10,7 @@
 
 const readline = require('readline');
 
-const API_BASE = process.env.PAYME_API_URL || 'http://localhost:3000';
+const API_BASE = process.env.PAYAGENT_API_URL || process.env.PAYME_API_URL || 'http://localhost:3000';
 
 const rl = readline.createInterface({
   input: process.stdin,
@@ -26,7 +26,7 @@ function ask(question) {
 async function main() {
   console.log('');
   console.log('====================================');
-  console.log('  PayMe Agent Registration');
+  console.log('  PayAgent — Agent Registration');
   console.log('====================================');
   console.log('');
 

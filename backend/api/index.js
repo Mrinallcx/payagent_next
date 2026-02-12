@@ -13,13 +13,13 @@ app.use(express.json());
 app.get('/', (req, res) => {
   res.json({
     status: 'ok',
-    message: 'PayMe API is running',
+    message: 'PayAgent API is running',
     timestamp: new Date().toISOString()
   });
 });
 
 app.get('/health', (req, res) => {
-  res.json({ status: 'healthy', service: 'payme-platform' });
+  res.json({ status: 'healthy', service: 'payagent-platform' });
 });
 
 // Import store and controllers
@@ -928,9 +928,9 @@ app.post('/api/webhooks/:id/test', authMiddleware, async (req, res) => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-PayMe-Event': 'payment.test',
-        'X-PayMe-Timestamp': String(Date.now()),
-        'X-PayMe-Signature': `sha256=${signature}`
+        'X-PayAgent-Event': 'payment.test',
+        'X-PayAgent-Timestamp': String(Date.now()),
+        'X-PayAgent-Signature': `sha256=${signature}`
       },
       body: JSON.stringify(testPayload)
     });

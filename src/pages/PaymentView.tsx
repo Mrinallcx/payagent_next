@@ -518,7 +518,7 @@ export default function PaymentView() {
               <Wallet className="w-5 h-5 text-white" />
             </div>
             <span className="text-2xl font-heading font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-              PayMe
+              PayAgent
             </span>
           </div>
           <div className="flex items-center gap-3">

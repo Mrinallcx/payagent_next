@@ -109,7 +109,7 @@ const Index = () => {
                 <div>
                   <p className="text-sm text-muted-foreground mb-1">Dashboard</p>
                   <h1 className="text-2xl font-heading font-bold text-foreground">
-                    {isConnected ? 'Welcome back' : 'Welcome to PayMe'}
+                    {isConnected ? 'Welcome back' : 'Welcome to PayAgent'}
                   </h1>
                 </div>
                 {isConnected && (

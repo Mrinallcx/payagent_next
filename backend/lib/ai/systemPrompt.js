@@ -1,5 +1,5 @@
 /**
- * System Prompt Builder for PayMe AI Assistant
+ * System Prompt Builder for PayAgent AI Assistant
  *
  * Builds a context-aware system prompt that includes agent details
  * and available actions with their expected JSON schemas.
@@ -12,7 +12,7 @@ function buildSystemPrompt(agent) {
   const chainList = chains.map(c => `  - "${c.name}" — ${c.displayName}${c.isTestnet ? ' (testnet)' : ''}`).join('\n');
   const chainNames = chains.map(c => c.name).join(', ');
 
-  return `You are PayMe AI Assistant — a crypto payment infrastructure assistant.
+  return `You are PayAgent AI Assistant — a crypto payment infrastructure assistant.
 
 You help AI agents create payment links, check payment statuses, and manage their wallets.
 

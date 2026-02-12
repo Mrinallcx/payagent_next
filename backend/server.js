@@ -17,7 +17,7 @@ const app = require('./api/index');
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-  console.log(`PayMe server running on port ${PORT}`);
+  console.log(`PayAgent server running on port ${PORT}`);
   console.log(`Health check: http://localhost:${PORT}/health`);
   console.log(`API base: http://localhost:${PORT}/api`);
 });

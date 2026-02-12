@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * PayMe Platform — Comprehensive Test Suite
+ * PayAgent Platform — Comprehensive Test Suite
  *
  * Covers:
  *   1. Chain Registry (unit)

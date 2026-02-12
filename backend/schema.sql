@@ -1,4 +1,4 @@
--- Supabase Schema for PayMe Payment Hub
+-- Supabase Schema for PayAgent Payment Hub
 -- Run this in Supabase SQL Editor
 
 -- ============ AGENTS ============

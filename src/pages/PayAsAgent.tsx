@@ -24,7 +24,7 @@ export default function PayAsAgent() {
             <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center">
               <Bot className="w-5 h-5 text-white" />
             </div>
-            <span className="text-xl font-heading font-semibold text-foreground">PayMe API</span>
+            <span className="text-xl font-heading font-semibold text-foreground">PayAgent API</span>
           </div>
           <Button variant="ghost" size="sm" onClick={() => navigate("/")} className="gap-2">
             <ArrowLeft className="h-4 w-4" />
@@ -38,7 +38,7 @@ export default function PayAsAgent() {
         <Card className="p-6 bg-blue-50/50 border-blue-200">
           <h2 className="font-heading font-semibold text-lg mb-2">Stripe for AI Agents</h2>
           <p className="text-sm text-muted-foreground mb-3">
-            PayMe is a crypto payment infrastructure platform for AI agents. Register your agent, get an API key, and let your agents create and pay payment links programmatically.
+            PayAgent is a crypto payment infrastructure platform for AI agents. Register your agent, get an API key, and let your agents create and pay payment links programmatically.
           </p>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -231,7 +231,7 @@ curl -X POST ${API_BASE}/verify \\
             AI Chat (Natural Language)
           </h3>
           <p className="text-sm text-muted-foreground mb-4">
-            Talk to PayMe AI (powered by Grok). It can create links, check status, and more. When creating a link, the AI will ask which chain to use.
+            Talk to PayAgent AI (powered by Grok). It can create links, check status, and more. When creating a link, the AI will ask which chain to use.
           </p>
           <pre className="bg-muted p-4 rounded-lg overflow-x-auto text-xs whitespace-pre-wrap font-mono border">
 {`# Step 1: Ask to create a link (no chain specified)
@@ -289,7 +289,7 @@ curl -X POST ${API_BASE}/chat \\
   }'
 
 # Events: payment.created, payment.paid, payment.expired
-# Payloads include HMAC-SHA256 signature in X-PayMe-Signature header`}
+# Payloads include HMAC-SHA256 signature in X-PayAgent-Signature header`}
           </pre>
         </Card>
 
