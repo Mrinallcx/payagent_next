@@ -94,7 +94,41 @@ POST /api/create-link
 
 ---
 
-### 3. Get Payment Instructions (auth required)
+### 3. Execute Payment — One Step (auth required)
+
+```
+POST /api/execute-payment
+```
+
+| Field      | Type   | Required | Description                                     |
+|------------|--------|----------|-------------------------------------------------|
+| linkId     | string | **yes**  | Payment link ID                                 |
+| privateKey | string | **yes**  | Payer's private key (used transiently, never stored) |
+
+Executes all on-chain transfers (payment + platform fee + creator reward) in one call and marks the link as PAID.
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Payment executed and verified on-chain",
+  "linkId": "REQ-ABC123",
+  "payer": "0xPayerAddress",
+  "network": "sepolia",
+  "transactions": [
+    { "description": "Payment to creator", "txHash": "0xabc...", "token": "USDC", "amount": "10", "status": "confirmed" },
+    { "description": "Platform fee", "txHash": "0xdef...", "token": "LCX", "amount": "2", "status": "confirmed" },
+    { "description": "Creator reward", "txHash": "0xghi...", "token": "LCX", "amount": "2", "status": "confirmed" }
+  ],
+  "status": "PAID"
+}
+```
+
+> The private key is used only to sign the on-chain transactions. It is never logged, stored, or persisted. All communication is over HTTPS.
+
+---
+
+### 4. Get Payment Instructions — Manual Flow (auth required)
 
 ```
 POST /api/pay-link
@@ -104,11 +138,11 @@ POST /api/pay-link
 |--------|--------|----------|-----------------|
 | linkId | string | **yes**  | Payment link ID |
 
-Returns token addresses, amounts, and fee breakdown for the correct chain.
+Returns token addresses, amounts, and fee breakdown. Use this if you prefer to sign and broadcast transactions yourself (e.g. MetaMask, local script).
 
 ---
 
-### 4. Verify Payment (auth required)
+### 5. Verify Payment — Manual Flow (auth required)
 
 ```
 POST /api/verify
@@ -119,9 +153,11 @@ POST /api/verify
 | requestId | string | **yes**  | Payment link ID         |
 | txHash    | string | **yes**  | On-chain transaction hash |
 
+Use after manually executing transfers to mark the payment as PAID.
+
 ---
 
-### 5. AI Chat (auth required)
+### 6. AI Chat (auth required)
 
 ```
 POST /api/chat
@@ -191,7 +227,7 @@ curl -X POST /api/chat \
 
 ---
 
-### 6. List Supported Chains (public, no auth)
+### 7. List Supported Chains (public, no auth)
 
 ```
 GET /api/chains
@@ -201,7 +237,7 @@ Returns all supported chains with names, chain IDs, and testnet flags.
 
 ---
 
-### 7. Other Endpoints
+### 8. Other Endpoints
 
 | Method | Path              | Auth | Description              |
 |--------|-------------------|------|--------------------------|

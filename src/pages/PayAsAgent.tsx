@@ -156,14 +156,56 @@ export default function PayAsAgent() {
           </p>
         </Card>
 
-        {/* Step 3: Pay a Link */}
+        {/* Step 3: Execute Payment */}
         <Card className="p-6">
           <h3 className="font-heading font-semibold text-lg mb-3 flex items-center gap-2">
             <span className="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center text-sm font-bold text-blue-600">3</span>
-            Pay a Link
+            Execute Payment (One-Step)
           </h3>
           <p className="text-sm text-muted-foreground mb-4">
-            Get payment instructions (non-custodial), execute transfers, then verify.
+            Send one request with the link ID and payer's private key. The platform executes all on-chain transfers (payment + fees) and returns transaction hashes. The private key is used transiently to sign and is never stored.
+          </p>
+          <pre className="bg-muted p-4 rounded-lg overflow-x-auto text-xs whitespace-pre-wrap font-mono border">
+{`curl -X POST ${API_BASE}/execute-payment \\
+  -H "Content-Type: application/json" \\
+  -H "x-api-key: pk_live_YOUR_API_KEY" \\
+  -d '{
+    "linkId": "REQ-ABC123",
+    "privateKey": "0xYOUR_PRIVATE_KEY"
+  }'
+
+# Response:
+# {
+#   "success": true,
+#   "message": "Payment executed and verified on-chain",
+#   "linkId": "REQ-ABC123",
+#   "payer": "0xPayerAddress",
+#   "network": "sepolia",
+#   "transactions": [
+#     { "description": "Payment to creator", "txHash": "0xabc...", "token": "USDC", "amount": "10", "status": "confirmed" },
+#     { "description": "Platform fee", "txHash": "0xdef...", "token": "LCX", "amount": "2", "status": "confirmed" },
+#     { "description": "Creator reward", "txHash": "0xghi...", "token": "LCX", "amount": "2", "status": "confirmed" }
+#   ],
+#   "status": "PAID"
+# }`}
+          </pre>
+          <Button variant="outline" size="sm" className="mt-3" onClick={() => copyText(
+            `curl -X POST ${API_BASE}/execute-payment -H "Content-Type: application/json" -H "x-api-key: pk_live_YOUR_API_KEY" -d '{"linkId": "REQ-ABC123", "privateKey": "0xYOUR_PRIVATE_KEY"}'`,
+            "Execute payment command"
+          )}>
+            <Copy className="h-4 w-4 mr-2" />
+            Copy cURL
+          </Button>
+        </Card>
+
+        {/* Step 3b: Manual Flow */}
+        <Card className="p-6 bg-slate-50/50 border-slate-200">
+          <h3 className="font-heading font-semibold text-lg mb-3 flex items-center gap-2">
+            <span className="w-7 h-7 rounded-lg bg-slate-200 flex items-center justify-center text-sm font-bold text-slate-600">3b</span>
+            Manual Flow (Advanced)
+          </h3>
+          <p className="text-sm text-muted-foreground mb-4">
+            Alternatively, get payment instructions, execute transfers yourself, then verify.
           </p>
           <pre className="bg-muted p-4 rounded-lg overflow-x-auto text-xs whitespace-pre-wrap font-mono border">
 {`# Get payment instructions + fee breakdown
@@ -172,8 +214,8 @@ curl -X POST ${API_BASE}/pay-link \\
   -H "x-api-key: pk_live_YOUR_API_KEY" \\
   -d '{ "linkId": "REQ-ABC123" }'
 
-# Response includes transfers to make and fee breakdown
-# Then after submitting tx on-chain:
+# Execute transfers on-chain yourself (MetaMask, ethers.js, etc.)
+# Then verify with the transaction hash:
 
 curl -X POST ${API_BASE}/verify \\
   -H "Content-Type: application/json" \\
@@ -277,6 +319,7 @@ curl -X POST ${API_BASE}/chat \\
             <div className="flex gap-3 py-1.5 border-t"><span className="text-blue-600 font-bold w-14">GET</span><span className="text-muted-foreground">/api/agents/me</span><span className="text-foreground ml-auto">My profile</span></div>
             <div className="flex gap-3 py-1.5 border-t"><span className="text-green-600 font-bold w-14">POST</span><span className="text-muted-foreground">/api/agents/wallet</span><span className="text-foreground ml-auto">Update wallet</span></div>
             <div className="flex gap-3 py-1.5 border-t"><span className="text-green-600 font-bold w-14">POST</span><span className="text-muted-foreground">/api/create-link</span><span className="text-foreground ml-auto">Create link (network required)</span></div>
+            <div className="flex gap-3 py-1.5 border-t"><span className="text-green-600 font-bold w-14">POST</span><span className="text-muted-foreground">/api/execute-payment</span><span className="text-foreground ml-auto">Execute payment (one-step)</span></div>
             <div className="flex gap-3 py-1.5 border-t"><span className="text-green-600 font-bold w-14">POST</span><span className="text-muted-foreground">/api/pay-link</span><span className="text-foreground ml-auto">Get pay instructions</span></div>
             <div className="flex gap-3 py-1.5 border-t"><span className="text-green-600 font-bold w-14">POST</span><span className="text-muted-foreground">/api/verify</span><span className="text-foreground ml-auto">Verify payment</span></div>
             <div className="flex gap-3 py-1.5 border-t"><span className="text-green-600 font-bold w-14">POST</span><span className="text-muted-foreground">/api/chat</span><span className="text-foreground ml-auto">AI chat (chain-aware)</span></div>

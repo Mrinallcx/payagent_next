@@ -793,6 +793,70 @@ describe('Pay-Link (multi-chain token resolution)', () => {
 });
 
 // ═══════════════════════════════════════════════════════════════════
+//  9b. EXECUTE-PAYMENT ENDPOINT VALIDATION
+// ═══════════════════════════════════════════════════════════════════
+
+describe('Execute Payment — Input Validation', () => {
+  it('requires linkId', async () => {
+    const res = await request('POST', '/api/execute-payment', {
+      privateKey: '0x0000000000000000000000000000000000000000000000000000000000000001',
+    }, agents.payer.apiKey);
+    assert.equal(res.status, 400);
+    assert.ok(res.body.error.includes('linkId'));
+  });
+
+  it('requires privateKey', async () => {
+    const res = await request('POST', '/api/execute-payment', {
+      linkId: links.sepolia,
+    }, agents.payer.apiKey);
+    assert.equal(res.status, 400);
+    assert.ok(res.body.error.includes('privateKey'));
+  });
+
+  it('rejects invalid privateKey format', async () => {
+    const res = await request('POST', '/api/execute-payment', {
+      linkId: links.sepolia,
+      privateKey: 'not-a-valid-key',
+    }, agents.payer.apiKey);
+    assert.equal(res.status, 400);
+    assert.ok(res.body.error.includes('Invalid privateKey'));
+  });
+
+  it('returns 404 for non-existent link', async () => {
+    const res = await request('POST', '/api/execute-payment', {
+      linkId: 'REQ-DOESNOTEXIST',
+      privateKey: '0x0000000000000000000000000000000000000000000000000000000000000001',
+    }, agents.payer.apiKey);
+    assert.equal(res.status, 404);
+  });
+
+  it('requires auth', async () => {
+    const res = await request('POST', '/api/execute-payment', {
+      linkId: links.sepolia,
+      privateKey: '0x0000000000000000000000000000000000000000000000000000000000000001',
+    });
+    assert.equal(res.status, 401);
+  });
+
+  it('rejects if agent has no wallet', async () => {
+    // Register a new agent without wallet
+    const regRes = await request('POST', '/api/agents/register', {
+      username: 'no-wallet-exec-' + Date.now(),
+      email: 'exec@test.com',
+    });
+    assert.ok(regRes.status === 200 || regRes.status === 201);
+    const noWalletKey = regRes.body.api_key;
+
+    const res = await request('POST', '/api/execute-payment', {
+      linkId: links.sepolia,
+      privateKey: '0x0000000000000000000000000000000000000000000000000000000000000001',
+    }, noWalletKey);
+    assert.equal(res.status, 400);
+    assert.ok(res.body.error.includes('wallet'));
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════
 //  10. PAYMENT VERIFICATION (mocked — no real tx)
 // ═══════════════════════════════════════════════════════════════════
 

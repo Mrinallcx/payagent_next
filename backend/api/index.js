@@ -544,8 +544,182 @@ app.post('/api/pay-link', authMiddleware, async (req, res) => {
   }
 });
 
+// ============ Execute Payment (on-chain) ============
+const { verifyTransaction, executePayment } = require('../lib/blockchain');
+
+app.post('/api/execute-payment', authMiddleware, async (req, res) => {
+  try {
+    const { linkId, privateKey } = req.body;
+
+    if (!linkId) {
+      return res.status(400).json({ error: 'Missing linkId' });
+    }
+    if (!privateKey) {
+      return res.status(400).json({ error: 'Missing privateKey. The payer private key is required to sign on-chain transactions.' });
+    }
+
+    // Validate the private key format
+    let payerAddress;
+    try {
+      const { ethers } = require('ethers');
+      const tempWallet = new ethers.Wallet(privateKey);
+      payerAddress = tempWallet.address;
+    } catch (e) {
+      return res.status(400).json({ error: 'Invalid privateKey format' });
+    }
+
+    if (!req.agent.wallet_address) {
+      return res.status(400).json({ error: 'You must register a wallet address before paying. POST /api/agents/wallet' });
+    }
+
+    // Fetch the payment request
+    let request;
+    if (supabase) {
+      const { data, error } = await supabase.from('payment_requests').select('*').eq('id', linkId).single();
+      if (error && error.code === 'PGRST116') {
+        return res.status(404).json({ error: 'Payment request not found' });
+      }
+      if (error) throw error;
+      request = data;
+    } else {
+      request = memoryStore.requests[linkId];
+      if (!request) {
+        return res.status(404).json({ error: 'Payment request not found' });
+      }
+    }
+
+    if (request.status === 'PAID') {
+      return res.json({ success: true, alreadyPaid: true, message: 'This link is already paid' });
+    }
+
+    if (request.expires_at && new Date(request.expires_at) < new Date()) {
+      return res.status(400).json({ error: 'This payment link has expired' });
+    }
+
+    // Build transfers (same logic as pay-link)
+    const paymentNetwork = request.network || 'sepolia';
+    const paymentToken = request.token || 'USDC';
+    const paymentTokenAddress = getTokenAddress(paymentNetwork, paymentToken);
+    const lcxTokenAddress = getTokenAddress(paymentNetwork, 'LCX');
+    const usdcTokenAddress = getTokenAddress(paymentNetwork, 'USDC');
+
+    const feeInfo = await calculateFee(req.agent.wallet_address, paymentNetwork);
+    const creatorAgent = request.creator_agent_id ? await getAgentById(request.creator_agent_id) : null;
+    const creatorWallet = creatorAgent ? creatorAgent.wallet_address : request.receiver;
+    const feeConfig = await getFeeConfig();
+
+    let transfers;
+    if (feeInfo.feeToken === 'LCX') {
+      transfers = [
+        { description: 'Payment to creator', token: paymentToken, tokenAddress: paymentTokenAddress, amount: request.amount, to: creatorWallet },
+        { description: 'Platform fee', token: 'LCX', tokenAddress: lcxTokenAddress, amount: String(feeInfo.platformShare), to: feeConfig.treasury_wallet },
+        { description: 'Creator reward', token: 'LCX', tokenAddress: lcxTokenAddress, amount: String(feeInfo.creatorReward), to: creatorWallet }
+      ];
+    } else {
+      transfers = [
+        { description: 'Payment to creator', token: paymentToken, tokenAddress: paymentTokenAddress, amount: request.amount, to: creatorWallet },
+        { description: 'Platform fee', token: 'USDC', tokenAddress: usdcTokenAddress, amount: String(feeInfo.platformShare), to: feeConfig.treasury_wallet },
+        { description: 'Creator reward', token: 'USDC', tokenAddress: usdcTokenAddress, amount: String(feeInfo.creatorReward), to: creatorWallet }
+      ];
+    }
+
+    // Execute all transfers on-chain
+    const executionResult = await executePayment(privateKey, transfers, paymentNetwork);
+
+    // Extract the main payment txHash for verification/recording
+    const paymentTxHash = executionResult.transactions[0]?.txHash;
+    const feeTxHash = executionResult.transactions[1]?.txHash || null;
+    const rewardTxHash = executionResult.transactions[2]?.txHash || null;
+
+    // Mark as PAID
+    if (supabase) {
+      await supabase
+        .from('payment_requests')
+        .update({
+          status: 'PAID',
+          tx_hash: paymentTxHash,
+          paid_at: new Date().toISOString(),
+          payer: payerAddress,
+          payer_agent_id: req.agent.id
+        })
+        .eq('id', linkId);
+
+      // Record fee transaction
+      try {
+        let lcxPrice = null;
+        try { lcxPrice = await getLcxPriceUsd(); } catch(e) {}
+
+        await supabase.from('fee_transactions').insert({
+          id: 'FEE-' + Math.random().toString(36).substr(2, 9).toUpperCase(),
+          payment_request_id: linkId,
+          payer_agent_id: req.agent.id,
+          creator_agent_id: request.creator_agent_id,
+          fee_token: feeInfo.feeToken,
+          fee_total: feeInfo.feeTotal,
+          platform_share: feeInfo.platformShare,
+          creator_reward: feeInfo.creatorReward,
+          lcx_price_usd: lcxPrice,
+          payment_amount: request.amount,
+          payment_token: paymentToken,
+          treasury_wallet: feeConfig.treasury_wallet,
+          platform_fee_tx_hash: feeTxHash,
+          creator_reward_tx_hash: rewardTxHash,
+          payment_tx_hash: paymentTxHash,
+          status: 'COLLECTED'
+        });
+      } catch (feeErr) {
+        console.error('Fee recording error (non-fatal):', feeErr);
+      }
+    } else {
+      // In-memory update
+      memoryStore.requests[linkId] = {
+        ...memoryStore.requests[linkId],
+        status: 'PAID',
+        tx_hash: paymentTxHash,
+        paid_at: new Date().toISOString(),
+        payer: payerAddress,
+        payer_agent_id: req.agent.id
+      };
+    }
+
+    // Dispatch webhook
+    dispatchEvent('payment.paid', {
+      id: linkId,
+      status: 'PAID',
+      txHash: paymentTxHash,
+      payer: payerAddress,
+      amount: request.amount,
+      token: paymentToken,
+      network: paymentNetwork
+    }).catch(err => console.error('Webhook dispatch error:', err));
+
+    return res.json({
+      success: true,
+      message: 'Payment executed and verified on-chain',
+      linkId,
+      payer: payerAddress,
+      network: paymentNetwork,
+      transactions: executionResult.transactions,
+      status: 'PAID'
+    });
+
+  } catch (err) {
+    console.error('Execute payment error:', err);
+
+    // Provide user-friendly error messages for common blockchain errors
+    const msg = err.message || 'Failed to execute payment';
+    if (msg.includes('insufficient funds')) {
+      return res.status(400).json({ error: 'Insufficient funds in payer wallet for this transaction (check token balance and gas)' });
+    }
+    if (msg.includes('nonce')) {
+      return res.status(400).json({ error: 'Transaction nonce conflict. Please try again.' });
+    }
+
+    return res.status(500).json({ error: msg });
+  }
+});
+
 // ============ Verify Payment ============
-const { verifyTransaction } = require('../lib/blockchain');
 
 app.post('/api/verify', optionalAuthMiddleware, async (req, res) => {
   try {
