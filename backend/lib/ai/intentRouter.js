@@ -6,7 +6,7 @@
 const { updateWalletAddress, getAgentById } = require('../agents');
 const { calculateFee } = require('../feeCalculator');
 const { getFeeConfig } = require('../feeConfig');
-const { getCanonicalName } = require('../chainRegistry');
+const { getCanonicalName, getSupportedNetworks, getSupportedNetworkList } = require('../chainRegistry');
 
 /**
  * Route an AI action to the appropriate handler
@@ -23,6 +23,9 @@ async function routeIntent(action, params, agent, context) {
   switch (action) {
     case 'create_link':
       return handleCreateLink(params, agent, supabase, memoryStore);
+
+    case 'select_chain':
+      return handleSelectChain(params);
 
     case 'check_status':
       return handleCheckStatus(params, supabase, memoryStore);
@@ -44,6 +47,28 @@ async function routeIntent(action, params, agent, context) {
   }
 }
 
+/**
+ * Handle select_chain — returns the list of supported chains to the user
+ */
+function handleSelectChain(params) {
+  const chains = getSupportedNetworkList();
+  const chainOptions = chains.map((c, i) => `${i + 1}. ${c.displayName} (${c.name})`).join('\n');
+  return {
+    action_required: 'select_chain',
+    chains: chains.map(c => ({
+      name: c.name,
+      displayName: c.displayName,
+      isTestnet: c.isTestnet
+    })),
+    pending: {
+      amount: params.pending_amount || null,
+      token: params.pending_token || 'USDC',
+      description: params.pending_description || ''
+    },
+    message: `Which chain would you like to use?\n\n${chainOptions}\n\nReply with the chain name or number.`
+  };
+}
+
 async function handleCreateLink(params, agent, supabase, memoryStore) {
   const amount = params.amount;
   if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) {
@@ -54,7 +79,20 @@ async function handleCreateLink(params, agent, supabase, memoryStore) {
     throw new Error('You need to register a wallet address first. Send me your wallet address (0x...).');
   }
 
-  const resolvedNetwork = getCanonicalName(params.network || agent.chain || 'sepolia') || 'sepolia';
+  // If network is missing, prompt for chain selection instead of hard error
+  if (!params.network) {
+    return handleSelectChain({
+      pending_amount: String(amount),
+      pending_token: params.token || 'USDC',
+      pending_description: params.description || ''
+    });
+  }
+
+  const resolvedNetwork = getCanonicalName(params.network);
+  if (!resolvedNetwork) {
+    const supported = getSupportedNetworks().join(', ');
+    throw new Error(`Unsupported network: "${params.network}". Supported: ${supported}.`);
+  }
   const resolvedToken = (params.token || 'USDC').toUpperCase();
 
   const id = 'REQ-' + Math.random().toString(36).substr(2, 9).toUpperCase();

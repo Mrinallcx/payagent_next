@@ -98,15 +98,62 @@ export default function PayAsAgent() {
             <span className="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center text-sm font-bold text-blue-600">2</span>
             Create a Payment Link
           </h3>
+          <p className="text-sm text-muted-foreground mb-4">
+            <strong>network</strong> is required. Supported: <code>sepolia</code>, <code>ethereum</code>, <code>base</code>. Token defaults to USDC.
+          </p>
           <pre className="bg-muted p-4 rounded-lg overflow-x-auto text-xs whitespace-pre-wrap font-mono border">
 {`curl -X POST ${API_BASE}/create-link \\
   -H "Content-Type: application/json" \\
   -H "x-api-key: pk_live_YOUR_API_KEY" \\
-  -d '{ "amount": "10", "description": "Service fee" }'
+  -d '{
+    "amount": "10",
+    "network": "ethereum",
+    "token": "USDC",
+    "description": "Service fee"
+  }'
 
 # Response:
-# { "success": true, "linkId": "REQ-ABC123", "link": "/r/REQ-ABC123" }`}
+# {
+#   "success": true,
+#   "linkId": "REQ-ABC123",
+#   "link": "/r/REQ-ABC123",
+#   "network": "ethereum",
+#   "token": "USDC",
+#   "amount": "10"
+# }
+
+# Without network → 400 error:
+# { "error": "Missing required field: network. Supported: sepolia, ethereum, base" }`}
           </pre>
+          <Button variant="outline" size="sm" className="mt-3" onClick={() => copyText(
+            `curl -X POST ${API_BASE}/create-link -H "Content-Type: application/json" -H "x-api-key: pk_live_YOUR_API_KEY" -d '{"amount": "10", "network": "ethereum", "token": "USDC", "description": "Service fee"}'`,
+            "Create link command"
+          )}>
+            <Copy className="h-4 w-4 mr-2" />
+            Copy cURL
+          </Button>
+        </Card>
+
+        {/* Supported Chains */}
+        <Card className="p-6 bg-slate-50/50 border-slate-200">
+          <h3 className="font-heading font-semibold text-lg mb-3">Supported Chains &amp; Tokens</h3>
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between py-2 border-b border-slate-200/50">
+              <span className="font-medium">Ethereum Mainnet</span>
+              <span className="text-muted-foreground font-mono text-xs">ethereum</span>
+            </div>
+            <div className="flex justify-between py-2 border-b border-slate-200/50">
+              <span className="font-medium">Base Mainnet</span>
+              <span className="text-muted-foreground font-mono text-xs">base</span>
+            </div>
+            <div className="flex justify-between py-2 border-b border-slate-200/50">
+              <span className="font-medium">Sepolia Testnet</span>
+              <span className="text-muted-foreground font-mono text-xs">sepolia</span>
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground mt-3">
+            Tokens per chain: USDC, USDT, ETH (native), LCX. Query <code>GET /api/chains</code> for full details.
+          </p>
         </Card>
 
         {/* Step 3: Pay a Link */}
@@ -142,17 +189,45 @@ curl -X POST ${API_BASE}/verify \\
             AI Chat (Natural Language)
           </h3>
           <p className="text-sm text-muted-foreground mb-4">
-            Talk to PayMe AI (powered by Grok 4 Fast Thinking). It can create links, check status, and more.
+            Talk to PayMe AI (powered by Grok). It can create links, check status, and more. When creating a link, the AI will ask which chain to use.
           </p>
           <pre className="bg-muted p-4 rounded-lg overflow-x-auto text-xs whitespace-pre-wrap font-mono border">
-{`curl -X POST ${API_BASE}/chat \\
+{`# Step 1: Ask to create a link (no chain specified)
+curl -X POST ${API_BASE}/chat \\
   -H "Content-Type: application/json" \\
   -H "x-api-key: pk_live_YOUR_API_KEY" \\
   -d '{ "message": "Create a 5 USDC payment link" }'
 
-# Response:
-# { "message": "Payment link created!", "action": "create_link",
-#   "result": { "linkId": "REQ-XYZ", "link": "/r/REQ-XYZ" } }`}
+# AI responds → asks which chain:
+# { "action": "select_chain",
+#   "result": {
+#     "action_required": "select_chain",
+#     "chains": [
+#       { "name": "sepolia", "displayName": "Sepolia (ETH Testnet)" },
+#       { "name": "ethereum", "displayName": "Ethereum Mainnet" },
+#       { "name": "base", "displayName": "Base Mainnet" }
+#     ],
+#     "pending": { "amount": "5", "token": "USDC" },
+#     "message": "Which chain would you like to use?"
+#   }
+# }
+
+# Step 2: Reply with the chain
+curl -X POST ${API_BASE}/chat \\
+  -H "Content-Type: application/json" \\
+  -H "x-api-key: pk_live_YOUR_API_KEY" \\
+  -d '{ "message": "base" }'
+
+# AI creates the link on Base:
+# { "action": "create_link",
+#   "result": { "linkId": "REQ-XYZ", "link": "/r/REQ-XYZ",
+#     "network": "base", "token": "USDC" } }
+
+# Or specify chain upfront to skip the prompt:
+curl -X POST ${API_BASE}/chat \\
+  -H "Content-Type: application/json" \\
+  -H "x-api-key: pk_live_YOUR_API_KEY" \\
+  -d '{ "message": "Create a 10 USDT link on ethereum" }'`}
           </pre>
         </Card>
 
@@ -201,10 +276,11 @@ curl -X POST ${API_BASE}/verify \\
             <div className="flex gap-3 py-1.5"><span className="text-green-600 font-bold w-14">POST</span><span className="text-muted-foreground">/api/agents/register</span><span className="text-foreground ml-auto">Register (no auth)</span></div>
             <div className="flex gap-3 py-1.5 border-t"><span className="text-blue-600 font-bold w-14">GET</span><span className="text-muted-foreground">/api/agents/me</span><span className="text-foreground ml-auto">My profile</span></div>
             <div className="flex gap-3 py-1.5 border-t"><span className="text-green-600 font-bold w-14">POST</span><span className="text-muted-foreground">/api/agents/wallet</span><span className="text-foreground ml-auto">Update wallet</span></div>
-            <div className="flex gap-3 py-1.5 border-t"><span className="text-green-600 font-bold w-14">POST</span><span className="text-muted-foreground">/api/create-link</span><span className="text-foreground ml-auto">Create payment link</span></div>
+            <div className="flex gap-3 py-1.5 border-t"><span className="text-green-600 font-bold w-14">POST</span><span className="text-muted-foreground">/api/create-link</span><span className="text-foreground ml-auto">Create link (network required)</span></div>
             <div className="flex gap-3 py-1.5 border-t"><span className="text-green-600 font-bold w-14">POST</span><span className="text-muted-foreground">/api/pay-link</span><span className="text-foreground ml-auto">Get pay instructions</span></div>
             <div className="flex gap-3 py-1.5 border-t"><span className="text-green-600 font-bold w-14">POST</span><span className="text-muted-foreground">/api/verify</span><span className="text-foreground ml-auto">Verify payment</span></div>
-            <div className="flex gap-3 py-1.5 border-t"><span className="text-green-600 font-bold w-14">POST</span><span className="text-muted-foreground">/api/chat</span><span className="text-foreground ml-auto">AI chat</span></div>
+            <div className="flex gap-3 py-1.5 border-t"><span className="text-green-600 font-bold w-14">POST</span><span className="text-muted-foreground">/api/chat</span><span className="text-foreground ml-auto">AI chat (chain-aware)</span></div>
+            <div className="flex gap-3 py-1.5 border-t"><span className="text-blue-600 font-bold w-14">GET</span><span className="text-muted-foreground">/api/chains</span><span className="text-foreground ml-auto">List supported chains</span></div>
             <div className="flex gap-3 py-1.5 border-t"><span className="text-blue-600 font-bold w-14">GET</span><span className="text-muted-foreground">/api/requests</span><span className="text-foreground ml-auto">My payment links</span></div>
             <div className="flex gap-3 py-1.5 border-t"><span className="text-blue-600 font-bold w-14">GET</span><span className="text-muted-foreground">/api/request/:id</span><span className="text-foreground ml-auto">Get link (public)</span></div>
             <div className="flex gap-3 py-1.5 border-t"><span className="text-green-600 font-bold w-14">POST</span><span className="text-muted-foreground">/api/webhooks</span><span className="text-foreground ml-auto">Register webhook</span></div>

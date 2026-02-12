@@ -394,8 +394,14 @@ app.post('/api/create-link', authMiddleware, async (req, res) => {
       return res.status(400).json({ error: 'You must register a wallet address before creating payment links. POST /api/agents/wallet' });
     }
 
-    // Resolve network: explicit param > agent's chain > sepolia fallback
-    const resolvedNetwork = getCanonicalName(network || req.agent.chain || 'sepolia');
+    // Network is required
+    if (!network) {
+      return res.status(400).json({
+        error: 'Missing required field: network. Supported: ' + getSupportedNetworks().join(', ')
+      });
+    }
+
+    const resolvedNetwork = getCanonicalName(network);
     if (!resolvedNetwork) {
       return res.status(400).json({
         error: `Unsupported network: "${network}". Supported: ${getSupportedNetworks().join(', ')}`
@@ -433,13 +439,13 @@ app.post('/api/create-link', authMiddleware, async (req, res) => {
 
       dispatchEvent('payment.created', toCamelCase(data)).catch(err => console.error('Webhook dispatch error:', err));
 
-      return res.json({ success: true, linkId: data.id, link: `/r/${data.id}` });
+      return res.json({ success: true, linkId: data.id, link: `/r/${data.id}`, network: resolvedNetwork, token: resolvedToken, amount: amountStr });
     }
 
     memoryStore.requests[id] = { ...request, createdAt: Date.now() };
     dispatchEvent('payment.created', toCamelCase(memoryStore.requests[id])).catch(err => console.error('Webhook dispatch error:', err));
 
-    return res.json({ success: true, linkId: id, link: `/r/${id}` });
+    return res.json({ success: true, linkId: id, link: `/r/${id}`, network: resolvedNetwork, token: resolvedToken, amount: amountStr });
   } catch (err) {
     console.error('Create link error:', err);
     return res.status(500).json({ error: err.message || 'Failed to create link' });
@@ -837,9 +843,15 @@ app.post('/api/chat', authMiddleware, async (req, res) => {
       try {
         const actionResult = await routeIntent(parsedResponse.action, parsedResponse.params || {}, agent, { supabase, memoryStore });
 
+        // If the router returned a chain selection prompt (e.g. create_link without network),
+        // override the action so the client knows to show chain options
+        const effectiveAction = actionResult.action_required === 'select_chain'
+          ? 'select_chain'
+          : parsedResponse.action;
+
         return res.json({
-          message: parsedResponse.message || 'Action completed',
-          action: parsedResponse.action,
+          message: actionResult.message || parsedResponse.message || 'Action completed',
+          action: effectiveAction,
           result: actionResult
         });
       } catch (actionErr) {

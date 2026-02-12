@@ -1,36 +1,257 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# PayMe Backend — API Documentation
 
-## Getting Started
+> Crypto payment infrastructure for AI agents. Non-custodial, multi-chain, API-first.
 
-First, run the development server:
+**Base URL (production):** `https://backend-two-chi-56.vercel.app`
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+---
+
+## Supported Chains
+
+| Chain             | Canonical Name | Chain ID | Type    |
+|-------------------|---------------|----------|---------|
+| Ethereum Mainnet  | `ethereum`    | 1        | Mainnet |
+| Base Mainnet      | `base`        | 8453     | Mainnet |
+| Sepolia (Testnet) | `sepolia`     | 11155111 | Testnet |
+
+**Tokens per chain:** USDC, USDT, ETH (native), LCX
+
+Query `GET /api/chains` for full chain details and token addresses.
+
+---
+
+## Authentication
+
+All authenticated endpoints require the `x-api-key` header (or `Authorization: Bearer <key>`).
+
+```
+x-api-key: pk_live_YOUR_API_KEY
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+---
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Endpoints
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 1. Register Agent (no auth)
 
-## Learn More
+```
+POST /api/agents/register
+```
 
-To learn more about Next.js, take a look at the following resources:
+| Field           | Type   | Required | Description                  |
+|-----------------|--------|----------|------------------------------|
+| username        | string | yes      | Unique agent username        |
+| email           | string | yes      | Contact email                |
+| wallet_address  | string | no       | EVM wallet (0x...)           |
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+**Response:**
+```json
+{
+  "success": true,
+  "agent_id": "agent_my-agent_a1b2c3",
+  "api_key": "pk_live_abc123...",
+  "webhook_secret": "whsec_xyz789..."
+}
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+> Save these credentials — they are shown only once.
 
-## Deploy on Vercel
+---
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### 2. Create Payment Link (auth required)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```
+POST /api/create-link
+```
+
+| Field         | Type   | Required | Default | Description                              |
+|---------------|--------|----------|---------|------------------------------------------|
+| amount        | string | **yes**  | —       | Payment amount (positive number)         |
+| network       | string | **yes**  | —       | Chain: `sepolia`, `ethereum`, or `base`  |
+| token         | string | no       | `USDC`  | Token: `USDC`, `USDT`, `ETH`, `LCX`     |
+| description   | string | no       | `""`    | Description for the payment link         |
+| receiver      | string | no       | agent's wallet | Override receiver address        |
+| expiresInDays | number | no       | —       | Auto-expire after N days                 |
+
+**Response:**
+```json
+{
+  "success": true,
+  "linkId": "REQ-ABC123XYZ",
+  "link": "/r/REQ-ABC123XYZ",
+  "network": "ethereum",
+  "token": "USDC",
+  "amount": "10"
+}
+```
+
+**Error (missing network):**
+```json
+{
+  "error": "Missing required field: network. Supported: sepolia, ethereum, base"
+}
+```
+
+---
+
+### 3. Get Payment Instructions (auth required)
+
+```
+POST /api/pay-link
+```
+
+| Field  | Type   | Required | Description     |
+|--------|--------|----------|-----------------|
+| linkId | string | **yes**  | Payment link ID |
+
+Returns token addresses, amounts, and fee breakdown for the correct chain.
+
+---
+
+### 4. Verify Payment (auth required)
+
+```
+POST /api/verify
+```
+
+| Field     | Type   | Required | Description             |
+|-----------|--------|----------|-------------------------|
+| requestId | string | **yes**  | Payment link ID         |
+| txHash    | string | **yes**  | On-chain transaction hash |
+
+---
+
+### 5. AI Chat (auth required)
+
+```
+POST /api/chat
+```
+
+| Field   | Type   | Required | Description              |
+|---------|--------|----------|--------------------------|
+| message | string | **yes**  | Natural language message |
+
+The AI assistant understands natural language and can create links, check status, pay links, and manage wallets.
+
+**Chain Selection Flow:**
+
+When you ask the AI to create a link without specifying a chain, it will ask which chain to use:
+
+```bash
+# Step 1: Request without chain
+curl -X POST /api/chat \
+  -H "x-api-key: pk_live_..." \
+  -d '{ "message": "Create a 5 USDC payment link" }'
+```
+
+Response — AI asks for chain:
+```json
+{
+  "action": "select_chain",
+  "result": {
+    "action_required": "select_chain",
+    "chains": [
+      { "name": "sepolia", "displayName": "Sepolia (ETH Testnet)", "isTestnet": true },
+      { "name": "ethereum", "displayName": "Ethereum Mainnet", "isTestnet": false },
+      { "name": "base", "displayName": "Base Mainnet", "isTestnet": false }
+    ],
+    "pending": { "amount": "5", "token": "USDC", "description": "" },
+    "message": "Which chain would you like to use?\n\n1. Sepolia (ETH Testnet)\n2. Ethereum Mainnet\n3. Base Mainnet"
+  }
+}
+```
+
+```bash
+# Step 2: Reply with chain choice
+curl -X POST /api/chat \
+  -H "x-api-key: pk_live_..." \
+  -d '{ "message": "base" }'
+```
+
+Response — link created:
+```json
+{
+  "action": "create_link",
+  "result": {
+    "linkId": "REQ-XYZ123",
+    "link": "/r/REQ-XYZ123",
+    "amount": "5",
+    "token": "USDC",
+    "network": "base"
+  }
+}
+```
+
+**Skip chain prompt** by specifying the chain upfront:
+```bash
+curl -X POST /api/chat \
+  -H "x-api-key: pk_live_..." \
+  -d '{ "message": "Create a 10 USDT link on ethereum" }'
+```
+
+---
+
+### 6. List Supported Chains (public, no auth)
+
+```
+GET /api/chains
+```
+
+Returns all supported chains with names, chain IDs, and testnet flags.
+
+---
+
+### 7. Other Endpoints
+
+| Method | Path              | Auth | Description              |
+|--------|-------------------|------|--------------------------|
+| GET    | /api/agents/me    | yes  | Get agent profile        |
+| POST   | /api/agents/wallet| yes  | Update wallet address    |
+| GET    | /api/requests     | yes  | List your payment links  |
+| GET    | /api/request/:id  | no   | Get link details (public)|
+| DELETE | /api/request/:id  | yes  | Delete a payment link    |
+| POST   | /api/webhooks     | yes  | Register a webhook       |
+| GET    | /api/webhooks     | yes  | List your webhooks       |
+| GET    | /api/stats        | no   | Platform statistics      |
+| GET    | /health           | no   | Health check             |
+
+---
+
+## Fee Model
+
+The **payer** covers the fee. Fee can be paid in LCX (preferred) or USDC equivalent.
+
+| Condition           | Fee                                    |
+|---------------------|----------------------------------------|
+| Payer holds >= 4 LCX | 4 LCX (2 platform + 2 creator reward) |
+| Payer holds < 4 LCX  | USDC equivalent of 4 LCX (50/50)     |
+
+---
+
+## Webhooks
+
+Register a webhook URL to receive events:
+
+```bash
+curl -X POST /api/webhooks \
+  -H "x-api-key: pk_live_..." \
+  -d '{
+    "url": "https://your-server.com/webhook",
+    "events": ["payment.created", "payment.paid"]
+  }'
+```
+
+Events: `payment.created`, `payment.paid`, `payment.expired`
+
+Payloads include HMAC-SHA256 signature in the `X-PayMe-Signature` header (use your `webhook_secret` to verify).
+
+---
+
+## Running Tests
+
+```bash
+cd backend
+npm test
+```
+
+Runs 87 test cases covering chain registry, multi-chain link creation, network validation, payment flow, fee resolution, security, and cross-chain consistency.

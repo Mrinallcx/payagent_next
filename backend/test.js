@@ -492,6 +492,9 @@ describe('Multi-Chain Link Creation', () => {
     }, agents.creator.apiKey);
     assert.equal(res.status, 200);
     assert.ok(res.body.linkId.startsWith('REQ-'));
+    assert.equal(res.body.network, 'sepolia');
+    assert.equal(res.body.token, 'USDC');
+    assert.equal(res.body.amount, '10');
     links.sepolia = res.body.linkId;
   });
 
@@ -502,6 +505,8 @@ describe('Multi-Chain Link Creation', () => {
       description: 'Mainnet payment',
     }, agents.creator.apiKey);
     assert.equal(res.status, 200);
+    assert.equal(res.body.network, 'ethereum');
+    assert.equal(res.body.token, 'USDC');
     links.ethereum = res.body.linkId;
   });
 
@@ -513,6 +518,8 @@ describe('Multi-Chain Link Creation', () => {
       description: 'Base USDT',
     }, agents.creator.apiKey);
     assert.equal(res.status, 200);
+    assert.equal(res.body.network, 'base');
+    assert.equal(res.body.token, 'USDT');
     links.base = res.body.linkId;
   });
 
@@ -527,16 +534,14 @@ describe('Multi-Chain Link Creation', () => {
     links.ethLink = res.body.linkId;
   });
 
-  it('defaults to agent chain when network not specified', async () => {
-    // Creator was registered with chain: 'ethereum'
+  it('rejects create-link when network is not provided', async () => {
     const res = await request('POST', '/api/create-link', {
       amount: '1',
       description: 'Default network test',
     }, agents.creator.apiKey);
-    assert.equal(res.status, 200);
-    // Verify the stored network
-    const linkRes = await request('GET', `/api/request/${res.body.linkId}`);
-    assert.equal(linkRes.body.payment.network, 'ethereum');
+    assert.equal(res.status, 400);
+    assert.ok(res.body.error.includes('network'));
+    assert.ok(res.body.error.includes('Supported'));
   });
 
   it('accepts alias "mainnet" and resolves to "ethereum"', async () => {
@@ -584,16 +589,13 @@ describe('Network Validation', () => {
     assert.ok(res.body.error.includes('solana'));
   });
 
-  it('empty string network falls back to agent chain (not rejected)', async () => {
+  it('rejects empty string network', async () => {
     const res = await request('POST', '/api/create-link', {
       amount: '10',
       network: '',
     }, agents.creator.apiKey);
-    // Empty string is falsy → falls back to agent.chain → valid
-    assert.equal(res.status, 200);
-    // Creator is on 'ethereum', so the link should default to that
-    const linkRes = await request('GET', `/api/request/${res.body.linkId}`);
-    assert.equal(linkRes.body.payment.network, 'ethereum');
+    assert.equal(res.status, 400);
+    assert.ok(res.body.error.includes('network'));
   });
 
   it('rejects nonsense network', async () => {
@@ -613,6 +615,63 @@ describe('Network Validation', () => {
     });
     assert.equal(res.status, 400);
     assert.ok(res.body.error.includes('polygon'));
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════
+//  7b. INTENT ROUTER — select_chain FLOW
+// ═══════════════════════════════════════════════════════════════════
+
+describe('Intent Router — Chain Selection', () => {
+  const { routeIntent } = require('./lib/ai/intentRouter');
+  const testMemStore = { requests: {}, agents: {} };
+
+  it('returns select_chain when create_link called without network', async () => {
+    const result = await routeIntent('create_link', {
+      amount: '10',
+      token: 'USDC',
+    }, { id: 'test', wallet_address: '0xDDEEFF0011223344556677889900AABBCCDDEEFF', chain: 'sepolia' }, { supabase: null, memoryStore: testMemStore });
+
+    assert.equal(result.action_required, 'select_chain');
+    assert.ok(Array.isArray(result.chains));
+    assert.equal(result.chains.length, 3);
+    assert.equal(result.pending.amount, '10');
+    assert.equal(result.pending.token, 'USDC');
+  });
+
+  it('creates link when create_link called WITH network', async () => {
+    const result = await routeIntent('create_link', {
+      amount: '5',
+      network: 'base',
+      token: 'USDT',
+    }, { id: 'test', wallet_address: '0xDDEEFF0011223344556677889900AABBCCDDEEFF', chain: 'sepolia' }, { supabase: null, memoryStore: testMemStore });
+
+    assert.ok(result.linkId);
+    assert.equal(result.network, 'base');
+    assert.equal(result.token, 'USDT');
+    assert.equal(result.amount, '5');
+  });
+
+  it('handles select_chain action directly', async () => {
+    const result = await routeIntent('select_chain', {
+      pending_amount: '20',
+      pending_token: 'ETH',
+    }, { id: 'test' }, {});
+
+    assert.equal(result.action_required, 'select_chain');
+    assert.equal(result.pending.amount, '20');
+    assert.equal(result.pending.token, 'ETH');
+    assert.ok(result.message.includes('chain'));
+  });
+
+  it('rejects create_link with invalid network', async () => {
+    await assert.rejects(
+      () => routeIntent('create_link', {
+        amount: '10',
+        network: 'polygon',
+      }, { id: 'test', wallet_address: '0xDDEEFF0011223344556677889900AABBCCDDEEFF' }, { supabase: null, memoryStore: testMemStore }),
+      /Unsupported network.*polygon/
+    );
   });
 });
 
