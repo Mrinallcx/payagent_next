@@ -1,0 +1,45 @@
+{
+  "name": "@payagent/sdk",
+  "version": "0.1.0",
+  "description": "PayAgent SDK — client for PayAgent crypto payments. Handles payment instructions, signing, broadcasting, and verification.",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "scripts": {
+    "test": "node --test --test-force-exit test/client.test.js"
+  },
+  "keywords": [
+    "payagent",
+    "crypto",
+    "payments",
+    "sdk",
+    "ethereum",
+    "base",
+    "usdc",
+    "ai-agents",
+    "non-custodial",
+    "local-signing"
+  ],
+  "author": "PayAgent",
+  "license": "MIT",
+  "peerDependencies": {
+    "ethers": "^6.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pri-21mar/payme-your-simple-payment-hub",
+    "directory": "sdk"
+  },
+  "files": [
+    "src/",
+    "README.md",
+    "LICENSE"
+  ],
+  "devDependencies": {
+    "ethers": "^6.16.0"
+  }
+}

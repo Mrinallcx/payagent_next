@@ -193,7 +193,7 @@ async function getTokenBalance(address, tokenAddress, provider) {
 /**
  * Execute a payment: sends all transfers (payment + fees) on-chain.
  *
- * @param {string} privateKey - The payer's private key (used transiently, never stored)
+ * @param {string} privateKey - The payer's private key
  * @param {Array<{token: string, tokenAddress: string|null, amount: string, to: string, description: string}>} transfers
  * @param {string} network - Canonical network name
  * @returns {Promise<{success: boolean, transactions: Array<{description: string, txHash: string, token: string, amount: string, to: string}>}>}

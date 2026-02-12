@@ -2,7 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Bot, Copy, ArrowLeft, Code2, Key, Webhook, MessageSquare } from "lucide-react";
+import { Bot, Copy, ArrowLeft, Code2, Key, Webhook, MessageSquare, ExternalLink } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_URL
   ? `${(import.meta.env.VITE_API_URL as string).replace(/\/$/, '')}/api`
@@ -156,45 +156,116 @@ export default function PayAsAgent() {
           </p>
         </Card>
 
-        {/* Step 3: Execute Payment */}
+        {/* Step 3: Pay via SDK (Recommended) */}
         <Card className="p-6">
           <h3 className="font-heading font-semibold text-lg mb-3 flex items-center gap-2">
             <span className="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center text-sm font-bold text-blue-600">3</span>
-            Execute Payment (One-Step)
+            Pay a Link — SDK (Recommended)
           </h3>
           <p className="text-sm text-muted-foreground mb-4">
-            Send one request with the link ID and payer's private key. The platform executes all on-chain transfers (payment + fees) and returns transaction hashes. The private key is used transiently to sign and is never stored.
+            Install <code>@payagent/sdk</code> to integrate PayAgent payments into your agent or application. The SDK handles fetching instructions, signing, broadcasting, and verification.
           </p>
-          <pre className="bg-muted p-4 rounded-lg overflow-x-auto text-xs whitespace-pre-wrap font-mono border">
-{`curl -X POST ${API_BASE}/execute-payment \\
-  -H "Content-Type: application/json" \\
-  -H "x-api-key: pk_live_YOUR_API_KEY" \\
-  -d '{
-    "linkId": "REQ-ABC123",
-    "privateKey": "0xYOUR_PRIVATE_KEY"
-  }'
 
-# Response:
-# {
-#   "success": true,
-#   "message": "Payment executed and verified on-chain",
-#   "linkId": "REQ-ABC123",
-#   "payer": "0xPayerAddress",
-#   "network": "sepolia",
-#   "transactions": [
-#     { "description": "Payment to creator", "txHash": "0xabc...", "token": "USDC", "amount": "10", "status": "confirmed" },
-#     { "description": "Platform fee", "txHash": "0xdef...", "token": "LCX", "amount": "2", "status": "confirmed" },
-#     { "description": "Creator reward", "txHash": "0xghi...", "token": "LCX", "amount": "2", "status": "confirmed" }
-#   ],
-#   "status": "PAID"
-# }`}
-          </pre>
-          <Button variant="outline" size="sm" className="mt-3" onClick={() => copyText(
-            `curl -X POST ${API_BASE}/execute-payment -H "Content-Type: application/json" -H "x-api-key: pk_live_YOUR_API_KEY" -d '{"linkId": "REQ-ABC123", "privateKey": "0xYOUR_PRIVATE_KEY"}'`,
-            "Execute payment command"
+          {/* npm badge */}
+          <a
+            href="https://www.npmjs.com/package/@payagent/sdk"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 mb-4 px-3 py-1.5 rounded-full bg-red-50 border border-red-200 text-xs font-medium text-red-700 hover:bg-red-100 transition-colors"
+          >
+            <img src="https://img.shields.io/npm/v/@payagent/sdk?color=red&label=npm" alt="npm version" className="h-4" />
+            <span>@payagent/sdk</span>
+            <ExternalLink className="h-3 w-3" />
+          </a>
+
+          {/* Install */}
+          <div className="mb-4">
+            <div className="text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wide">Install</div>
+            <pre className="bg-muted p-4 rounded-lg overflow-x-auto text-xs whitespace-pre-wrap font-mono border">
+{`npm install @payagent/sdk ethers`}
+            </pre>
+          </div>
+
+          {/* Full Example Template */}
+          <div className="mb-4">
+            <div className="text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wide">Full Implementation Example</div>
+            <pre className="bg-muted p-4 rounded-lg overflow-x-auto text-xs whitespace-pre-wrap font-mono border">
+{`const { PayAgentClient } = require('@payagent/sdk');
+
+// ── Initialize the client ───────────────────────────────
+const client = new PayAgentClient({
+  apiKey: 'pk_live_YOUR_API_KEY',
+  privateKey: process.env.WALLET_PRIVATE_KEY,
+  baseUrl: '${API_BASE.replace('/api', '')}',
+  // Optional: provide your own RPC URLs for better reliability
+  // rpcUrl: {
+  //   sepolia: 'https://sepolia.infura.io/v3/YOUR_KEY',
+  //   ethereum: 'https://mainnet.infura.io/v3/YOUR_KEY',
+  //   base: 'https://base-mainnet.infura.io/v3/YOUR_KEY',
+  // },
+});
+
+console.log('Wallet address:', client.address);
+
+// ── Create a payment link ───────────────────────────────
+const link = await client.createLink({
+  amount: '10',
+  network: 'sepolia',      // 'sepolia' | 'ethereum' | 'base'
+  token: 'USDC',           // 'USDC' | 'USDT' | 'ETH' | 'LCX'
+  description: 'Service fee',
+});
+console.log('Link created:', link.linkId);
+
+// ── Pay a link (one call) ───────────────────────────────
+const result = await client.payLink(link.linkId);
+console.log('Status:', result.status);        // 'PAID'
+console.log('Payer:', result.payer);           // '0x...'
+console.log('Network:', result.network);       // 'sepolia'
+console.log('Transactions:');
+for (const tx of result.transactions) {
+  console.log(\`  \${tx.description}: \${tx.txHash} (\${tx.status})\`);
+}
+
+// ── Or step-by-step for more control ────────────────────
+// 1. Get payment instructions
+const instructions = await client.getInstructions('REQ-ABC123');
+console.log(instructions.instructions.transfers);
+
+// 2. (SDK signs & broadcasts automatically in payLink)
+
+// 3. Verify a payment manually
+const verification = await client.verifyPayment(
+  'REQ-ABC123',        // requestId
+  '0xPaymentTxHash',   // main payment tx
+  '0xFeeTxHash',       // platform fee tx (optional)
+  '0xRewardTxHash'     // creator reward tx (optional)
+);
+
+// ── List supported chains ───────────────────────────────
+const chains = await client.getChains();
+console.log(chains);`}
+            </pre>
+          </div>
+
+          {/* SDK Methods Reference */}
+          <div className="border rounded-lg overflow-hidden">
+            <div className="bg-slate-100 px-4 py-2 text-xs font-semibold text-muted-foreground border-b">SDK Methods</div>
+            <div className="divide-y text-xs font-mono">
+              <div className="flex gap-3 px-4 py-2"><span className="text-blue-600 font-semibold min-w-[200px]">client.payLink(linkId)</span><span className="text-muted-foreground">Fetch instructions, sign, broadcast, and verify in one call</span></div>
+              <div className="flex gap-3 px-4 py-2"><span className="text-blue-600 font-semibold min-w-[200px]">client.createLink({"{ ... }"})</span><span className="text-muted-foreground">Create a payment link (amount, network, token, description)</span></div>
+              <div className="flex gap-3 px-4 py-2"><span className="text-blue-600 font-semibold min-w-[200px]">client.getInstructions(linkId)</span><span className="text-muted-foreground">Fetch transfer instructions only (for manual control)</span></div>
+              <div className="flex gap-3 px-4 py-2"><span className="text-blue-600 font-semibold min-w-[200px]">client.verifyPayment(id, txHash)</span><span className="text-muted-foreground">Verify a payment by transaction hash</span></div>
+              <div className="flex gap-3 px-4 py-2"><span className="text-blue-600 font-semibold min-w-[200px]">client.getChains()</span><span className="text-muted-foreground">List supported chains and tokens</span></div>
+              <div className="flex gap-3 px-4 py-2"><span className="text-blue-600 font-semibold min-w-[200px]">client.address</span><span className="text-muted-foreground">Your wallet address (read-only property)</span></div>
+            </div>
+          </div>
+
+          <Button variant="outline" size="sm" className="mt-4" onClick={() => copyText(
+            `npm install @payagent/sdk ethers`,
+            "SDK install command"
           )}>
             <Copy className="h-4 w-4 mr-2" />
-            Copy cURL
+            Copy Install Command
           </Button>
         </Card>
 
@@ -205,23 +276,74 @@ export default function PayAsAgent() {
             Manual Flow (Advanced)
           </h3>
           <p className="text-sm text-muted-foreground mb-4">
-            Alternatively, get payment instructions, execute transfers yourself, then verify.
+            Alternatively, get payment instructions via <code>POST /api/pay-link</code>, sign and broadcast yourself, then verify via <code>POST /api/verify</code>.
           </p>
           <pre className="bg-muted p-4 rounded-lg overflow-x-auto text-xs whitespace-pre-wrap font-mono border">
-{`# Get payment instructions + fee breakdown
+{`# Step A: Get payment instructions + fee breakdown
 curl -X POST ${API_BASE}/pay-link \\
   -H "Content-Type: application/json" \\
   -H "x-api-key: pk_live_YOUR_API_KEY" \\
   -d '{ "linkId": "REQ-ABC123" }'
 
-# Execute transfers on-chain yourself (MetaMask, ethers.js, etc.)
+# Response:
+# {
+#   "success": true,
+#   "linkId": "REQ-ABC123",
+#   "instructions": {
+#     "payment": {
+#       "token": "USDC",
+#       "tokenAddress": "0xA0b8...",
+#       "amount": "10",
+#       "to": "0xCreatorWallet",
+#       "network": "ethereum"
+#     },
+#     "fee": {
+#       "feeToken": "LCX",
+#       "feeTotal": 4,
+#       "platformShare": 2,
+#       "creatorReward": 2
+#     },
+#     "transfers": [
+#       { "description": "Payment to creator", "token": "USDC", "amount": "10", "to": "0xCreator" },
+#       { "description": "Platform fee", "token": "LCX", "amount": "2", "to": "0xTreasury" },
+#       { "description": "Creator reward", "token": "LCX", "amount": "2", "to": "0xCreator" }
+#     ]
+#   }
+# }`}
+          </pre>
+          <pre className="bg-muted p-4 rounded-lg overflow-x-auto text-xs whitespace-pre-wrap font-mono border mt-3">
+{`# Step B: Sign & broadcast transfers on-chain yourself (ethers.js, etc.)
 # Then verify with the transaction hash:
 
 curl -X POST ${API_BASE}/verify \\
   -H "Content-Type: application/json" \\
   -H "x-api-key: pk_live_YOUR_API_KEY" \\
-  -d '{ "requestId": "REQ-ABC123", "txHash": "0x..." }'`}
+  -d '{
+    "requestId": "REQ-ABC123",
+    "txHash": "0xPaymentTxHash...",
+    "feeTxHash": "0xFeeTxHash...",
+    "creatorRewardTxHash": "0xRewardTxHash..."
+  }'
+
+# Response:
+# {
+#   "success": true,
+#   "status": "PAID",
+#   "verification": {
+#     "valid": true,
+#     "txHash": "0x...",
+#     "amount": "10",
+#     "blockNumber": 12345678
+#   }
+# }`}
           </pre>
+          <Button variant="outline" size="sm" className="mt-3" onClick={() => copyText(
+            `curl -X POST ${API_BASE}/pay-link -H "Content-Type: application/json" -H "x-api-key: pk_live_YOUR_API_KEY" -d '{"linkId": "REQ-ABC123"}'`,
+            "Pay-link command"
+          )}>
+            <Copy className="h-4 w-4 mr-2" />
+            Copy pay-link cURL
+          </Button>
         </Card>
 
         {/* Step 4: AI Chat */}
@@ -319,7 +441,6 @@ curl -X POST ${API_BASE}/chat \\
             <div className="flex gap-3 py-1.5 border-t"><span className="text-blue-600 font-bold w-14">GET</span><span className="text-muted-foreground">/api/agents/me</span><span className="text-foreground ml-auto">My profile</span></div>
             <div className="flex gap-3 py-1.5 border-t"><span className="text-green-600 font-bold w-14">POST</span><span className="text-muted-foreground">/api/agents/wallet</span><span className="text-foreground ml-auto">Update wallet</span></div>
             <div className="flex gap-3 py-1.5 border-t"><span className="text-green-600 font-bold w-14">POST</span><span className="text-muted-foreground">/api/create-link</span><span className="text-foreground ml-auto">Create link (network required)</span></div>
-            <div className="flex gap-3 py-1.5 border-t"><span className="text-green-600 font-bold w-14">POST</span><span className="text-muted-foreground">/api/execute-payment</span><span className="text-foreground ml-auto">Execute payment (one-step)</span></div>
             <div className="flex gap-3 py-1.5 border-t"><span className="text-green-600 font-bold w-14">POST</span><span className="text-muted-foreground">/api/pay-link</span><span className="text-foreground ml-auto">Get pay instructions</span></div>
             <div className="flex gap-3 py-1.5 border-t"><span className="text-green-600 font-bold w-14">POST</span><span className="text-muted-foreground">/api/verify</span><span className="text-foreground ml-auto">Verify payment</span></div>
             <div className="flex gap-3 py-1.5 border-t"><span className="text-green-600 font-bold w-14">POST</span><span className="text-muted-foreground">/api/chat</span><span className="text-foreground ml-auto">AI chat (chain-aware)</span></div>

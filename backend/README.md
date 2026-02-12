@@ -94,7 +94,58 @@ POST /api/create-link
 
 ---
 
-### 3. Execute Payment — One Step (auth required)
+### 3. Pay a Link — SDK (Recommended)
+
+The recommended way to pay a link is with `@payagent/sdk`. The SDK handles fetching instructions, signing, broadcasting, and verification.
+
+```bash
+npm install @payagent/sdk ethers
+```
+
+```javascript
+const { PayAgentClient } = require('@payagent/sdk');
+
+// Initialize
+const client = new PayAgentClient({
+  apiKey: 'pk_live_YOUR_API_KEY',
+  privateKey: process.env.WALLET_PRIVATE_KEY,
+  baseUrl: 'https://backend-two-chi-56.vercel.app',
+});
+
+// Create a payment link
+const link = await client.createLink({
+  amount: '10',
+  network: 'sepolia',
+  token: 'USDC',
+  description: 'Service fee',
+});
+console.log(link.linkId); // REQ-ABC123
+
+// Pay a link in one call
+const result = await client.payLink('REQ-ABC123');
+console.log(result.status);       // 'PAID'
+console.log(result.transactions); // [{ txHash: '0x...', status: 'confirmed' }, ...]
+
+// Or step-by-step for more control:
+const instructions = await client.getInstructions('REQ-ABC123');
+// ... sign & broadcast yourself ...
+const verification = await client.verifyPayment('REQ-ABC123', '0xTxHash');
+```
+
+**How it works:**
+
+1. SDK calls `POST /api/pay-link` to get transfer instructions (addresses, amounts, tokens)
+2. SDK signs each transaction using ethers.js
+3. Signed transactions are broadcast to the blockchain
+4. SDK calls `POST /api/verify` with the resulting transaction hashes
+
+See the [SDK README](../sdk/README.md) for full docs.
+
+---
+
+### 3b. Execute Payment — Legacy (Deprecated)
+
+> **Deprecated.** Use `@payagent/sdk` instead.
 
 ```
 POST /api/execute-payment
@@ -103,32 +154,13 @@ POST /api/execute-payment
 | Field      | Type   | Required | Description                                     |
 |------------|--------|----------|-------------------------------------------------|
 | linkId     | string | **yes**  | Payment link ID                                 |
-| privateKey | string | **yes**  | Payer's private key (used transiently, never stored) |
+| privateKey | string | **yes**  | Payer's private key (transmitted to server)      |
 
-Executes all on-chain transfers (payment + platform fee + creator reward) in one call and marks the link as PAID.
-
-**Response:**
-```json
-{
-  "success": true,
-  "message": "Payment executed and verified on-chain",
-  "linkId": "REQ-ABC123",
-  "payer": "0xPayerAddress",
-  "network": "sepolia",
-  "transactions": [
-    { "description": "Payment to creator", "txHash": "0xabc...", "token": "USDC", "amount": "10", "status": "confirmed" },
-    { "description": "Platform fee", "txHash": "0xdef...", "token": "LCX", "amount": "2", "status": "confirmed" },
-    { "description": "Creator reward", "txHash": "0xghi...", "token": "LCX", "amount": "2", "status": "confirmed" }
-  ],
-  "status": "PAID"
-}
-```
-
-> The private key is used only to sign the on-chain transactions. It is never logged, stored, or persisted. All communication is over HTTPS.
+Responses include `Deprecation: true` header and a `deprecated: true` field.
 
 ---
 
-### 4. Get Payment Instructions — Manual Flow (auth required)
+### 4. Get Payment Instructions (auth required)
 
 ```
 POST /api/pay-link
@@ -138,22 +170,99 @@ POST /api/pay-link
 |--------|--------|----------|-----------------|
 | linkId | string | **yes**  | Payment link ID |
 
-Returns token addresses, amounts, and fee breakdown. Use this if you prefer to sign and broadcast transactions yourself (e.g. MetaMask, local script).
+Returns token addresses, amounts, fee breakdown, and the exact transfers to execute. Used internally by `@payagent/sdk`, or use directly for manual signing.
+
+**Response:**
+```json
+{
+  "success": true,
+  "linkId": "REQ-ABC123",
+  "instructions": {
+    "payment": {
+      "token": "USDC",
+      "tokenAddress": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+      "amount": "10",
+      "to": "0xCreatorWallet",
+      "network": "ethereum",
+      "description": "Payment for REQ-ABC123"
+    },
+    "fee": {
+      "feeToken": "LCX",
+      "feeTotal": 4,
+      "platformShare": 2,
+      "creatorReward": 2,
+      "lcxPriceUsd": 0.15,
+      "payerLcxBalance": 500
+    },
+    "transfers": [
+      {
+        "description": "Payment to creator",
+        "token": "USDC",
+        "tokenAddress": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+        "amount": "10",
+        "to": "0xCreatorWallet"
+      },
+      {
+        "description": "Platform fee",
+        "token": "LCX",
+        "tokenAddress": "0x037A54AaB062628C9Bbae1FDB1583c195585Fe41",
+        "amount": "2",
+        "to": "0xTreasuryWallet"
+      },
+      {
+        "description": "Creator reward",
+        "token": "LCX",
+        "tokenAddress": "0x037A54AaB062628C9Bbae1FDB1583c195585Fe41",
+        "amount": "2",
+        "to": "0xCreatorWallet"
+      }
+    ]
+  },
+  "message": "Submit the transfers below, then call POST /api/verify with the payment txHash to complete."
+}
+```
 
 ---
 
-### 5. Verify Payment — Manual Flow (auth required)
+### 5. Verify Payment (auth optional)
 
 ```
 POST /api/verify
 ```
 
-| Field     | Type   | Required | Description             |
-|-----------|--------|----------|-------------------------|
-| requestId | string | **yes**  | Payment link ID         |
-| txHash    | string | **yes**  | On-chain transaction hash |
+| Field               | Type   | Required | Description                       |
+|---------------------|--------|----------|-----------------------------------|
+| requestId           | string | **yes**  | Payment link ID                   |
+| txHash              | string | **yes**  | Main payment transaction hash     |
+| feeTxHash           | string | no       | Platform fee transaction hash     |
+| creatorRewardTxHash | string | no       | Creator reward transaction hash   |
 
-Use after manually executing transfers to mark the payment as PAID.
+Verifies the payment on-chain and marks the link as PAID. Checks the transaction receipt for correct token, amount, and receiver.
+
+**Response:**
+```json
+{
+  "success": true,
+  "status": "PAID",
+  "request": {
+    "id": "REQ-ABC123",
+    "amount": "10",
+    "token": "USDC",
+    "network": "ethereum",
+    "status": "PAID",
+    "txHash": "0xabc...",
+    "paidAt": "2026-02-12T18:00:00.000Z"
+  },
+  "verification": {
+    "valid": true,
+    "txHash": "0xabc...",
+    "amount": "10",
+    "receiver": "0xcreatorwallet",
+    "blockNumber": 12345678,
+    "tokenType": "ERC20"
+  }
+}
+```
 
 ---
 
@@ -253,6 +362,67 @@ Returns all supported chains with names, chain IDs, and testnet flags.
 
 ---
 
+## SDK Reference (`@payagent/sdk`)
+
+```bash
+npm install @payagent/sdk ethers
+```
+
+### Constructor
+
+```javascript
+const { PayAgentClient } = require('@payagent/sdk');
+
+const client = new PayAgentClient({
+  apiKey: 'pk_live_...',               // required
+  privateKey: '0x...',                  // required
+  baseUrl: 'https://backend-two-chi-56.vercel.app',  // optional
+  rpcUrl: {                             // optional — custom RPC URLs
+    sepolia: 'https://sepolia.infura.io/v3/KEY',
+    ethereum: 'https://mainnet.infura.io/v3/KEY',
+    base: 'https://base-mainnet.infura.io/v3/KEY',
+  },
+});
+```
+
+### Methods
+
+| Method | Description |
+|--------|-------------|
+| `client.payLink(linkId)` | Full payment in one call: fetch instructions, sign locally, broadcast, verify |
+| `client.createLink({ amount, network, token?, description? })` | Create a new payment link |
+| `client.getInstructions(linkId)` | Fetch payment instructions (for manual control) |
+| `client.verifyPayment(requestId, txHash, feeTxHash?, rewardTxHash?)` | Verify a payment by tx hash |
+| `client.getChains()` | Fetch supported chains from the API |
+| `client.address` | Wallet address derived from the private key |
+
+### Full E2E Example
+
+```javascript
+// Creator creates a link
+const link = await client.createLink({
+  amount: '25',
+  network: 'sepolia',
+  token: 'USDC',
+  description: 'Service fee',
+});
+console.log(link.linkId); // REQ-ABC123
+
+// Payer pays it (different agent, different private key)
+const payer = new PayAgentClient({
+  apiKey: 'pk_live_PAYER_KEY',
+  privateKey: '0xPAYER_PRIVATE_KEY',
+});
+
+const result = await payer.payLink(link.linkId);
+console.log(result.status);       // 'PAID'
+console.log(result.transactions); // [{ txHash: '0x...', ... }, ...]
+```
+
+See the full [SDK README](../sdk/README.md) for detailed documentation.
+
+---
+
 ## Fee Model
 
 The **payer** covers the fee. Fee can be paid in LCX (preferred) or USDC equivalent.
@@ -290,4 +460,13 @@ cd backend
 npm test
 ```
 
-Runs 87 test cases covering chain registry, multi-chain link creation, network validation, payment flow, fee resolution, security, and cross-chain consistency.
+Runs 100 test cases covering chain registry, multi-chain link creation, network validation, payment flow, fee resolution, security, deprecation headers, and cross-chain consistency.
+
+SDK tests (separate):
+
+```bash
+cd sdk
+npm test
+```
+
+Runs 30 unit tests for the SDK client (mocked fetch, mocked providers).

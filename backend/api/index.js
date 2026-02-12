@@ -548,6 +548,11 @@ app.post('/api/pay-link', authMiddleware, async (req, res) => {
 const { verifyTransaction, executePayment } = require('../lib/blockchain');
 
 app.post('/api/execute-payment', authMiddleware, async (req, res) => {
+  // Always signal deprecation on every response from this endpoint
+  res.set('Deprecation', 'true');
+  res.set('X-PayAgent-Deprecated', 'execute-payment');
+  res.set('Link', '<https://www.npmjs.com/package/@payagent/sdk>; rel="successor-version"');
+
   try {
     const { linkId, privateKey } = req.body;
 
@@ -700,7 +705,9 @@ app.post('/api/execute-payment', authMiddleware, async (req, res) => {
       payer: payerAddress,
       network: paymentNetwork,
       transactions: executionResult.transactions,
-      status: 'PAID'
+      status: 'PAID',
+      deprecated: true,
+      migration: 'This endpoint is deprecated. Use @payagent/sdk instead. Install: npm install @payagent/sdk ethers'
     });
 
   } catch (err) {
