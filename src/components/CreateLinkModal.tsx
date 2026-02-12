@@ -50,16 +50,17 @@ const TOKENS = [
 ];
 
 const NETWORKS = [
+  { name: "Ethereum Mainnet", short: "Ethereum" },
+  { name: "Base", short: "Base" },
   { name: "Sepolia (ETH Testnet)", short: "Sepolia" },
-  { name: "BNB Testnet", short: "BNB Test" },
 ];
 
 const TOKEN_NETWORK_SUPPORT: Record<string, string[]> = {
-  "USDC": ["Sepolia (ETH Testnet)", "BNB Testnet"],
-  "USDT": ["Sepolia (ETH Testnet)", "BNB Testnet"],
-  "ETH": ["Sepolia (ETH Testnet)"],
-  "BNB": ["Sepolia (ETH Testnet)", "BNB Testnet"],
-  "LCX": ["Sepolia (ETH Testnet)"],
+  "USDC": ["Ethereum Mainnet", "Base", "Sepolia (ETH Testnet)"],
+  "USDT": ["Ethereum Mainnet", "Base", "Sepolia (ETH Testnet)"],
+  "ETH": ["Ethereum Mainnet", "Base", "Sepolia (ETH Testnet)"],
+  "LCX": ["Ethereum Mainnet", "Base", "Sepolia (ETH Testnet)"],
+  "BNB": ["Sepolia (ETH Testnet)"],
 };
 
 export function CreateLinkModal({ open, onOpenChange, onCreateLink }: CreateLinkModalProps) {

@@ -6,6 +6,7 @@
 const { updateWalletAddress, getAgentById } = require('../agents');
 const { calculateFee } = require('../feeCalculator');
 const { getFeeConfig } = require('../feeConfig');
+const { getCanonicalName } = require('../chainRegistry');
 
 /**
  * Route an AI action to the appropriate handler
@@ -53,15 +54,18 @@ async function handleCreateLink(params, agent, supabase, memoryStore) {
     throw new Error('You need to register a wallet address first. Send me your wallet address (0x...).');
   }
 
+  const resolvedNetwork = getCanonicalName(params.network || agent.chain || 'sepolia') || 'sepolia';
+  const resolvedToken = (params.token || 'USDC').toUpperCase();
+
   const id = 'REQ-' + Math.random().toString(36).substr(2, 9).toUpperCase();
   const request = {
     id,
-    token: 'USDC',
+    token: resolvedToken,
     amount: String(amount),
     receiver: agent.wallet_address,
     payer: null,
     description: params.description || '',
-    network: 'sepolia',
+    network: resolvedNetwork,
     status: 'PENDING',
     expires_at: null,
     tx_hash: null,
@@ -73,11 +77,11 @@ async function handleCreateLink(params, agent, supabase, memoryStore) {
   if (supabase) {
     const { data, error } = await supabase.from('payment_requests').insert(request).select().single();
     if (error) throw error;
-    return { linkId: data.id, link: `/r/${data.id}`, amount, token: 'USDC' };
+    return { linkId: data.id, link: `/r/${data.id}`, amount, token: resolvedToken, network: resolvedNetwork };
   }
 
   memoryStore.requests[id] = { ...request, createdAt: Date.now() };
-  return { linkId: id, link: `/r/${id}`, amount, token: 'USDC' };
+  return { linkId: id, link: `/r/${id}`, amount, token: resolvedToken, network: resolvedNetwork };
 }
 
 async function handleCheckStatus(params, supabase, memoryStore) {
@@ -132,18 +136,20 @@ async function handlePayLink(params, agent, supabase, memoryStore) {
     return { alreadyPaid: true, message: 'This link is already paid.' };
   }
 
-  // Calculate fee
-  const feeInfo = await calculateFee(agent.wallet_address);
+  // Calculate fee (network-aware)
+  const paymentNetwork = request.network || 'sepolia';
+  const feeInfo = await calculateFee(agent.wallet_address, paymentNetwork);
   const feeConfig = await getFeeConfig();
 
   return {
     linkId,
     amount: request.amount,
     token: request.token,
+    network: paymentNetwork,
     receiver: request.receiver,
     fee: feeInfo,
     treasuryWallet: feeConfig.treasury_wallet,
-    message: `To pay this link, submit ${request.amount} USDC to ${request.receiver} plus the fee. Then call POST /api/verify with the txHash.`
+    message: `To pay this link, submit ${request.amount} ${request.token || 'USDC'} to ${request.receiver} on ${paymentNetwork} plus the fee. Then call POST /api/verify with the txHash.`
   };
 }
 
@@ -153,8 +159,9 @@ async function handleRegisterWallet(params, agent) {
     throw new Error('Invalid wallet address. Must be 0x followed by 40 hex characters.');
   }
 
-  await updateWalletAddress(agent.id, wallet, agent.chain || 'sepolia');
-  return { wallet_address: wallet, message: 'Wallet registered successfully.' };
+  const chain = getCanonicalName(params.chain || agent.chain || 'sepolia') || 'sepolia';
+  await updateWalletAddress(agent.id, wallet, chain);
+  return { wallet_address: wallet, chain, message: 'Wallet registered successfully.' };
 }
 
 async function handleListPayments(agent, supabase, memoryStore) {

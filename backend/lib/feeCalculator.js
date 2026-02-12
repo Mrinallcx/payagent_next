@@ -1,35 +1,38 @@
 const { ethers } = require('ethers');
 const { getFeeConfig } = require('./feeConfig');
 const { getLcxPriceUsd } = require('./lcxPrice');
+const { getRpcUrl, getTokenAddress } = require('./chainRegistry');
 
 const ERC20_BALANCE_ABI = ['function balanceOf(address account) view returns (uint256)'];
 
 /**
  * Calculate fee for a payment
  *
- * Checks the payee's LCX balance:
+ * Checks the payee's LCX balance on the payment's network:
  * - If >= 4 LCX → fee paid in LCX (2 to platform, 2 to creator)
  * - If < 4 LCX → fee paid in USDC equivalent (50/50 split)
  *
  * @param {string} payerWalletAddress - The payee's wallet address
+ * @param {string} [network='sepolia'] - The network to check balance on
  * @returns {Promise<object>} Fee details
  */
-async function calculateFee(payerWalletAddress) {
+async function calculateFee(payerWalletAddress, network = 'sepolia') {
   const config = await getFeeConfig();
-  const rpcUrl = process.env.SEPOLIA_RPC_URL || process.env.NEXT_PUBLIC_ETH_RPC_URL;
+  const rpcUrl = getRpcUrl(network);
+  const lcxAddress = getTokenAddress(network, 'LCX');
 
   let payerLcxBalance = 0;
 
-  // Check payee's LCX balance on-chain
-  if (rpcUrl && config.lcx_contract_address && payerWalletAddress) {
+  // Check payee's LCX balance on-chain for the correct network
+  if (rpcUrl && lcxAddress && payerWalletAddress) {
     try {
       const provider = new ethers.JsonRpcProvider(rpcUrl);
-      const lcxContract = new ethers.Contract(config.lcx_contract_address, ERC20_BALANCE_ABI, provider);
+      const lcxContract = new ethers.Contract(lcxAddress, ERC20_BALANCE_ABI, provider);
       const balanceRaw = await lcxContract.balanceOf(payerWalletAddress);
       // LCX has 18 decimals
       payerLcxBalance = Number(ethers.formatUnits(balanceRaw, 18));
     } catch (err) {
-      console.error('LCX balance check error:', err.message);
+      console.error(`LCX balance check error on ${network}:`, err.message);
       // Fall through to USDC fee path
     }
   }

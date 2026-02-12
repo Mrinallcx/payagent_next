@@ -25,15 +25,16 @@ app.get('/health', (req, res) => {
 // Import store and controllers
 const { supabase } = require('../lib/supabase');
 
-// ============ Blockchain constants ============
-const SEPOLIA_RPC = process.env.SEPOLIA_RPC_URL || process.env.NEXT_PUBLIC_ETH_RPC_URL;
-const USDC_ADDRESS = process.env.SEPOLIA_USDC_ADDRESS || process.env.NEXT_PUBLIC_USDC_ADDRESS || '0x3402d41aa8e34e0df605c12109de2f8f4ff33a87';
-const USDC_DECIMALS = 6;
-const ERC20_ABI = [
-  'function transfer(address to, uint256 amount) returns (bool)',
-  'function decimals() view returns (uint8)',
-  'function balanceOf(address account) view returns (uint256)'
-];
+// ============ Chain Registry (single source of truth for chains & tokens) ============
+const {
+  getTokenAddress,
+  isValidNetwork,
+  isNativeToken,
+  getCanonicalName,
+  getSupportedNetworks,
+  getSupportedNetworkList,
+  getExplorerUrl,
+} = require('../lib/chainRegistry');
 
 // ============ In-memory storage fallback ============
 let memoryStore = { requests: {} };
@@ -85,7 +86,8 @@ const { saveMessage, getHistory, clearHistory } = require('../lib/ai/conversatio
 // Agent registration (no auth required)
 app.post('/api/agents/register', async (req, res) => {
   try {
-    const { username, email, wallet_address, chain } = req.body;
+    const { username, email, wallet_address, walletAddress, chain } = req.body;
+    const finalWallet = wallet_address || walletAddress || null;
 
     if (!username || !email) {
       return res.status(400).json({ error: 'Missing required fields: username, email' });
@@ -98,11 +100,11 @@ app.post('/api/agents/register', async (req, res) => {
     }
 
     // Validate wallet address if provided
-    if (wallet_address && !/^0x[a-fA-F0-9]{40}$/.test(wallet_address)) {
+    if (finalWallet && !/^0x[a-fA-F0-9]{40}$/.test(finalWallet)) {
       return res.status(400).json({ error: 'Invalid wallet address format. Must be 0x followed by 40 hex characters.' });
     }
 
-    const result = await registerAgent({ username, email, wallet_address: wallet_address || null, chain: chain || 'sepolia' });
+    const result = await registerAgent({ username, email, wallet_address: finalWallet, chain: chain || 'sepolia' });
 
     return res.status(201).json({
       success: true,
@@ -230,6 +232,14 @@ app.post('/api/create', optionalAuthMiddleware, async (req, res) => {
       return res.status(400).json({ error: 'Missing required fields: token, amount, receiver' });
     }
 
+    // Validate network if provided
+    const resolvedNetwork = getCanonicalName(network || 'sepolia');
+    if (!resolvedNetwork) {
+      return res.status(400).json({
+        error: `Unsupported network: "${network}". Supported: ${getSupportedNetworks().join(', ')}`
+      });
+    }
+
     const id = 'REQ-' + Math.random().toString(36).substr(2, 9).toUpperCase();
     const expiresAt = expiresInDays
       ? new Date(Date.now() + (parseInt(expiresInDays) * 24 * 60 * 60 * 1000)).toISOString()
@@ -242,7 +252,7 @@ app.post('/api/create', optionalAuthMiddleware, async (req, res) => {
       receiver,
       payer: null,
       description: description || '',
-      network: (network || 'sepolia').toLowerCase(),
+      network: resolvedNetwork,
       status: 'PENDING',
       expires_at: expiresAt,
       tx_hash: null,
@@ -373,7 +383,7 @@ app.delete('/api/request/:id', optionalAuthMiddleware, async (req, res) => {
 // ============ Create Link (Agent API) ============
 app.post('/api/create-link', authMiddleware, async (req, res) => {
   try {
-    const { amount, description, expiresInDays, receiver } = req.body;
+    const { amount, description, expiresInDays, receiver, network, token } = req.body;
     const amountStr = amount != null && amount !== '' ? String(amount).trim() : null;
 
     if (!amountStr || isNaN(Number(amountStr)) || Number(amountStr) <= 0) {
@@ -384,6 +394,17 @@ app.post('/api/create-link', authMiddleware, async (req, res) => {
       return res.status(400).json({ error: 'You must register a wallet address before creating payment links. POST /api/agents/wallet' });
     }
 
+    // Resolve network: explicit param > agent's chain > sepolia fallback
+    const resolvedNetwork = getCanonicalName(network || req.agent.chain || 'sepolia');
+    if (!resolvedNetwork) {
+      return res.status(400).json({
+        error: `Unsupported network: "${network}". Supported: ${getSupportedNetworks().join(', ')}`
+      });
+    }
+
+    // Resolve token (default USDC)
+    const resolvedToken = (token || 'USDC').toUpperCase();
+
     const receiverAddress = receiver || req.agent.wallet_address;
     const id = 'REQ-' + Math.random().toString(36).substr(2, 9).toUpperCase();
     const expiresAt = expiresInDays
@@ -392,12 +413,12 @@ app.post('/api/create-link', authMiddleware, async (req, res) => {
 
     const request = {
       id,
-      token: 'USDC',
+      token: resolvedToken,
       amount: amountStr,
       receiver: receiverAddress,
       payer: null,
       description: description || '',
-      network: 'sepolia',
+      network: resolvedNetwork,
       status: 'PENDING',
       expires_at: expiresAt,
       tx_hash: null,
@@ -461,8 +482,15 @@ app.post('/api/pay-link', authMiddleware, async (req, res) => {
       return res.status(400).json({ error: 'This payment link has expired' });
     }
 
-    // Calculate fee
-    const feeInfo = await calculateFee(req.agent.wallet_address);
+    // Resolve network and token addresses via chain registry
+    const paymentNetwork = request.network || 'sepolia';
+    const paymentToken = request.token || 'USDC';
+    const paymentTokenAddress = getTokenAddress(paymentNetwork, paymentToken);
+    const lcxTokenAddress = getTokenAddress(paymentNetwork, 'LCX');
+    const usdcTokenAddress = getTokenAddress(paymentNetwork, 'USDC');
+
+    // Calculate fee (network-aware — checks LCX balance on the correct chain)
+    const feeInfo = await calculateFee(req.agent.wallet_address, paymentNetwork);
 
     // Build payment instructions (non-custodial: agent signs tx themselves)
     const creatorAgent = request.creator_agent_id ? await getAgentById(request.creator_agent_id) : null;
@@ -471,11 +499,11 @@ app.post('/api/pay-link', authMiddleware, async (req, res) => {
     const feeConfig = await getFeeConfig();
     const instructions = {
       payment: {
-        token: 'USDC',
-        tokenAddress: USDC_ADDRESS,
+        token: paymentToken,
+        tokenAddress: paymentTokenAddress,
         amount: request.amount,
         to: creatorWallet,
-        network: request.network || 'sepolia',
+        network: paymentNetwork,
         description: `Payment for ${linkId}`
       },
       fee: feeInfo,
@@ -484,16 +512,16 @@ app.post('/api/pay-link', authMiddleware, async (req, res) => {
 
     if (feeInfo.feeToken === 'LCX') {
       instructions.transfers = [
-        { description: 'Payment to creator', token: 'USDC', tokenAddress: USDC_ADDRESS, amount: request.amount, to: creatorWallet },
-        { description: 'Platform fee', token: 'LCX', tokenAddress: feeConfig.lcx_contract_address, amount: String(feeInfo.platformShare), to: feeConfig.treasury_wallet },
-        { description: 'Creator reward', token: 'LCX', tokenAddress: feeConfig.lcx_contract_address, amount: String(feeInfo.creatorReward), to: creatorWallet }
+        { description: 'Payment to creator', token: paymentToken, tokenAddress: paymentTokenAddress, amount: request.amount, to: creatorWallet },
+        { description: 'Platform fee', token: 'LCX', tokenAddress: lcxTokenAddress, amount: String(feeInfo.platformShare), to: feeConfig.treasury_wallet },
+        { description: 'Creator reward', token: 'LCX', tokenAddress: lcxTokenAddress, amount: String(feeInfo.creatorReward), to: creatorWallet }
       ];
     } else {
       const totalUsdcFromPayee = Number(request.amount) + feeInfo.feeTotal;
       instructions.transfers = [
-        { description: 'Payment to creator', token: 'USDC', tokenAddress: USDC_ADDRESS, amount: request.amount, to: creatorWallet },
-        { description: 'Platform fee', token: 'USDC', tokenAddress: USDC_ADDRESS, amount: String(feeInfo.platformShare), to: feeConfig.treasury_wallet },
-        { description: 'Creator reward', token: 'USDC', tokenAddress: USDC_ADDRESS, amount: String(feeInfo.creatorReward), to: creatorWallet }
+        { description: 'Payment to creator', token: paymentToken, tokenAddress: paymentTokenAddress, amount: request.amount, to: creatorWallet },
+        { description: 'Platform fee', token: 'USDC', tokenAddress: usdcTokenAddress, amount: String(feeInfo.platformShare), to: feeConfig.treasury_wallet },
+        { description: 'Creator reward', token: 'USDC', tokenAddress: usdcTokenAddress, amount: String(feeInfo.creatorReward), to: creatorWallet }
       ];
       instructions.totalPayeeOwes = String(totalUsdcFromPayee);
     }
@@ -512,18 +540,6 @@ app.post('/api/pay-link', authMiddleware, async (req, res) => {
 
 // ============ Verify Payment ============
 const { verifyTransaction } = require('../lib/blockchain');
-
-function getTokenAddressForVerify(tokenSymbol, network) {
-  const symbol = (tokenSymbol || 'USDC').toUpperCase();
-  const net = (network || 'sepolia').toLowerCase();
-  if (symbol !== 'USDC') {
-    return process.env.NEXT_PUBLIC_USDT_ADDRESS || null;
-  }
-  if (net.includes('bnb') && net.includes('test')) {
-    return process.env.NEXT_PUBLIC_BNB_TESTNET_USDC_ADDRESS || process.env.NEXT_PUBLIC_USDC_ADDRESS;
-  }
-  return process.env.NEXT_PUBLIC_USDC_ADDRESS || '0x3402d41aa8e34e0df605c12109de2f8f4ff33a87';
-}
 
 app.post('/api/verify', optionalAuthMiddleware, async (req, res) => {
   try {
@@ -557,10 +573,9 @@ app.post('/api/verify', optionalAuthMiddleware, async (req, res) => {
       return res.status(400).json({ error: 'Request already paid' });
     }
 
-    const network = (request.network || 'sepolia').toLowerCase();
+    const network = getCanonicalName(request.network || 'sepolia') || 'sepolia';
     const tokenSymbol = (request.token || 'USDC').toUpperCase();
-    const isNative = tokenSymbol === 'ETH' || (tokenSymbol === 'BNB' && network.includes('bnb'));
-    const tokenAddress = isNative ? null : getTokenAddressForVerify(request.token, request.network);
+    const tokenAddress = isNativeToken(tokenSymbol, network) ? null : getTokenAddress(network, tokenSymbol);
 
     const verification = await verifyTransaction(
       txHash,
@@ -583,7 +598,7 @@ app.post('/api/verify', optionalAuthMiddleware, async (req, res) => {
     // Record fee transaction if fee tx hashes provided
     if (feeTxHash && supabase && req.agent) {
       try {
-        const feeInfo = await calculateFee(req.agent.wallet_address);
+        const feeInfo = await calculateFee(req.agent.wallet_address, network);
         const feeConfig = await getFeeConfig();
         let lcxPrice = null;
         try { lcxPrice = await getLcxPriceUsd(); } catch(e) {}
@@ -844,6 +859,12 @@ app.post('/api/chat', authMiddleware, async (req, res) => {
     console.error('Chat error:', error);
     return res.status(500).json({ error: error.message || 'Chat failed' });
   }
+});
+
+// ============ Supported Chains (public) ============
+app.get('/api/chains', (req, res) => {
+  const chains = getSupportedNetworkList();
+  return res.json({ success: true, chains });
 });
 
 // ============ Platform Stats (for dashboard, public) ============

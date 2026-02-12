@@ -159,7 +159,7 @@ VALUES (
   4.00,
   2.00,
   2.00,
-  '0x037a54aab062628c9bbae1fdb1583c195585fe41',  -- LCX token contract (update for your chain)
-  '0x0000000000000000000000000000000000000000',    -- Replace with your treasury wallet
+  '0x98d99c88D31C27C5a591Fe7F023F9DB0B37E4B3b',  -- LCX token contract (Sepolia)
+  '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266',    -- Platform treasury wallet
   300
 ) ON CONFLICT (id) DO NOTHING;

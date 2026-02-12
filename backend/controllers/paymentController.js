@@ -1,6 +1,7 @@
 const { createRequest, getRequest, markPaid, getAllRequests, deleteRequest } = require('../lib/store');
 const { verifyTransaction } = require('../lib/blockchain');
 const { create402Response } = require('../lib/x402');
+const { getTokenAddress, isNativeToken, getCanonicalName } = require('../lib/chainRegistry');
 
 exports.createPaymentRequest = async (req, res) => {
     try {
@@ -91,41 +92,10 @@ exports.verifyPayment = async (req, res) => {
             return res.status(400).json({ error: 'Request already paid' });
         }
 
-        // Determine token address based on token type and network
+        // Determine token address via chain registry
         const tokenSymbol = request.token?.toUpperCase() || 'USDC';
-        const network = request.network || 'sepolia';
-        const networkLower = network.toLowerCase();
-        
-        // Check if token is native on this network
-        // ETH is native on Ethereum, BNB is native on BNB chains
-        const isNativeToken = tokenSymbol === 'ETH' || 
-            (tokenSymbol === 'BNB' && networkLower.includes('bnb'));
-        
-        // Select the correct token address based on network
-        let tokenAddress = null;
-        if (!isNativeToken) {
-            const isBnbTestnet = networkLower.includes('bnb') && networkLower.includes('test');
-            
-            if (tokenSymbol === 'USDT') {
-                tokenAddress = isBnbTestnet 
-                    ? process.env.NEXT_PUBLIC_BNB_TESTNET_USDT_ADDRESS 
-                    : process.env.NEXT_PUBLIC_USDT_ADDRESS;
-            } else if (tokenSymbol === 'USDC') {
-                tokenAddress = isBnbTestnet 
-                    ? process.env.NEXT_PUBLIC_BNB_TESTNET_USDC_ADDRESS 
-                    : process.env.NEXT_PUBLIC_USDC_ADDRESS;
-            } else if (tokenSymbol === 'BNB') {
-                // BNB as ERC20 (WBNB) on Sepolia
-                tokenAddress = process.env.NEXT_PUBLIC_BNB_ADDRESS;
-            } else if (tokenSymbol === 'LCX') {
-                tokenAddress = process.env.NEXT_PUBLIC_LCX_ADDRESS;
-            } else {
-                // Default to USDC
-                tokenAddress = isBnbTestnet 
-                    ? process.env.NEXT_PUBLIC_BNB_TESTNET_USDC_ADDRESS 
-                    : process.env.NEXT_PUBLIC_USDC_ADDRESS;
-            }
-        }
+        const network = getCanonicalName(request.network || 'sepolia') || 'sepolia';
+        const tokenAddress = isNativeToken(tokenSymbol, network) ? null : getTokenAddress(network, tokenSymbol);
 
         const verification = await verifyTransaction(
             txHash,

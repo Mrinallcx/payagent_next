@@ -96,6 +96,8 @@ export const LCX_ADDRESSES = {
   sepolia: (import.meta.env.VITE_SEPOLIA_LCX_ADDRESS || '0x98d99c88D31C27C5a591Fe7F023F9DB0B37E4B3b') as `0x${string}`,
   // LCX on Ethereum mainnet
   mainnet: '0x037A54AaB062628C9Bbae1FDB1583c195585Fe41' as `0x${string}`,
+  // LCX on Base mainnet
+  base: '0xd7468c14ae76C3Fc308aEAdC223D5D1F71d3c171' as `0x${string}`,
 } as const;
 
 // Token decimals
@@ -123,12 +125,14 @@ export function getChainId(network: string): number {
   // Check for BNB Chain mainnet
   if (networkLower.includes('bnb')) return NETWORK_CONFIGS.bnb.chainId;
   
-  // Check for mainnet (only if explicitly "mainnet" or "ethereum mainnet")
-  if (networkLower.includes('mainnet')) return NETWORK_CONFIGS.mainnet.chainId;
+  // Check for Base (before "mainnet" check since "base-mainnet" contains "mainnet")
+  if (networkLower.includes('base')) return NETWORK_CONFIGS.base.chainId;
+  
+  // Check for Ethereum mainnet
+  if (networkLower === 'ethereum' || networkLower.includes('mainnet')) return NETWORK_CONFIGS.mainnet.chainId;
   
   // Other networks
   if (networkLower.includes('polygon')) return NETWORK_CONFIGS.polygon.chainId;
-  if (networkLower.includes('base')) return NETWORK_CONFIGS.base.chainId;
   
   // If just "ETH" without specifier, default to Sepolia for testing
   if (networkLower.includes('eth')) return NETWORK_CONFIGS.sepolia.chainId;
@@ -149,12 +153,14 @@ export function getUsdcAddress(network: string): `0x${string}` | null {
   // Check for BNB Testnet
   if (networkLower.includes('bnb') && networkLower.includes('test')) return USDC_ADDRESSES.bnbTestnet;
   
-  // Check for mainnet (only if explicitly "mainnet")
-  if (networkLower.includes('mainnet')) return USDC_ADDRESSES.mainnet;
+  // Check for Base (before mainnet check)
+  if (networkLower.includes('base')) return USDC_ADDRESSES.base;
+  
+  // Check for Ethereum mainnet
+  if (networkLower === 'ethereum' || networkLower.includes('mainnet')) return USDC_ADDRESSES.mainnet;
   
   // Other networks
   if (networkLower.includes('polygon')) return USDC_ADDRESSES.polygon;
-  if (networkLower.includes('base')) return USDC_ADDRESSES.base;
   
   // If just "ETH" without specifier, default to Sepolia for testing
   if (networkLower.includes('eth')) return USDC_ADDRESSES.sepolia;
@@ -170,11 +176,10 @@ export function getUsdtAddress(network: string): `0x${string}` | null {
   const networkLower = network.toLowerCase();
   
   if (networkLower.includes('sepolia')) return USDT_ADDRESSES.sepolia;
-  // Check for BNB Testnet
   if (networkLower.includes('bnb') && networkLower.includes('test')) return USDT_ADDRESSES.bnbTestnet;
-  if (networkLower.includes('mainnet')) return USDT_ADDRESSES.mainnet;
-  if (networkLower.includes('polygon')) return USDT_ADDRESSES.polygon;
   if (networkLower.includes('base')) return USDT_ADDRESSES.base;
+  if (networkLower === 'ethereum' || networkLower.includes('mainnet')) return USDT_ADDRESSES.mainnet;
+  if (networkLower.includes('polygon')) return USDT_ADDRESSES.polygon;
   if (networkLower.includes('eth')) return USDT_ADDRESSES.sepolia;
   
   return USDT_ADDRESSES.sepolia;
@@ -200,7 +205,8 @@ export function getLcxAddress(network: string): `0x${string}` | null {
   const networkLower = network.toLowerCase();
   
   if (networkLower.includes('sepolia')) return LCX_ADDRESSES.sepolia;
-  if (networkLower.includes('mainnet')) return LCX_ADDRESSES.mainnet;
+  if (networkLower.includes('base')) return LCX_ADDRESSES.base;
+  if (networkLower === 'ethereum' || networkLower.includes('mainnet')) return LCX_ADDRESSES.mainnet;
   if (networkLower.includes('eth')) return LCX_ADDRESSES.sepolia;
   
   return LCX_ADDRESSES.sepolia;
@@ -278,10 +284,10 @@ export function getNetworkName(network: string): string {
   if (networkLower.includes('sepolia')) return 'Sepolia (ETH Testnet)';
   if (networkLower.includes('bnb') && networkLower.includes('test')) return 'BNB Testnet';
   if (networkLower.includes('bnb')) return 'BNB Chain';
-  if (networkLower.includes('mainnet')) return 'Ethereum Mainnet';
-  if (networkLower.includes('polygon')) return 'Polygon';
   if (networkLower.includes('base')) return 'Base';
-  if (networkLower.includes('eth')) return 'Sepolia (ETH Testnet)'; // Default ETH to Sepolia
+  if (networkLower === 'ethereum' || networkLower.includes('mainnet')) return 'Ethereum Mainnet';
+  if (networkLower.includes('polygon')) return 'Polygon';
+  if (networkLower.includes('eth')) return 'Sepolia (ETH Testnet)';
   
   return network;
 }
@@ -295,9 +301,9 @@ export function getExplorerUrl(network: string): string {
   if (networkLower.includes('sepolia')) return 'https://sepolia.etherscan.io';
   if (networkLower.includes('bnb') && networkLower.includes('test')) return 'https://testnet.bscscan.com';
   if (networkLower.includes('bnb')) return 'https://bscscan.com';
-  if (networkLower.includes('mainnet')) return 'https://etherscan.io';
-  if (networkLower.includes('polygon')) return 'https://polygonscan.com';
   if (networkLower.includes('base')) return 'https://basescan.org';
+  if (networkLower === 'ethereum' || networkLower.includes('mainnet')) return 'https://etherscan.io';
+  if (networkLower.includes('polygon')) return 'https://polygonscan.com';
   
   return 'https://sepolia.etherscan.io';
 }
