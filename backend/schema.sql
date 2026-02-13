@@ -6,20 +6,33 @@ CREATE TABLE IF NOT EXISTS agents (
   id TEXT PRIMARY KEY,
   username TEXT UNIQUE NOT NULL,
   email TEXT NOT NULL,
-  api_key_hash TEXT NOT NULL,
-  api_key_prefix TEXT NOT NULL,
+  api_key_id TEXT UNIQUE NOT NULL,
+  api_secret_encrypted TEXT NOT NULL,
   webhook_secret_hash TEXT NOT NULL,
   wallet_address TEXT,
   chain TEXT DEFAULT 'sepolia',
-  status TEXT DEFAULT 'active' CHECK (status IN ('active', 'inactive', 'suspended')),
+  status TEXT DEFAULT 'active' CHECK (status IN ('active', 'inactive', 'suspended', 'pending_verification')),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   last_active_at TIMESTAMPTZ DEFAULT NOW(),
   total_payments_sent INTEGER DEFAULT 0,
   total_payments_received INTEGER DEFAULT 0,
-  total_fees_paid NUMERIC DEFAULT 0
+  total_fees_paid NUMERIC DEFAULT 0,
+  -- Security: API key expiry
+  api_key_expires_at TIMESTAMPTZ,
+  -- X (Twitter) verification
+  verification_status TEXT DEFAULT 'pending' CHECK (verification_status IN ('pending', 'verified', 'rejected')),
+  x_username TEXT,
+  x_verified_at TIMESTAMPTZ,
+  verification_challenge TEXT,
+  -- IP tracking
+  registered_ip TEXT,
+  last_known_ip TEXT,
+  ip_change_count INTEGER DEFAULT 0,
+  -- Soft delete
+  deleted_at TIMESTAMPTZ
 );
 
-CREATE INDEX IF NOT EXISTS idx_agents_api_key_prefix ON agents(api_key_prefix);
+CREATE INDEX IF NOT EXISTS idx_agents_api_key_id ON agents(api_key_id);
 CREATE INDEX IF NOT EXISTS idx_agents_username ON agents(username);
 CREATE INDEX IF NOT EXISTS idx_agents_status ON agents(status);
 
@@ -151,6 +164,45 @@ BEGIN
   UPDATE agents SET total_fees_paid = total_fees_paid + fee_amount WHERE id = agent_id_param;
 END;
 $$ LANGUAGE plpgsql;
+
+-- ============ API LOGS (audit trail + IP tracking) ============
+CREATE TABLE IF NOT EXISTS api_logs (
+  id TEXT PRIMARY KEY,
+  agent_id TEXT REFERENCES agents(id),
+  endpoint TEXT NOT NULL,
+  method TEXT NOT NULL,
+  ip_address TEXT,
+  user_agent TEXT,
+  status_code INTEGER,
+  response_time_ms INTEGER,
+  error TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_api_logs_agent ON api_logs(agent_id);
+CREATE INDEX IF NOT EXISTS idx_api_logs_created ON api_logs(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_api_logs_ip ON api_logs(ip_address);
+
+-- ============ IP HISTORY (per-agent IP tracking for anomaly detection) ============
+CREATE TABLE IF NOT EXISTS ip_history (
+  id TEXT PRIMARY KEY,
+  agent_id TEXT NOT NULL REFERENCES agents(id),
+  ip_address TEXT NOT NULL,
+  first_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  request_count INTEGER DEFAULT 1,
+  is_vpn BOOLEAN DEFAULT false,
+  UNIQUE(agent_id, ip_address)
+);
+
+CREATE INDEX IF NOT EXISTS idx_ip_history_agent ON ip_history(agent_id);
+
+-- ============ AUTH NONCES (wallet-based login for dashboard) ============
+CREATE TABLE IF NOT EXISTS auth_nonces (
+  wallet_address TEXT PRIMARY KEY,
+  nonce TEXT NOT NULL,
+  expires_at TIMESTAMPTZ NOT NULL
+);
 
 -- Insert default fee config (run once)
 INSERT INTO fee_config (id, lcx_fee_amount, lcx_platform_share, lcx_creator_reward, lcx_contract_address, treasury_wallet, price_cache_ttl_sec)

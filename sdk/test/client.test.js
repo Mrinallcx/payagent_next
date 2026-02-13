@@ -62,30 +62,31 @@ describe('PayAgentClient', () => {
   // ── Constructor ───────────────────────────────────────────────
 
   describe('constructor', () => {
-    it('requires apiKey', () => {
+    it('requires apiKeyId', () => {
       assert.throws(
         () => new PayAgentClient({ privateKey: '0x0000000000000000000000000000000000000000000000000000000000000001' }),
-        /apiKey is required/
+        /apiKeyId is required/
       );
     });
 
     it('requires privateKey', () => {
       assert.throws(
-        () => new PayAgentClient({ apiKey: 'pk_live_test' }),
+        () => new PayAgentClient({ apiKeyId: 'pk_live_test', apiSecret: 'sk_live_test' }),
         /privateKey is required/
       );
     });
 
     it('rejects invalid privateKey', () => {
       assert.throws(
-        () => new PayAgentClient({ apiKey: 'pk_live_test', privateKey: 'not-a-key' }),
+        () => new PayAgentClient({ apiKeyId: 'pk_live_test', apiSecret: 'sk_live_test', privateKey: 'not-a-key' }),
         /invalid/i
       );
     });
 
     it('creates client with valid params', () => {
       const client = new PayAgentClient({
-        apiKey: 'pk_live_test',
+        apiKeyId: 'pk_live_test',
+        apiSecret: 'sk_live_test',
         privateKey: '0x0000000000000000000000000000000000000000000000000000000000000001',
       });
       assert.ok(client);
@@ -95,7 +96,8 @@ describe('PayAgentClient', () => {
 
     it('derives correct wallet address from private key', () => {
       const client = new PayAgentClient({
-        apiKey: 'pk_live_test',
+        apiKeyId: 'pk_live_test',
+        apiSecret: 'sk_live_test',
         privateKey: '0x0000000000000000000000000000000000000000000000000000000000000001',
       });
       // Known address for private key 0x...01
@@ -104,7 +106,8 @@ describe('PayAgentClient', () => {
 
     it('strips trailing slash from baseUrl', () => {
       const client = new PayAgentClient({
-        apiKey: 'pk_live_test',
+        apiKeyId: 'pk_live_test',
+        apiSecret: 'sk_live_test',
         privateKey: '0x0000000000000000000000000000000000000000000000000000000000000001',
         baseUrl: 'https://example.com/',
       });
@@ -131,7 +134,8 @@ describe('PayAgentClient', () => {
       };
 
       const client = new PayAgentClient({
-        apiKey: 'pk_live_test',
+        apiKeyId: 'pk_live_test',
+        apiSecret: 'sk_live_test',
         privateKey: '0x0000000000000000000000000000000000000000000000000000000000000001',
       });
 
@@ -153,14 +157,17 @@ describe('PayAgentClient', () => {
       };
 
       const client = new PayAgentClient({
-        apiKey: 'pk_live_secret123',
+        apiKeyId: 'pk_live_secret123',
+        apiSecret: 'sk_live_test',
         privateKey: '0x0000000000000000000000000000000000000000000000000000000000000001',
       });
 
       await client.getInstructions('REQ-TEST1');
 
       const call = fetchCalls.find(c => c.url.includes('/api/pay-link'));
-      assert.equal(call.options.headers['x-api-key'], 'pk_live_secret123');
+      assert.equal(call.options.headers['x-api-key-id'], 'pk_live_secret123');
+      assert.ok(call.options.headers['x-timestamp'], 'x-timestamp header must be present');
+      assert.ok(call.options.headers['x-signature'], 'x-signature header must be present');
     });
 
     it('never includes private key in any HTTP request', async () => {
@@ -169,27 +176,33 @@ describe('PayAgentClient', () => {
       };
 
       const PRIVATE_KEY = '0x0000000000000000000000000000000000000000000000000000000000000001';
+      const API_SECRET = 'sk_live_test';
 
       const client = new PayAgentClient({
-        apiKey: 'pk_live_test',
+        apiKeyId: 'pk_live_test',
+        apiSecret: API_SECRET,
         privateKey: PRIVATE_KEY,
       });
 
       await client.getInstructions('REQ-TEST1');
 
-      // Check every fetch call — private key must never appear
+      // Check every fetch call — private key and api_secret must never appear
       for (const call of fetchCalls) {
         const bodyStr = call.options.body || '';
         const headerStr = JSON.stringify(call.options.headers || {});
         assert.ok(!bodyStr.includes(PRIVATE_KEY), 'Private key must not be in request body');
         assert.ok(!headerStr.includes(PRIVATE_KEY), 'Private key must not be in request headers');
         assert.ok(!call.url.includes(PRIVATE_KEY), 'Private key must not be in URL');
+        assert.ok(!bodyStr.includes(API_SECRET), 'api_secret must not be in request body');
+        assert.ok(!headerStr.includes(API_SECRET), 'api_secret must not be in request headers');
+        assert.ok(!call.url.includes(API_SECRET), 'api_secret must not be in URL');
       }
     });
 
     it('requires linkId', async () => {
       const client = new PayAgentClient({
-        apiKey: 'pk_live_test',
+        apiKeyId: 'pk_live_test',
+        apiSecret: 'sk_live_test',
         privateKey: '0x0000000000000000000000000000000000000000000000000000000000000001',
       });
 
@@ -216,7 +229,8 @@ describe('PayAgentClient', () => {
       };
 
       const client = new PayAgentClient({
-        apiKey: 'pk_live_test',
+        apiKeyId: 'pk_live_test',
+        apiSecret: 'sk_live_test',
         privateKey: '0x0000000000000000000000000000000000000000000000000000000000000001',
       });
 
@@ -240,7 +254,8 @@ describe('PayAgentClient', () => {
 
     it('requires amount', async () => {
       const client = new PayAgentClient({
-        apiKey: 'pk_live_test',
+        apiKeyId: 'pk_live_test',
+        apiSecret: 'sk_live_test',
         privateKey: '0x0000000000000000000000000000000000000000000000000000000000000001',
       });
 
@@ -252,7 +267,8 @@ describe('PayAgentClient', () => {
 
     it('requires network', async () => {
       const client = new PayAgentClient({
-        apiKey: 'pk_live_test',
+        apiKeyId: 'pk_live_test',
+        apiSecret: 'sk_live_test',
         privateKey: '0x0000000000000000000000000000000000000000000000000000000000000001',
       });
 
@@ -269,7 +285,8 @@ describe('PayAgentClient', () => {
 
       const PRIVATE_KEY = '0x0000000000000000000000000000000000000000000000000000000000000001';
       const client = new PayAgentClient({
-        apiKey: 'pk_live_test',
+        apiKeyId: 'pk_live_test',
+        apiSecret: 'sk_live_test',
         privateKey: PRIVATE_KEY,
       });
 
@@ -291,7 +308,8 @@ describe('PayAgentClient', () => {
       };
 
       const client = new PayAgentClient({
-        apiKey: 'pk_live_test',
+        apiKeyId: 'pk_live_test',
+        apiSecret: 'sk_live_test',
         privateKey: '0x0000000000000000000000000000000000000000000000000000000000000001',
       });
 
@@ -313,7 +331,8 @@ describe('PayAgentClient', () => {
       };
 
       const client = new PayAgentClient({
-        apiKey: 'pk_live_test',
+        apiKeyId: 'pk_live_test',
+        apiSecret: 'sk_live_test',
         privateKey: '0x0000000000000000000000000000000000000000000000000000000000000001',
       });
 
@@ -327,7 +346,8 @@ describe('PayAgentClient', () => {
 
     it('requires requestId', async () => {
       const client = new PayAgentClient({
-        apiKey: 'pk_live_test',
+        apiKeyId: 'pk_live_test',
+        apiSecret: 'sk_live_test',
         privateKey: '0x0000000000000000000000000000000000000000000000000000000000000001',
       });
 
@@ -339,7 +359,8 @@ describe('PayAgentClient', () => {
 
     it('requires txHash', async () => {
       const client = new PayAgentClient({
-        apiKey: 'pk_live_test',
+        apiKeyId: 'pk_live_test',
+        apiSecret: 'sk_live_test',
         privateKey: '0x0000000000000000000000000000000000000000000000000000000000000001',
       });
 
@@ -366,7 +387,8 @@ describe('PayAgentClient', () => {
       };
 
       const client = new PayAgentClient({
-        apiKey: 'pk_live_test',
+        apiKeyId: 'pk_live_test',
+        apiSecret: 'sk_live_test',
         privateKey: '0x0000000000000000000000000000000000000000000000000000000000000001',
       });
 
@@ -387,7 +409,8 @@ describe('PayAgentClient', () => {
       };
 
       const client = new PayAgentClient({
-        apiKey: 'pk_live_test',
+        apiKeyId: 'pk_live_test',
+        apiSecret: 'sk_live_test',
         privateKey: '0x0000000000000000000000000000000000000000000000000000000000000001',
       });
 
@@ -408,7 +431,8 @@ describe('PayAgentClient', () => {
       };
 
       const client = new PayAgentClient({
-        apiKey: 'pk_live_test',
+        apiKeyId: 'pk_live_test',
+        apiSecret: 'sk_live_test',
         privateKey: '0x0000000000000000000000000000000000000000000000000000000000000001',
       });
 
@@ -430,7 +454,8 @@ describe('PayAgentClient', () => {
       };
 
       const client = new PayAgentClient({
-        apiKey: 'pk_live_test',
+        apiKeyId: 'pk_live_test',
+        apiSecret: 'sk_live_test',
         privateKey: '0x0000000000000000000000000000000000000000000000000000000000000001',
       });
 
@@ -442,7 +467,8 @@ describe('PayAgentClient', () => {
 
     it('requires linkId', async () => {
       const client = new PayAgentClient({
-        apiKey: 'pk_live_test',
+        apiKeyId: 'pk_live_test',
+        apiSecret: 'sk_live_test',
         privateKey: '0x0000000000000000000000000000000000000000000000000000000000000001',
       });
 
@@ -464,7 +490,8 @@ describe('PayAgentClient', () => {
 
       const PRIVATE_KEY = '0x0000000000000000000000000000000000000000000000000000000000000001';
       const client = new PayAgentClient({
-        apiKey: 'pk_live_test',
+        apiKeyId: 'pk_live_test',
+        apiSecret: 'sk_live_test',
         privateKey: PRIVATE_KEY,
       });
 
@@ -492,7 +519,8 @@ describe('PayAgentClient', () => {
       };
 
       const client = new PayAgentClient({
-        apiKey: 'pk_live_bad',
+        apiKeyId: 'pk_live_bad',
+        apiSecret: 'sk_live_test',
         privateKey: '0x0000000000000000000000000000000000000000000000000000000000000001',
       });
 
@@ -513,7 +541,8 @@ describe('PayAgentClient', () => {
       };
 
       const client = new PayAgentClient({
-        apiKey: 'pk_live_test',
+        apiKeyId: 'pk_live_test',
+        apiSecret: 'sk_live_test',
         privateKey: '0x0000000000000000000000000000000000000000000000000000000000000001',
       });
 

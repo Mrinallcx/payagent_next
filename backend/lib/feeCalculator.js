@@ -1,6 +1,6 @@
 const { ethers } = require('ethers');
 const { getFeeConfig } = require('./feeConfig');
-const { getLcxPriceUsd } = require('./lcxPrice');
+const { getLcxPriceUsd, getEthPriceUsd } = require('./lcxPrice');
 const { getRpcUrl, getTokenAddress } = require('./chainRegistry');
 
 const ERC20_BALANCE_ABI = ['function balanceOf(address account) view returns (uint256)'];
@@ -8,22 +8,26 @@ const ERC20_BALANCE_ABI = ['function balanceOf(address account) view returns (ui
 /**
  * Calculate fee for a payment
  *
- * Checks the payee's LCX balance on the payment's network:
+ * Checks the payer's LCX balance on the payment's network:
  * - If >= 4 LCX → fee paid in LCX (2 to platform, 2 to creator)
- * - If < 4 LCX → fee paid in USDC equivalent (50/50 split)
+ * - If < 4 LCX → fee deducted from the primary payment token
+ *   - USDC/USDT: fee = lcxFeeAmount * lcxPriceUsd (stablecoins ≈ $1)
+ *   - ETH: fee = (lcxFeeAmount * lcxPriceUsd) / ethPriceUsd
+ *   - LCX (as payment token, but balance < 4): fee = lcxFeeAmount (same denomination)
  *
- * @param {string} payerWalletAddress - The payee's wallet address
+ * @param {string} payerWalletAddress - The payer's wallet address
  * @param {string} [network='sepolia'] - The network to check balance on
+ * @param {string} [paymentToken='USDC'] - The primary payment token (USDC, USDT, ETH, LCX)
  * @returns {Promise<object>} Fee details
  */
-async function calculateFee(payerWalletAddress, network = 'sepolia') {
+async function calculateFee(payerWalletAddress, network = 'sepolia', paymentToken = 'USDC') {
   const config = await getFeeConfig();
   const rpcUrl = getRpcUrl(network);
   const lcxAddress = getTokenAddress(network, 'LCX');
 
   let payerLcxBalance = 0;
 
-  // Check payee's LCX balance on-chain for the correct network
+  // Check payer's LCX balance on-chain for the correct network
   if (rpcUrl && lcxAddress && payerWalletAddress) {
     try {
       const provider = new ethers.JsonRpcProvider(rpcUrl);
@@ -33,7 +37,7 @@ async function calculateFee(payerWalletAddress, network = 'sepolia') {
       payerLcxBalance = Number(ethers.formatUnits(balanceRaw, 18));
     } catch (err) {
       console.error(`LCX balance check error on ${network}:`, err.message);
-      // Fall through to USDC fee path
+      // Fall through to payment-token fee path
     }
   }
 
@@ -41,7 +45,7 @@ async function calculateFee(payerWalletAddress, network = 'sepolia') {
   const lcxPlatformShare = Number(config.lcx_platform_share);
   const lcxCreatorReward = Number(config.lcx_creator_reward);
 
-  // Option A: Payee has enough LCX
+  // Option A: Payer has enough LCX → fee in LCX (creator gets full amount)
   if (payerLcxBalance >= lcxFeeAmount) {
     return {
       feeToken: 'LCX',
@@ -49,11 +53,12 @@ async function calculateFee(payerWalletAddress, network = 'sepolia') {
       platformShare: lcxPlatformShare,
       creatorReward: lcxCreatorReward,
       lcxPriceUsd: null,
-      payerLcxBalance
+      payerLcxBalance,
+      feeDeductedFromPayment: false
     };
   }
 
-  // Option B: Payee doesn't have enough LCX — fee in USDC equivalent
+  // Option B: Payer doesn't have enough LCX — fee deducted from payment token
   let lcxPriceUsd;
   try {
     lcxPriceUsd = await getLcxPriceUsd();
@@ -62,17 +67,44 @@ async function calculateFee(payerWalletAddress, network = 'sepolia') {
     lcxPriceUsd = 0.15; // Fallback price
   }
 
-  const usdcFeeTotal = Number((lcxFeeAmount * lcxPriceUsd).toFixed(6));
-  const usdcPlatformShare = Number((usdcFeeTotal / 2).toFixed(6));
-  const usdcCreatorReward = Number((usdcFeeTotal - usdcPlatformShare).toFixed(6));
+  const normalizedToken = paymentToken.toUpperCase();
+  let feeTotal, platformShare, creatorReward;
+
+  if (normalizedToken === 'ETH') {
+    // ETH is not a stablecoin — convert USD fee to ETH
+    let ethPriceUsd;
+    try {
+      ethPriceUsd = await getEthPriceUsd();
+    } catch (err) {
+      console.error('ETH price unavailable, using fallback $2500:', err.message);
+      ethPriceUsd = 2500; // Conservative fallback
+    }
+
+    const usdFee = lcxFeeAmount * lcxPriceUsd;
+    feeTotal = Number((usdFee / ethPriceUsd).toFixed(8));
+    platformShare = Number((feeTotal / 2).toFixed(8));
+    creatorReward = Number((feeTotal - platformShare).toFixed(8));
+  } else if (normalizedToken === 'LCX') {
+    // LCX as payment token but payer doesn't have enough separate LCX
+    // Fee stays in LCX denomination
+    feeTotal = lcxFeeAmount;
+    platformShare = lcxPlatformShare;
+    creatorReward = lcxCreatorReward;
+  } else {
+    // Stablecoins (USDC, USDT): assume $1 peg
+    feeTotal = Number((lcxFeeAmount * lcxPriceUsd).toFixed(6));
+    platformShare = Number((feeTotal / 2).toFixed(6));
+    creatorReward = Number((feeTotal - platformShare).toFixed(6));
+  }
 
   return {
-    feeToken: 'USDC',
-    feeTotal: usdcFeeTotal,
-    platformShare: usdcPlatformShare,
-    creatorReward: usdcCreatorReward,
+    feeToken: normalizedToken, // Fee in the same token as the payment
+    feeTotal,
+    platformShare,
+    creatorReward,
     lcxPriceUsd,
-    payerLcxBalance
+    payerLcxBalance,
+    feeDeductedFromPayment: true
   };
 }
 

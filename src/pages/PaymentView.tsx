@@ -8,9 +8,9 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Copy, CheckCircle2, Circle, Loader2, AlertCircle, Wallet, Clock, ExternalLink, Sparkles, ArrowRight, Shield } from "lucide-react";
 import { ConnectButton } from '@rainbow-me/rainbowkit';
-import { useAccount, useWriteContract, useWaitForTransactionReceipt, useSwitchChain, useSendTransaction } from 'wagmi';
+import { useAccount, useWriteContract, useSwitchChain, useSendTransaction } from 'wagmi';
 import { parseUnits, parseEther } from 'viem';
-import { getPaymentRequest, verifyPayment, type PaymentRequest } from "@/lib/api";
+import { getPaymentRequest, verifyPayment, getFeeInfo, type PaymentRequest, type FeeInfoResponse, type FeeTransfer } from "@/lib/api";
 import { ERC20_ABI, getTokenAddress, getChainId, getTokenDecimals, isNativeToken as checkIsNativeToken, getExplorerUrl } from "@/lib/contracts";
 
 type PaymentStep = "select-network" | "payment" | "success";
@@ -35,18 +35,19 @@ export default function PaymentView() {
   const [processingPayment, setProcessingPayment] = useState(false);
   const [isNativeToken, setIsNativeToken] = useState(false);
   const [expiryTimeRemaining, setExpiryTimeRemaining] = useState<number | null>(null);
+
+  // Fee state
+  const [feeInfo, setFeeInfo] = useState<FeeInfoResponse | null>(null);
+  const [feeLoading, setFeeLoading] = useState(false);
+  const [feeError, setFeeError] = useState<string | null>(null);
+  const [transferProgress, setTransferProgress] = useState<{ current: number; total: number; hashes: string[] }>({ current: 0, total: 0, hashes: [] });
+  const [transferError, setTransferError] = useState<string | null>(null);
   
   // Wagmi hooks for ERC20 token transfers
-  const { data: hash, writeContract, isPending: isWritePending, error: writeError } = useWriteContract();
-  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
-    hash,
-  });
+  const { writeContract } = useWriteContract();
 
   // Wagmi hooks for native ETH transfers
-  const { data: ethHash, sendTransaction, isPending: isEthPending, error: ethError } = useSendTransaction();
-  const { isLoading: isEthConfirming, isSuccess: isEthConfirmed } = useWaitForTransactionReceipt({
-    hash: ethHash,
-  });
+  const { sendTransaction } = useSendTransaction();
 
   // Fetch payment request data
   useEffect(() => {
@@ -122,6 +123,27 @@ export default function PaymentView() {
       }
     }
   }, [paymentRequest]);
+
+  // Fetch fee info when wallet connects
+  useEffect(() => {
+    if (!isConnected || !address || !paymentRequest || paymentRequest.status === 'PAID') return;
+
+    const fetchFee = async () => {
+      try {
+        setFeeLoading(true);
+        setFeeError(null);
+        const info = await getFeeInfo(paymentRequest.id, address);
+        setFeeInfo(info);
+      } catch (err) {
+        console.error('Error fetching fee info:', err);
+        setFeeError(err instanceof Error ? err.message : 'Failed to load fee info');
+      } finally {
+        setFeeLoading(false);
+      }
+    };
+
+    fetchFee();
+  }, [isConnected, address, paymentRequest?.id]);
 
   // Expiry countdown timer
   useEffect(() => {
@@ -248,23 +270,20 @@ export default function PaymentView() {
       return;
     }
 
+    // Ensure we have fee info with transfers
+    if (!feeInfo || !feeInfo.transfers || feeInfo.transfers.length === 0) {
+      toast.error("Fee info not loaded. Please wait or refresh.");
+      return;
+    }
+
     try {
       setProcessingPayment(true);
+      setTransferError(null);
 
       const network = paymentRequest.network.split(',')[0].trim().toLowerCase();
       const requiredChainId = getChainId(network);
-      const tokenUpper = paymentRequest.token.toUpperCase();
-      const isNative = checkIsNativeToken(tokenUpper, network);
-      setIsNativeToken(isNative);
 
-      const tokenAddress = isNative ? null : getTokenAddress(network, paymentRequest.token);
-
-      if (!isNative && !tokenAddress) {
-        toast.error(`${paymentRequest.token} not supported on ${network}`);
-        setProcessingPayment(false);
-        return;
-      }
-
+      // Switch chain if needed
       if (chain?.id !== requiredChainId) {
         toast.loading(`Please switch to ${network} network...`);
         try {
@@ -279,145 +298,137 @@ export default function PaymentView() {
         }
       }
 
-      toast.loading("Please confirm transaction in your wallet...");
+      const transfers = feeInfo.transfers;
+      const totalTransfers = transfers.length;
+      const txHashes: string[] = [];
+      setTransferProgress({ current: 0, total: totalTransfers, hashes: [] });
 
-      if (isNative) {
-        const amountInWei = parseEther(paymentRequest.amount);
-        
-        sendTransaction({
-          to: paymentRequest.receiver as `0x${string}`,
-          value: amountInWei,
-        });
-      } else {
-        const decimals = getTokenDecimals(paymentRequest.token);
-        const amountInWei = parseUnits(paymentRequest.amount, decimals);
+      // Execute transfers sequentially
+      for (let i = 0; i < totalTransfers; i++) {
+        const transfer = transfers[i];
+        const transferNum = i + 1;
+        setTransferProgress({ current: transferNum, total: totalTransfers, hashes: txHashes });
 
-        // @ts-expect-error - wagmi v2 type issue with writeContract
-        writeContract({
-          address: tokenAddress,
-          abi: ERC20_ABI,
-          functionName: 'transfer',
-          args: [paymentRequest.receiver as `0x${string}`, amountInWei],
-        });
+        toast.dismiss();
+        toast.loading(`Transaction ${transferNum}/${totalTransfers}: ${transfer.description}. Please confirm in wallet...`);
+
+        const isNative = checkIsNativeToken(transfer.token.toUpperCase(), network);
+        setIsNativeToken(isNative);
+
+        try {
+          let txHash: string;
+
+          if (isNative) {
+            // Native ETH transfer
+            txHash = await new Promise<string>((resolve, reject) => {
+              const unwatch = () => {};
+              sendTransaction(
+                {
+                  to: transfer.to as `0x${string}`,
+                  value: parseEther(transfer.amount),
+                },
+                {
+                  onSuccess: (hash) => resolve(hash),
+                  onError: (error) => reject(error),
+                }
+              );
+            });
+          } else {
+            // ERC20 transfer
+            const tokenAddr = transfer.tokenAddress || getTokenAddress(network, transfer.token);
+            if (!tokenAddr) {
+              throw new Error(`${transfer.token} not supported on ${network}`);
+            }
+
+            const decimals = getTokenDecimals(transfer.token);
+            const amountInWei = parseUnits(transfer.amount, decimals);
+
+            txHash = await new Promise<string>((resolve, reject) => {
+              // @ts-expect-error - wagmi v2 type issue with writeContract
+              writeContract(
+                {
+                  address: tokenAddr as `0x${string}`,
+                  abi: ERC20_ABI,
+                  functionName: 'transfer',
+                  args: [transfer.to as `0x${string}`, amountInWei],
+                },
+                {
+                  onSuccess: (hash: string) => resolve(hash),
+                  onError: (error: Error) => reject(error),
+                }
+              );
+            });
+          }
+
+          txHashes.push(txHash);
+          setTransferProgress({ current: transferNum, total: totalTransfers, hashes: [...txHashes] });
+
+          toast.dismiss();
+          toast.success(`Transaction ${transferNum}/${totalTransfers} submitted!`);
+
+          // Small delay between transactions for nonce management
+          if (i < totalTransfers - 1) {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+          }
+        } catch (txErr) {
+          console.error(`Transfer ${transferNum} error:`, txErr);
+          toast.dismiss();
+
+          const completedSummary = txHashes.length > 0
+            ? ` Completed: ${txHashes.length}/${totalTransfers} transfers.`
+            : '';
+          const errMsg = txErr instanceof Error ? txErr.message : 'Transaction failed';
+          setTransferError(`Transfer ${transferNum} (${transfer.description}) failed: ${errMsg}.${completedSummary}`);
+
+          if (txHashes.length > 0) {
+            toast.error(`Transfer ${transferNum} failed. ${txHashes.length} of ${totalTransfers} transfers completed. You may need to retry.`);
+          } else {
+            toast.error(`Payment failed: ${errMsg}`);
+          }
+
+          setProcessingPayment(false);
+          return;
+        }
       }
 
+      // All transfers succeeded — verify with the main payment tx hash
+      toast.dismiss();
+      toast.loading("All transfers complete. Verifying payment...");
+
+      try {
+        const result = await verifyPayment({
+          requestId: paymentRequest.id,
+          txHash: txHashes[0], // Main payment hash
+        });
+
+        if (result.success && result.status === 'PAID') {
+          setPaymentRequest(result.request);
+          setStep("success");
+          toast.dismiss();
+          toast.success("Payment verified successfully!");
+        } else {
+          // Tx was sent but verification had an issue — still show success
+          setStep("success");
+          toast.dismiss();
+          toast.success("Payment submitted! Verification in progress.");
+        }
+      } catch (verifyErr) {
+        console.error('Verification error:', verifyErr);
+        toast.dismiss();
+        toast.success("Payment submitted! Blockchain verification may take a moment.");
+        setStep("success");
+      }
     } catch (err) {
       console.error('Error initiating payment:', err);
       toast.dismiss();
       toast.error(err instanceof Error ? err.message : "Failed to initiate payment");
+    } finally {
       setProcessingPayment(false);
     }
   };
 
-  // Watch for ERC20 transaction confirmation
-  useEffect(() => {
-    if (isConfirmed && hash && paymentRequest && !isNativeToken) {
-      const verifyAndComplete = async () => {
-        try {
-          toast.dismiss();
-          toast.loading("Verifying payment on blockchain...");
-
-          const result = await verifyPayment({
-            requestId: paymentRequest.id,
-            txHash: hash,
-          });
-
-          if (result.success && result.status === 'PAID') {
-            setPaymentRequest(result.request);
-            setStep("success");
-            toast.dismiss();
-            toast.success("Payment verified successfully!");
-          } else {
-            toast.dismiss();
-            console.log("Payment verification returned non-success status");
-            setStep("success");
-          }
-        } catch (err) {
-          console.error('Error verifying payment:', err);
-          toast.dismiss();
-          console.log("Verification error but transaction was successful:", hash);
-          setStep("success");
-        } finally {
-          setProcessingPayment(false);
-        }
-      };
-
-      verifyAndComplete();
-    }
-  }, [isConfirmed, hash, paymentRequest, isNativeToken]);
-
-  // Watch for ETH transaction confirmation
-  useEffect(() => {
-    if (isEthConfirmed && ethHash && paymentRequest && isNativeToken) {
-      const verifyAndComplete = async () => {
-        try {
-          toast.dismiss();
-          toast.loading("Verifying ETH payment on blockchain...");
-
-          const result = await verifyPayment({
-            requestId: paymentRequest.id,
-            txHash: ethHash,
-          });
-
-          if (result.success && result.status === 'PAID') {
-            setPaymentRequest(result.request);
-            setStep("success");
-            toast.dismiss();
-            toast.success("Payment verified successfully!");
-          } else {
-            toast.dismiss();
-            console.log("Payment verification returned non-success status");
-            setStep("success");
-          }
-        } catch (err) {
-          console.error('Error verifying payment:', err);
-          toast.dismiss();
-          console.log("Verification error but transaction was successful:", ethHash);
-          setStep("success");
-        } finally {
-          setProcessingPayment(false);
-        }
-      };
-
-      verifyAndComplete();
-    }
-  }, [isEthConfirmed, ethHash, paymentRequest, isNativeToken]);
-
-  // Handle ERC20 write errors
-  useEffect(() => {
-    if (writeError) {
-      console.error('ERC20 Transaction error:', writeError);
-      toast.dismiss();
-      console.log("Transaction error:", writeError.message);
-      setProcessingPayment(false);
-    }
-  }, [writeError]);
-
-  // Handle ETH send errors
-  useEffect(() => {
-    if (ethError) {
-      console.error('ETH Transaction error:', ethError);
-      toast.dismiss();
-      console.log("ETH Transaction error:", ethError.message);
-      setProcessingPayment(false);
-    }
-  }, [ethError]);
-
-  // Update processing state when confirming (ERC20)
-  useEffect(() => {
-    if (isConfirming) {
-      toast.dismiss();
-      toast.loading("Waiting for blockchain confirmation...");
-    }
-  }, [isConfirming]);
-
-  // Update processing state when confirming (ETH)
-  useEffect(() => {
-    if (isEthConfirming) {
-      toast.dismiss();
-      toast.loading("Waiting for ETH transaction confirmation...");
-    }
-  }, [isEthConfirming]);
+  // Note: Transaction confirmation and verification is now handled
+  // inside handlePayWithWallet's sequential transfer loop using promises.
 
   const handleCopyAddress = (addr: string) => {
     navigator.clipboard.writeText(addr);
@@ -724,25 +735,142 @@ export default function PaymentView() {
                           </ConnectButton.Custom>
                         </div>
                       </div>
+
+                      {/* Fee Breakdown */}
+                      {feeLoading && (
+                        <div className="bg-muted/30 p-4 rounded-2xl border border-border/50 text-center">
+                          <Loader2 className="h-4 w-4 animate-spin mx-auto mb-2 text-primary" />
+                          <p className="text-xs text-muted-foreground">Calculating fees...</p>
+                        </div>
+                      )}
+
+                      {feeError && (
+                        <div className="bg-red-500/5 p-4 rounded-2xl border border-red-500/20">
+                          <p className="text-xs text-red-600">{feeError}</p>
+                        </div>
+                      )}
+
+                      {feeInfo && feeInfo.fee && !feeLoading && (
+                        <div className="bg-gradient-to-br from-muted/30 to-primary/5 p-4 rounded-2xl border border-border/50 space-y-2">
+                          <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider flex items-center gap-2">
+                            <Shield className="h-3 w-3" />
+                            Fee Breakdown
+                          </p>
+                          <div className="space-y-1.5 text-sm">
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">Payment Amount</span>
+                              <span className="font-semibold">{paymentRequest.amount} {paymentRequest.token}</span>
+                            </div>
+                            {feeInfo.fee.feeDeductedFromPayment ? (
+                              <>
+                                <div className="flex justify-between text-orange-600">
+                                  <span>Fee (from payment)</span>
+                                  <span className="font-semibold">-{feeInfo.fee.feeTotal} {feeInfo.fee.feeToken}</span>
+                                </div>
+                                <div className="flex justify-between text-xs text-muted-foreground pl-3">
+                                  <span>Platform fee</span>
+                                  <span>{feeInfo.fee.platformShare} {feeInfo.fee.feeToken}</span>
+                                </div>
+                                <div className="flex justify-between text-xs text-muted-foreground pl-3">
+                                  <span>Creator reward</span>
+                                  <span>{feeInfo.fee.creatorReward} {feeInfo.fee.feeToken}</span>
+                                </div>
+                                <div className="border-t border-border/50 pt-1.5 flex justify-between">
+                                  <span className="font-semibold text-foreground">Creator Receives</span>
+                                  <span className="font-bold text-primary">{feeInfo.creatorReceives} {paymentRequest.token}</span>
+                                </div>
+                              </>
+                            ) : (
+                              <>
+                                <div className="flex justify-between text-green-600">
+                                  <span>Fee (LCX — separate)</span>
+                                  <span className="font-semibold">{feeInfo.fee.feeTotal} LCX</span>
+                                </div>
+                                <div className="flex justify-between text-xs text-muted-foreground pl-3">
+                                  <span>Platform fee</span>
+                                  <span>{feeInfo.fee.platformShare} LCX</span>
+                                </div>
+                                <div className="flex justify-between text-xs text-muted-foreground pl-3">
+                                  <span>Creator reward</span>
+                                  <span>{feeInfo.fee.creatorReward} LCX</span>
+                                </div>
+                                <div className="border-t border-border/50 pt-1.5 flex justify-between">
+                                  <span className="font-semibold text-foreground">Creator Receives</span>
+                                  <span className="font-bold text-primary">{paymentRequest.amount} {paymentRequest.token} (full)</span>
+                                </div>
+                              </>
+                            )}
+                          </div>
+                          {feeInfo.transfers && feeInfo.transfers.length > 1 && (
+                            <p className="text-xs text-muted-foreground mt-2 pt-2 border-t border-border/30">
+                              You will be asked to approve {feeInfo.transfers.length} transactions in your wallet.
+                            </p>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Transfer Progress */}
+                      {processingPayment && transferProgress.total > 0 && (
+                        <div className="bg-blue-500/5 p-4 rounded-2xl border border-blue-500/20 space-y-2">
+                          <div className="flex items-center gap-2">
+                            <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+                            <span className="text-sm font-semibold text-blue-700">
+                              Transaction {transferProgress.current}/{transferProgress.total}
+                            </span>
+                          </div>
+                          <div className="w-full bg-blue-100 rounded-full h-2">
+                            <div
+                              className="bg-blue-600 h-2 rounded-full transition-all duration-500"
+                              style={{ width: `${(transferProgress.current / transferProgress.total) * 100}%` }}
+                            />
+                          </div>
+                          {transferProgress.hashes.length > 0 && (
+                            <div className="text-xs text-muted-foreground space-y-0.5">
+                              {transferProgress.hashes.map((h, i) => (
+                                <div key={i} className="flex items-center gap-1">
+                                  <CheckCircle2 className="h-3 w-3 text-green-500" />
+                                  <span>Tx {i + 1}: {h.slice(0, 10)}...{h.slice(-6)}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Transfer Error */}
+                      {transferError && (
+                        <div className="bg-red-500/5 p-4 rounded-2xl border border-red-500/20">
+                          <p className="text-xs text-red-600">{transferError}</p>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="mt-2 text-xs"
+                            onClick={() => { setTransferError(null); setTransferProgress({ current: 0, total: 0, hashes: [] }); }}
+                          >
+                            Retry
+                          </Button>
+                        </div>
+                      )}
+
                       <Button 
                         className="w-full h-14 text-base font-semibold rounded-2xl shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 transition-all duration-300 gap-2 bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90"
                         onClick={handlePayWithWallet}
-                        disabled={processingPayment || isWritePending || isConfirming || isEthPending || isEthConfirming || (expiryTimeRemaining !== null && expiryTimeRemaining <= 0)}
+                        disabled={processingPayment || feeLoading || !feeInfo || (expiryTimeRemaining !== null && expiryTimeRemaining <= 0)}
                       >
-                        {(isWritePending || isEthPending) ? (
+                        {processingPayment && transferProgress.total > 0 ? (
                           <>
                             <Loader2 className="h-5 w-5 animate-spin" />
-                            Confirm in Wallet...
-                          </>
-                        ) : (isConfirming || isEthConfirming) ? (
-                          <>
-                            <Loader2 className="h-5 w-5 animate-spin" />
-                            Confirming Transaction...
+                            Processing {transferProgress.current}/{transferProgress.total}...
                           </>
                         ) : processingPayment ? (
                           <>
                             <Loader2 className="h-5 w-5 animate-spin" />
-                            Verifying Payment...
+                            Processing Payment...
+                          </>
+                        ) : feeLoading ? (
+                          <>
+                            <Loader2 className="h-5 w-5 animate-spin" />
+                            Loading Fees...
                           </>
                         ) : (expiryTimeRemaining !== null && expiryTimeRemaining <= 0) ? (
                           <>

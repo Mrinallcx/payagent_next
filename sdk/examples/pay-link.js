@@ -8,23 +8,29 @@
  *   2. Payer agent pays it using the SDK
  *
  * Usage:
- *   CREATOR_API_KEY=pk_live_... PAYER_API_KEY=pk_live_... PAYER_PRIVATE_KEY=0x... node pay-link.js
+ *   CREATOR_KEY_ID=pk_live_... CREATOR_SECRET=sk_live_... \
+ *   PAYER_KEY_ID=pk_live_... PAYER_SECRET=sk_live_... \
+ *   PAYER_PRIVATE_KEY=0x... node pay-link.js
  */
 
 const { PayAgentClient } = require('../src/index');
 
-const CREATOR_API_KEY = process.env.CREATOR_API_KEY;
-const PAYER_API_KEY = process.env.PAYER_API_KEY;
+const CREATOR_KEY_ID = process.env.CREATOR_KEY_ID;
+const CREATOR_SECRET = process.env.CREATOR_SECRET;
+const PAYER_KEY_ID = process.env.PAYER_KEY_ID;
+const PAYER_SECRET = process.env.PAYER_SECRET;
 const PAYER_PRIVATE_KEY = process.env.PAYER_PRIVATE_KEY;
 const BASE_URL = process.env.PAYAGENT_API_URL || 'https://backend-two-chi-56.vercel.app';
 const NETWORK = process.env.NETWORK || 'sepolia';
 
 async function main() {
   // ── Validate env ──────────────────────────────────────────────
-  if (!CREATOR_API_KEY || !PAYER_API_KEY || !PAYER_PRIVATE_KEY) {
+  if (!CREATOR_KEY_ID || !CREATOR_SECRET || !PAYER_KEY_ID || !PAYER_SECRET || !PAYER_PRIVATE_KEY) {
     console.error('Missing environment variables. Required:');
-    console.error('  CREATOR_API_KEY=pk_live_...');
-    console.error('  PAYER_API_KEY=pk_live_...');
+    console.error('  CREATOR_KEY_ID=pk_live_...');
+    console.error('  CREATOR_SECRET=sk_live_...');
+    console.error('  PAYER_KEY_ID=pk_live_...');
+    console.error('  PAYER_SECRET=sk_live_...');
     console.error('  PAYER_PRIVATE_KEY=0x...');
     process.exit(1);
   }
@@ -33,7 +39,8 @@ async function main() {
   console.log('\n--- Step 1: Create a payment link ---');
 
   const creator = new PayAgentClient({
-    apiKey: CREATOR_API_KEY,
+    apiKeyId: CREATOR_KEY_ID,
+    apiSecret: CREATOR_SECRET,
     privateKey: PAYER_PRIVATE_KEY, // needed for constructor
     baseUrl: BASE_URL,
   });
@@ -52,7 +59,8 @@ async function main() {
   console.log('\n--- Step 2: Pay the link ---');
 
   const payer = new PayAgentClient({
-    apiKey: PAYER_API_KEY,
+    apiKeyId: PAYER_KEY_ID,
+    apiSecret: PAYER_SECRET,
     privateKey: PAYER_PRIVATE_KEY,
     baseUrl: BASE_URL,
     // Optional: provide your own RPC URL for better reliability

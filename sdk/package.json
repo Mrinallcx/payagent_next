@@ -1,6 +1,6 @@
 {
   "name": "@payagent/sdk",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "PayAgent SDK — client for PayAgent crypto payments. Handles payment instructions, signing, broadcasting, and verification.",
   "main": "src/index.js",
   "exports": {

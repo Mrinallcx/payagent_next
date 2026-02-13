@@ -1,6 +1,6 @@
 # @payagent/sdk
 
-SDK for [PayAgent](https://backend-two-chi-56.vercel.app) crypto payments. Handles fetching payment instructions, signing transactions, broadcasting to the blockchain, and verifying payments.
+SDK for [PayAgent](https://backend-two-chi-56.vercel.app) crypto payments. Uses HMAC-SHA256 request signing — your `api_secret` never leaves your environment.
 
 ## Install
 
@@ -16,7 +16,8 @@ npm install @payagent/sdk ethers
 const { PayAgentClient } = require('@payagent/sdk');
 
 const client = new PayAgentClient({
-  apiKey: 'pk_live_YOUR_API_KEY',
+  apiKeyId: 'pk_live_YOUR_KEY_ID',
+  apiSecret: 'sk_live_YOUR_SECRET',
   privateKey: process.env.WALLET_PRIVATE_KEY,
   baseUrl: 'https://backend-two-chi-56.vercel.app',
 });
@@ -32,19 +33,21 @@ console.log(result.transactions);  // [{ txHash: '0x...', status: 'confirmed' },
 ```
 Agent                  PayAgent API           Blockchain
   |                       |                      |
-  |-- getInstructions --->|                      |
+  |-- HMAC-signed req --->|                      |
   |<-- transfer list -----|                      |
   |                       |                      |
   |-- sign & broadcast --------------------------->|
   |<-- tx receipts --------------------------------|
   |                       |                      |
-  |-- verify (txHash) --->|                      |
+  |-- HMAC-signed verify ->|                      |
   |<-- PAID --------------|                      |
 ```
 
-1. **Fetch instructions** — SDK calls `POST /api/pay-link` to get transfer details (addresses, amounts, tokens)
-2. **Sign & broadcast** — SDK signs each transaction with ethers.js and broadcasts to the blockchain
+1. **Fetch instructions** — SDK calls `POST /api/pay-link` with HMAC-signed headers
+2. **Sign & broadcast** — SDK signs each transaction locally with ethers.js
 3. **Verify** — SDK sends the resulting transaction hashes to `POST /api/verify`
+
+All API requests are authenticated via HMAC-SHA256 (`x-api-key-id`, `x-timestamp`, `x-signature` headers). The `api_secret` is only used locally for signature computation.
 
 ## Full Example
 
@@ -53,7 +56,8 @@ const { PayAgentClient } = require('@payagent/sdk');
 
 // Initialize
 const client = new PayAgentClient({
-  apiKey: 'pk_live_YOUR_API_KEY',
+  apiKeyId: 'pk_live_YOUR_KEY_ID',
+  apiSecret: 'sk_live_YOUR_SECRET',
   privateKey: process.env.WALLET_PRIVATE_KEY,
   baseUrl: 'https://backend-two-chi-56.vercel.app',
 });
@@ -82,13 +86,24 @@ const instructions = await client.getInstructions('REQ-ABC123');
 const verification = await client.verifyPayment('REQ-ABC123', '0xTxHash');
 ```
 
+## HMAC Signing
+
+Every request is signed with HMAC-SHA256. The string-to-sign format is:
+
+```
+timestamp\nMETHOD\npath\nSHA256(body)
+```
+
+The SDK computes this automatically. For manual curl usage, see the [API documentation](https://payagent.vercel.app/agent).
+
 ## API Reference
 
 ### `new PayAgentClient(options)`
 
 | Option | Type | Required | Description |
 |--------|------|----------|-------------|
-| `apiKey` | string | yes | Your PayAgent API key (`pk_live_...`) |
+| `apiKeyId` | string | yes | Your PayAgent API key ID (`pk_live_...`) |
+| `apiSecret` | string | yes | Your PayAgent API secret (`sk_live_...`) — used for HMAC signing |
 | `privateKey` | string | yes | Your wallet private key |
 | `baseUrl` | string | no | API base URL (default: `https://backend-two-chi-56.vercel.app`) |
 | `rpcUrl` | string or object | no | Custom RPC URL. String for all chains, or `{ sepolia: '...', ethereum: '...', base: '...' }` |
@@ -134,13 +149,28 @@ Fetch supported chains from the API.
 
 The wallet address derived from your private key.
 
+## Migration from v0.1.x
+
+v0.2.0 is a **breaking change**. The constructor now requires `apiKeyId` + `apiSecret` instead of `apiKey`:
+
+```javascript
+// Before (v0.1.x)
+const client = new PayAgentClient({ apiKey: 'pk_live_...', privateKey: '0x...' });
+
+// After (v0.2.0)
+const client = new PayAgentClient({ apiKeyId: 'pk_live_...', apiSecret: 'sk_live_...', privateKey: '0x...' });
+```
+
+Rotate your key via `POST /api/agents/rotate-key` to get the new `api_key_id` + `api_secret` credentials.
+
 ## Custom RPC URLs
 
 For better reliability, provide your own RPC URLs:
 
 ```javascript
 const client = new PayAgentClient({
-  apiKey: 'pk_live_...',
+  apiKeyId: 'pk_live_...',
+  apiSecret: 'sk_live_...',
   privateKey: '0x...',
   rpcUrl: {
     sepolia: 'https://sepolia.infura.io/v3/YOUR_KEY',

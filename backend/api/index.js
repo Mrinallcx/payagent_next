@@ -7,7 +7,21 @@ const app = express();
 
 // CORS - Allow all origins
 app.use(cors({ origin: '*' }));
-app.use(express.json());
+
+// Capture raw body for HMAC signature verification
+app.use(express.json({
+  verify: (req, res, buf) => {
+    req._rawBody = buf.toString('utf8');
+  }
+}));
+
+// ============ Rate Limiting ============
+const { globalLimiter, sensitiveLimiter } = require('../middleware/rateLimit');
+app.use(globalLimiter);
+
+// ============ Request Logger (audit trail) ============
+const { requestLogger } = require('../middleware/requestLogger');
+app.use(requestLogger);
 
 // Health check
 app.get('/', (req, res) => {
@@ -61,10 +75,20 @@ function toCamelCase(obj) {
 }
 
 // ============ Auth Middleware ============
-const { authMiddleware, optionalAuthMiddleware } = require('../middleware/auth');
+const { authMiddleware, optionalAuthMiddleware, getClientIp } = require('../middleware/auth');
 
 // ============ Agents ============
-const { registerAgent, getAgentById, updateWalletAddress } = require('../lib/agents');
+const {
+  registerAgent,
+  activateAgent,
+  rotateApiKey,
+  softDeleteAgent,
+  deactivateAgent,
+  getAgentById,
+  getAgentByUsername,
+  getAgentByWallet,
+  updateWalletAddress
+} = require('../lib/agents');
 
 // ============ Fee system ============
 const { getFeeConfig } = require('../lib/feeConfig');
@@ -81,10 +105,26 @@ const { buildSystemPrompt } = require('../lib/ai/systemPrompt');
 const { routeIntent } = require('../lib/ai/intentRouter');
 const { saveMessage, getHistory, clearHistory } = require('../lib/ai/conversationMemory');
 
+// ============ X Verification ============
+const { verifyTweet } = require('../lib/xVerification');
+
+// ============ IP Monitor ============
+const { checkIpAnomaly } = require('../lib/ipMonitor');
+
+// ============ API Logs ============
+const { getAgentLogs, getAgentIpHistory } = require('../lib/apiLogs');
+
+// ============ Wallet Auth (for browser dashboard) ============
+const { challengeHandler, verifyHandler } = require('../middleware/walletAuth');
+
 // ============ Public Routes (no auth) ============
 
-// Agent registration (no auth required)
-app.post('/api/agents/register', async (req, res) => {
+// Wallet auth challenge + verify (for browser dashboard login)
+app.post('/api/auth/challenge', sensitiveLimiter, challengeHandler);
+app.post('/api/auth/verify', sensitiveLimiter, verifyHandler);
+
+// Agent registration (no auth required, with rate limit)
+app.post('/api/agents/register', sensitiveLimiter, async (req, res) => {
   try {
     const { username, email, wallet_address, walletAddress, chain } = req.body;
     const finalWallet = wallet_address || walletAddress || null;
@@ -104,14 +144,15 @@ app.post('/api/agents/register', async (req, res) => {
       return res.status(400).json({ error: 'Invalid wallet address format. Must be 0x followed by 40 hex characters.' });
     }
 
-    const result = await registerAgent({ username, email, wallet_address: finalWallet, chain: chain || 'sepolia' });
+    const ip = getClientIp(req);
+    const result = await registerAgent({ username, email, wallet_address: finalWallet, chain: chain || 'sepolia', ip });
 
     return res.status(201).json({
       success: true,
-      message: 'Agent registered successfully. Save these credentials — they will NOT be shown again.',
+      message: 'Agent registered. Complete X verification to activate your account and receive API credentials.',
       agent_id: result.agent_id,
-      api_key: result.api_key,
-      webhook_secret: result.webhook_secret
+      verification_challenge: result.verification_challenge,
+      instructions: `Post the following to X (Twitter), then call POST /api/agents/verify-x with your username and the tweet URL:\n\n"${result.verification_challenge}"`
     });
   } catch (error) {
     console.error('Registration error:', error);
@@ -119,6 +160,60 @@ app.post('/api/agents/register', async (req, res) => {
       return res.status(409).json({ error: error.message });
     }
     return res.status(500).json({ error: error.message || 'Failed to register agent' });
+  }
+});
+
+// X (Twitter) Verification (no auth — agent not yet activated)
+app.post('/api/agents/verify-x', sensitiveLimiter, async (req, res) => {
+  try {
+    const { username, tweet_url } = req.body;
+
+    if (!username || !tweet_url) {
+      return res.status(400).json({ error: 'Missing required fields: username, tweet_url' });
+    }
+
+    // Find the agent by username
+    const agent = await getAgentByUsername(username);
+    if (!agent) {
+      return res.status(404).json({ error: 'Agent not found' });
+    }
+
+    if (agent.verification_status === 'verified') {
+      return res.status(400).json({ error: 'Agent already verified' });
+    }
+
+    if (!agent.verification_challenge) {
+      return res.status(400).json({ error: 'No verification challenge found. Register first.' });
+    }
+
+    // Verify the tweet
+    const result = await verifyTweet(tweet_url, agent.verification_challenge);
+
+    if (!result.valid) {
+      return res.status(400).json({
+        error: 'Verification failed',
+        details: result.error,
+        challenge: agent.verification_challenge,
+        instructions: `Make sure your tweet contains exactly: ${agent.verification_challenge}`
+      });
+    }
+
+    // Activate the agent and generate real API key
+    const activation = await activateAgent(agent.id, result.x_username);
+
+    return res.json({
+      success: true,
+      message: 'Agent verified and activated! Save these credentials — they will NOT be shown again.',
+      agent_id: agent.id,
+      api_key_id: activation.api_key_id,
+      api_secret: activation.api_secret,
+      api_key_expires_at: activation.expires_at,
+      x_username: result.x_username,
+      webhook_secret: null // Webhook secret was already generated; this can be regenerated via API
+    });
+  } catch (error) {
+    console.error('X verification error:', error);
+    return res.status(500).json({ error: error.message || 'Verification failed' });
   }
 });
 
@@ -173,12 +268,115 @@ app.get('/api/request/:id', async (req, res) => {
   }
 });
 
+// ============ Public Fee Info (for human payers in browser) ============
+app.get('/api/request/:id/fee', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { payer } = req.query;
+
+    if (!payer || !/^0x[a-fA-F0-9]{40}$/.test(payer)) {
+      return res.status(400).json({ error: 'Missing or invalid payer wallet address. Use ?payer=0x...' });
+    }
+
+    // Look up the payment request
+    let request;
+    if (supabase) {
+      const { data, error } = await supabase
+        .from('payment_requests')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (error && error.code === 'PGRST116') {
+        return res.status(404).json({ error: 'Payment request not found' });
+      }
+      if (error) throw error;
+      request = data;
+    } else {
+      request = memoryStore.requests[id];
+      if (!request) {
+        return res.status(404).json({ error: 'Payment request not found' });
+      }
+    }
+
+    if (request.status === 'PAID') {
+      return res.json({ success: true, alreadyPaid: true, message: 'This link is already paid' });
+    }
+
+    if (request.expires_at && new Date(request.expires_at) < new Date()) {
+      return res.status(400).json({ error: 'This payment link has expired' });
+    }
+
+    const paymentNetwork = request.network || 'sepolia';
+    const paymentToken = (request.token || 'USDC').toUpperCase();
+    const paymentTokenAddress = getTokenAddress(paymentNetwork, paymentToken);
+    const lcxTokenAddress = getTokenAddress(paymentNetwork, 'LCX');
+
+    // Calculate fee for this payer
+    const feeInfo = await calculateFee(payer, paymentNetwork, paymentToken);
+
+    // Validate: payment amount must exceed fee when fee is deducted from payment
+    if (feeInfo.feeDeductedFromPayment && Number(request.amount) <= feeInfo.feeTotal) {
+      return res.status(400).json({
+        error: `Payment amount (${request.amount} ${paymentToken}) must be greater than the fee (${feeInfo.feeTotal} ${feeInfo.feeToken}). Minimum payment: ${(feeInfo.feeTotal + 0.01).toFixed(6)} ${paymentToken}`
+      });
+    }
+
+    const creatorWallet = request.creator_wallet || request.receiver;
+    const feeConfig = await getFeeConfig();
+
+    let transfers;
+    let creatorReceives = request.amount;
+
+    if (feeInfo.feeToken === 'LCX' && !feeInfo.feeDeductedFromPayment) {
+      // Payer has LCX — creator gets full amount, fee in LCX separately
+      transfers = [
+        { description: 'Payment to creator', token: paymentToken, tokenAddress: paymentTokenAddress, amount: request.amount, to: creatorWallet },
+        { description: 'Platform fee', token: 'LCX', tokenAddress: lcxTokenAddress, amount: String(feeInfo.platformShare), to: feeConfig.treasury_wallet },
+        { description: 'Creator reward', token: 'LCX', tokenAddress: lcxTokenAddress, amount: String(feeInfo.creatorReward), to: creatorWallet }
+      ];
+    } else {
+      // Fee deducted from payment token
+      creatorReceives = Number((Number(request.amount) - feeInfo.feeTotal).toFixed(8));
+      const feeTokenAddress = isNativeToken(feeInfo.feeToken, paymentNetwork) ? null : getTokenAddress(paymentNetwork, feeInfo.feeToken);
+      transfers = [
+        { description: 'Payment to creator', token: paymentToken, tokenAddress: paymentTokenAddress, amount: String(creatorReceives), to: creatorWallet },
+        { description: 'Platform fee', token: feeInfo.feeToken, tokenAddress: feeTokenAddress || paymentTokenAddress, amount: String(feeInfo.platformShare), to: feeConfig.treasury_wallet },
+        { description: 'Creator reward', token: feeInfo.feeToken, tokenAddress: feeTokenAddress || paymentTokenAddress, amount: String(feeInfo.creatorReward), to: creatorWallet }
+      ];
+    }
+
+    return res.json({
+      success: true,
+      payment: {
+        token: paymentToken,
+        amount: request.amount,
+        network: paymentNetwork,
+        to: creatorWallet,
+        description: request.description
+      },
+      fee: feeInfo,
+      transfers,
+      creatorReceives: String(creatorReceives)
+    });
+  } catch (error) {
+    console.error('Fee info error:', error);
+    return res.status(500).json({ error: error.message || 'Failed to get fee info' });
+  }
+});
+
 // ============ Authenticated Routes ============
 
 // Agent profile
 app.get('/api/agents/me', authMiddleware, async (req, res) => {
   try {
     const agent = req.agent;
+
+    // Trigger IP anomaly check (non-blocking)
+    if (req.clientIp) {
+      checkIpAnomaly(agent.id, req.clientIp, agent.last_known_ip, agent.ip_change_count).catch(() => {});
+    }
+
     return res.json({
       success: true,
       agent: {
@@ -192,7 +390,10 @@ app.get('/api/agents/me', authMiddleware, async (req, res) => {
         last_active_at: agent.last_active_at,
         total_payments_sent: agent.total_payments_sent,
         total_payments_received: agent.total_payments_received,
-        total_fees_paid: agent.total_fees_paid
+        total_fees_paid: agent.total_fees_paid,
+        verification_status: agent.verification_status,
+        x_username: agent.x_username,
+        api_key_expires_at: agent.api_key_expires_at
       }
     });
   } catch (error) {
@@ -220,6 +421,117 @@ app.post('/api/agents/wallet', authMiddleware, async (req, res) => {
   } catch (error) {
     console.error('Update wallet error:', error);
     return res.status(500).json({ error: error.message || 'Failed to update wallet' });
+  }
+});
+
+// ============ API Key Rotation ============
+app.post('/api/agents/rotate-key', sensitiveLimiter, authMiddleware, async (req, res) => {
+  try {
+    const result = await rotateApiKey(req.agent.id);
+
+    return res.json({
+      success: true,
+      message: 'API key rotated. Save the new credentials — they will NOT be shown again.',
+      api_key_id: result.api_key_id,
+      api_secret: result.api_secret,
+      expires_at: result.expires_at
+    });
+  } catch (error) {
+    console.error('Key rotation error:', error);
+    return res.status(500).json({ error: error.message || 'Failed to rotate API key' });
+  }
+});
+
+// ============ Agent Deactivation ============
+app.post('/api/agents/deactivate', authMiddleware, async (req, res) => {
+  try {
+    await deactivateAgent(req.agent.id);
+    return res.json({ success: true, message: 'Agent deactivated' });
+  } catch (error) {
+    console.error('Deactivation error:', error);
+    return res.status(500).json({ error: error.message || 'Failed to deactivate agent' });
+  }
+});
+
+// ============ Soft Delete Agent ============
+app.delete('/api/agents/me', authMiddleware, async (req, res) => {
+  try {
+    await softDeleteAgent(req.agent.id);
+    return res.json({ success: true, message: 'Agent deleted. Payment history is preserved.' });
+  } catch (error) {
+    console.error('Delete agent error:', error);
+    return res.status(500).json({ error: error.message || 'Failed to delete agent' });
+  }
+});
+
+// ============ Agent Logs (for /logs page) ============
+app.get('/api/agents/logs', authMiddleware, async (req, res) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit) || 50, 100);
+    const offset = parseInt(req.query.offset) || 0;
+
+    const result = await getAgentLogs(req.agent.id, { limit, offset });
+
+    return res.json({
+      success: true,
+      logs: result.logs,
+      total: result.total,
+      limit,
+      offset
+    });
+  } catch (error) {
+    console.error('Get logs error:', error);
+    return res.status(500).json({ error: 'Failed to get logs' });
+  }
+});
+
+// ============ Agent IP History ============
+app.get('/api/agents/ip-history', authMiddleware, async (req, res) => {
+  try {
+    const history = await getAgentIpHistory(req.agent.id);
+    return res.json({ success: true, ip_history: history });
+  } catch (error) {
+    console.error('Get IP history error:', error);
+    return res.status(500).json({ error: 'Failed to get IP history' });
+  }
+});
+
+// ============ Agent By Wallet (for frontend dashboard) ============
+app.get('/api/agents/by-wallet', async (req, res) => {
+  try {
+    const { wallet } = req.query;
+    if (!wallet || !/^0x[a-fA-F0-9]{40}$/.test(wallet)) {
+      return res.status(400).json({ error: 'Invalid or missing wallet address' });
+    }
+
+    const agent = await getAgentByWallet(wallet);
+    if (!agent) {
+      return res.json({ success: true, agent: null });
+    }
+
+    // Don't expose sensitive data
+    return res.json({
+      success: true,
+      agent: {
+        id: agent.id,
+        username: agent.username,
+        email: agent.email,
+        wallet_address: agent.wallet_address,
+        chain: agent.chain,
+        status: agent.status,
+        created_at: agent.created_at,
+        verification_status: agent.verification_status,
+        x_username: agent.x_username,
+        api_key_expires_at: agent.api_key_expires_at,
+        total_payments_sent: agent.total_payments_sent,
+        total_payments_received: agent.total_payments_received,
+        total_fees_paid: agent.total_fees_paid,
+        deleted_at: agent.deleted_at
+      }
+    });
+  } catch (error) {
+    console.error('Get agent by wallet error:', error);
+    return res.status(500).json({ error: 'Failed to look up agent' });
   }
 });
 
@@ -496,7 +808,15 @@ app.post('/api/pay-link', authMiddleware, async (req, res) => {
     const usdcTokenAddress = getTokenAddress(paymentNetwork, 'USDC');
 
     // Calculate fee (network-aware — checks LCX balance on the correct chain)
-    const feeInfo = await calculateFee(req.agent.wallet_address, paymentNetwork);
+    // Pass paymentToken so fee falls back to the same token if no LCX
+    const feeInfo = await calculateFee(req.agent.wallet_address, paymentNetwork, paymentToken);
+
+    // Validate: payment amount must exceed fee when fee is deducted from payment
+    if (feeInfo.feeDeductedFromPayment && Number(request.amount) <= feeInfo.feeTotal) {
+      return res.status(400).json({
+        error: `Payment amount (${request.amount} ${paymentToken}) must be greater than the fee (${feeInfo.feeTotal} ${feeInfo.feeToken}). Minimum payment: ${(feeInfo.feeTotal + 0.01).toFixed(6)} ${paymentToken}`
+      });
+    }
 
     // Build payment instructions (non-custodial: agent signs tx themselves)
     const creatorAgent = request.creator_agent_id ? await getAgentById(request.creator_agent_id) : null;
@@ -516,20 +836,24 @@ app.post('/api/pay-link', authMiddleware, async (req, res) => {
       transfers: []
     };
 
-    if (feeInfo.feeToken === 'LCX') {
+    if (feeInfo.feeToken === 'LCX' && !feeInfo.feeDeductedFromPayment) {
+      // Payer has LCX — creator gets full amount, fee in LCX separately
       instructions.transfers = [
         { description: 'Payment to creator', token: paymentToken, tokenAddress: paymentTokenAddress, amount: request.amount, to: creatorWallet },
         { description: 'Platform fee', token: 'LCX', tokenAddress: lcxTokenAddress, amount: String(feeInfo.platformShare), to: feeConfig.treasury_wallet },
         { description: 'Creator reward', token: 'LCX', tokenAddress: lcxTokenAddress, amount: String(feeInfo.creatorReward), to: creatorWallet }
       ];
     } else {
-      const totalUsdcFromPayee = Number(request.amount) + feeInfo.feeTotal;
+      // Fee deducted from payment token — creator gets amount minus fee
+      const creatorReceives = Number((Number(request.amount) - feeInfo.feeTotal).toFixed(8));
+      const feeTokenAddress = isNativeToken(feeInfo.feeToken, paymentNetwork) ? null : getTokenAddress(paymentNetwork, feeInfo.feeToken);
       instructions.transfers = [
-        { description: 'Payment to creator', token: paymentToken, tokenAddress: paymentTokenAddress, amount: request.amount, to: creatorWallet },
-        { description: 'Platform fee', token: 'USDC', tokenAddress: usdcTokenAddress, amount: String(feeInfo.platformShare), to: feeConfig.treasury_wallet },
-        { description: 'Creator reward', token: 'USDC', tokenAddress: usdcTokenAddress, amount: String(feeInfo.creatorReward), to: creatorWallet }
+        { description: 'Payment to creator', token: paymentToken, tokenAddress: paymentTokenAddress, amount: String(creatorReceives), to: creatorWallet },
+        { description: 'Platform fee', token: feeInfo.feeToken, tokenAddress: feeTokenAddress || paymentTokenAddress, amount: String(feeInfo.platformShare), to: feeConfig.treasury_wallet },
+        { description: 'Creator reward', token: feeInfo.feeToken, tokenAddress: feeTokenAddress || paymentTokenAddress, amount: String(feeInfo.creatorReward), to: creatorWallet }
       ];
-      instructions.totalPayeeOwes = String(totalUsdcFromPayee);
+      instructions.feeDeductedFromPayment = true;
+      instructions.creatorReceives = String(creatorReceives);
     }
 
     return res.json({
@@ -544,7 +868,7 @@ app.post('/api/pay-link', authMiddleware, async (req, res) => {
   }
 });
 
-// ============ Execute Payment (on-chain) ============
+// ============ Execute Payment (on-chain) — DEPRECATED ============
 const { verifyTransaction, executePayment } = require('../lib/blockchain');
 
 app.post('/api/execute-payment', authMiddleware, async (req, res) => {
@@ -608,23 +932,25 @@ app.post('/api/execute-payment', authMiddleware, async (req, res) => {
     const lcxTokenAddress = getTokenAddress(paymentNetwork, 'LCX');
     const usdcTokenAddress = getTokenAddress(paymentNetwork, 'USDC');
 
-    const feeInfo = await calculateFee(req.agent.wallet_address, paymentNetwork);
+    const feeInfo = await calculateFee(req.agent.wallet_address, paymentNetwork, paymentToken);
     const creatorAgent = request.creator_agent_id ? await getAgentById(request.creator_agent_id) : null;
     const creatorWallet = creatorAgent ? creatorAgent.wallet_address : request.receiver;
     const feeConfig = await getFeeConfig();
 
     let transfers;
-    if (feeInfo.feeToken === 'LCX') {
+    if (feeInfo.feeToken === 'LCX' && !feeInfo.feeDeductedFromPayment) {
       transfers = [
         { description: 'Payment to creator', token: paymentToken, tokenAddress: paymentTokenAddress, amount: request.amount, to: creatorWallet },
         { description: 'Platform fee', token: 'LCX', tokenAddress: lcxTokenAddress, amount: String(feeInfo.platformShare), to: feeConfig.treasury_wallet },
         { description: 'Creator reward', token: 'LCX', tokenAddress: lcxTokenAddress, amount: String(feeInfo.creatorReward), to: creatorWallet }
       ];
     } else {
+      const creatorReceives = Number((Number(request.amount) - feeInfo.feeTotal).toFixed(8));
+      const feeTokenAddress = isNativeToken(feeInfo.feeToken, paymentNetwork) ? null : getTokenAddress(paymentNetwork, feeInfo.feeToken);
       transfers = [
-        { description: 'Payment to creator', token: paymentToken, tokenAddress: paymentTokenAddress, amount: request.amount, to: creatorWallet },
-        { description: 'Platform fee', token: 'USDC', tokenAddress: usdcTokenAddress, amount: String(feeInfo.platformShare), to: feeConfig.treasury_wallet },
-        { description: 'Creator reward', token: 'USDC', tokenAddress: usdcTokenAddress, amount: String(feeInfo.creatorReward), to: creatorWallet }
+        { description: 'Payment to creator', token: paymentToken, tokenAddress: paymentTokenAddress, amount: String(creatorReceives), to: creatorWallet },
+        { description: 'Platform fee', token: feeInfo.feeToken, tokenAddress: feeTokenAddress || paymentTokenAddress, amount: String(feeInfo.platformShare), to: feeConfig.treasury_wallet },
+        { description: 'Creator reward', token: feeInfo.feeToken, tokenAddress: feeTokenAddress || paymentTokenAddress, amount: String(feeInfo.creatorReward), to: creatorWallet }
       ];
     }
 
@@ -785,7 +1111,7 @@ app.post('/api/verify', optionalAuthMiddleware, async (req, res) => {
     // Record fee transaction if fee tx hashes provided
     if (feeTxHash && supabase && req.agent) {
       try {
-        const feeInfo = await calculateFee(req.agent.wallet_address, network);
+        const feeInfo = await calculateFee(req.agent.wallet_address, network, tokenSymbol);
         const feeConfig = await getFeeConfig();
         let lcxPrice = null;
         try { lcxPrice = await getLcxPriceUsd(); } catch(e) {}

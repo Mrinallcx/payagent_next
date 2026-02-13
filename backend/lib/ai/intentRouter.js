@@ -174,9 +174,10 @@ async function handlePayLink(params, agent, supabase, memoryStore) {
     return { alreadyPaid: true, message: 'This link is already paid.' };
   }
 
-  // Calculate fee (network-aware)
+  // Calculate fee (network-aware, token-aware)
   const paymentNetwork = request.network || 'sepolia';
-  const feeInfo = await calculateFee(agent.wallet_address, paymentNetwork);
+  const paymentToken = (request.token || 'USDC').toUpperCase();
+  const feeInfo = await calculateFee(agent.wallet_address, paymentNetwork, paymentToken);
   const feeConfig = await getFeeConfig();
 
   return {

@@ -1,6 +1,7 @@
 /**
  * PayAgentClient — SDK for PayAgent crypto payments.
  *
+ * Uses HMAC-SHA256 request signing for authentication (api_secret never leaves your environment).
  * Handles fetching payment instructions, signing transactions with ethers.js,
  * broadcasting to the blockchain, and verifying payments via the PayAgent API.
  *
@@ -8,7 +9,8 @@
  * const { PayAgentClient } = require('@payagent/sdk');
  *
  * const client = new PayAgentClient({
- *   apiKey: 'pk_live_...',
+ *   apiKeyId: 'pk_live_...',
+ *   apiSecret: 'sk_live_...',
  *   privateKey: '0x...',
  *   baseUrl: 'https://backend-two-chi-56.vercel.app',
  * });
@@ -18,6 +20,7 @@
  */
 
 const { ethers } = require('ethers');
+const crypto = require('crypto');
 const { TOKEN_DECIMALS, DEFAULT_RPC_URLS, CHAINS } = require('./constants');
 
 // Minimal ERC-20 ABI for transfers
@@ -32,16 +35,29 @@ class PayAgentClient {
    * Create a new PayAgentClient.
    *
    * @param {Object} options
-   * @param {string} options.apiKey - Your PayAgent API key (pk_live_...)
+   * @param {string} options.apiKeyId - Your PayAgent API key ID (pk_live_...)
+   * @param {string} options.apiSecret - Your PayAgent API secret (sk_live_...) — used for HMAC signing, never transmitted
    * @param {string} options.privateKey - Your wallet private key
    * @param {string} [options.baseUrl='https://backend-two-chi-56.vercel.app'] - PayAgent API base URL
    * @param {string|Object} [options.rpcUrl] - Custom RPC URL(s). String for all chains, or { sepolia: '...', ethereum: '...', base: '...' }
+   *
+   * @deprecated options.apiKey - Use apiKeyId + apiSecret instead (backward compat removed in v0.2.0)
    */
-  constructor({ apiKey, privateKey, baseUrl, rpcUrl } = {}) {
-    if (!apiKey) throw new Error('apiKey is required');
+  constructor({ apiKeyId, apiSecret, apiKey, privateKey, baseUrl, rpcUrl } = {}) {
+    // Backward compat: if old-style apiKey is provided without new fields, throw helpful error
+    if (apiKey && !apiKeyId) {
+      throw new Error(
+        'PayAgentClient v0.2.0 breaking change: Replace { apiKey } with { apiKeyId, apiSecret }.\n' +
+        'Rotate your key via POST /api/agents/rotate-key to get the new credentials.'
+      );
+    }
+
+    if (!apiKeyId) throw new Error('apiKeyId is required');
+    if (!apiSecret) throw new Error('apiSecret is required');
     if (!privateKey) throw new Error('privateKey is required');
 
-    this.apiKey = apiKey;
+    this.apiKeyId = apiKeyId;
+    this.apiSecret = apiSecret;
     this.baseUrl = (baseUrl || 'https://backend-two-chi-56.vercel.app').replace(/\/$/, '');
 
     this._wallet = new ethers.Wallet(privateKey);
@@ -206,15 +222,39 @@ class PayAgentClient {
   // ─── Private Helpers ──────────────────────────────────────────────
 
   /**
+   * Compute HMAC-SHA256 signature for a request.
+   *
+   * String-to-sign format: timestamp\nMETHOD\npath\nSHA256(body)
+   *
+   * @private
+   */
+  _sign(method, path, body) {
+    const timestamp = Math.floor(Date.now() / 1000).toString();
+    const bodyStr = body ? JSON.stringify(body) : '';
+    const bodyHash = crypto.createHash('sha256').update(bodyStr).digest('hex');
+    const stringToSign = `${timestamp}\n${method}\n${path}\n${bodyHash}`;
+    const signature = crypto.createHmac('sha256', this.apiSecret).update(stringToSign).digest('hex');
+
+    return { timestamp, signature };
+  }
+
+  /**
    * Make an authenticated HTTP request to the PayAgent API.
+   * Uses HMAC-SHA256 request signing — api_secret never leaves this process.
    * @private
    */
   async _fetch(method, path, body) {
     const url = `${this.baseUrl}${path}`;
+
+    // Compute HMAC signature
+    const { timestamp, signature } = this._sign(method.toUpperCase(), path, body);
+
     const headers = {
       'Content-Type': 'application/json',
-      'x-api-key': this.apiKey,
-      'User-Agent': `PayAgentSDK/0.1.0`,
+      'x-api-key-id': this.apiKeyId,
+      'x-timestamp': timestamp,
+      'x-signature': signature,
+      'User-Agent': `PayAgentSDK/0.2.0`,
     };
 
     const options = { method, headers };

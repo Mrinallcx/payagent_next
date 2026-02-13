@@ -22,11 +22,35 @@ Query `GET /api/chains` for full chain details and token addresses.
 
 ## Authentication
 
-All authenticated endpoints require the `x-api-key` header (or `Authorization: Bearer <key>`).
+PayAgent supports two authentication methods:
+
+### HMAC-SHA256 (SDK / AI Agents / curl)
+
+All server-to-server requests are authenticated via HMAC-SHA256 signing. Three headers are required:
 
 ```
-x-api-key: pk_live_YOUR_API_KEY
+x-api-key-id:  pk_live_YOUR_KEY_ID   (public identifier)
+x-timestamp:   1707000000            (unix epoch seconds)
+x-signature:   <HMAC-SHA256 hex>     (computed signature)
 ```
+
+**String-to-sign format:**
+```
+timestamp\nMETHOD\npath\nSHA256(body)
+```
+
+- Replay protection: timestamp must be within 5 minutes of server time
+- The `api_secret` is used only for local HMAC computation — never sent over the wire
+- The `@payagent/sdk` handles signing automatically
+
+### Wallet Auth / JWT (Browser Dashboard)
+
+The browser dashboard authenticates via wallet signature:
+
+1. `POST /api/auth/challenge` → returns a nonce to sign
+2. Sign nonce with wallet (EIP-191)
+3. `POST /api/auth/verify` → returns a 1-hour JWT
+4. Use `Authorization: Bearer <jwt>` for dashboard API calls
 
 ---
 
@@ -49,12 +73,21 @@ POST /api/agents/register
 {
   "success": true,
   "agent_id": "agent_my-agent_a1b2c3",
-  "api_key": "pk_live_abc123...",
-  "webhook_secret": "whsec_xyz789..."
+  "verification_challenge": "payagent-verify-my-agent-abc123",
+  "instructions": "Post the challenge to X (Twitter), then call POST /api/agents/verify-x"
 }
 ```
 
-> Save these credentials — they are shown only once.
+After X verification, you receive HMAC credentials:
+```json
+{
+  "api_key_id": "pk_live_abc123...",
+  "api_secret": "sk_live_xyz789...",
+  "api_key_expires_at": "2026-02-21T..."
+}
+```
+
+> Save both credentials — they are shown only once.
 
 ---
 
@@ -105,9 +138,10 @@ npm install @payagent/sdk ethers
 ```javascript
 const { PayAgentClient } = require('@payagent/sdk');
 
-// Initialize
+// Initialize with HMAC credentials
 const client = new PayAgentClient({
-  apiKey: 'pk_live_YOUR_API_KEY',
+  apiKeyId: process.env.PAYAGENT_KEY_ID,     // pk_live_...
+  apiSecret: process.env.PAYAGENT_SECRET,     // sk_live_...
   privateKey: process.env.WALLET_PRIVATE_KEY,
   baseUrl: 'https://backend-two-chi-56.vercel.app',
 });
@@ -285,7 +319,10 @@ When you ask the AI to create a link without specifying a chain, it will ask whi
 ```bash
 # Step 1: Request without chain
 curl -X POST /api/chat \
-  -H "x-api-key: pk_live_..." \
+  -H "Content-Type: application/json" \
+  -H "x-api-key-id: pk_live_..." \
+  -H "x-timestamp: $(date +%s)" \
+  -H "x-signature: <computed HMAC>" \
   -d '{ "message": "Create a 5 USDC payment link" }'
 ```
 
@@ -309,7 +346,10 @@ Response — AI asks for chain:
 ```bash
 # Step 2: Reply with chain choice
 curl -X POST /api/chat \
-  -H "x-api-key: pk_live_..." \
+  -H "Content-Type: application/json" \
+  -H "x-api-key-id: pk_live_..." \
+  -H "x-timestamp: $(date +%s)" \
+  -H "x-signature: <computed HMAC>" \
   -d '{ "message": "base" }'
 ```
 
@@ -330,7 +370,10 @@ Response — link created:
 **Skip chain prompt** by specifying the chain upfront:
 ```bash
 curl -X POST /api/chat \
-  -H "x-api-key: pk_live_..." \
+  -H "Content-Type: application/json" \
+  -H "x-api-key-id: pk_live_..." \
+  -H "x-timestamp: $(date +%s)" \
+  -H "x-signature: <computed HMAC>" \
   -d '{ "message": "Create a 10 USDT link on ethereum" }'
 ```
 
@@ -348,17 +391,26 @@ Returns all supported chains with names, chain IDs, and testnet flags.
 
 ### 8. Other Endpoints
 
-| Method | Path              | Auth | Description              |
-|--------|-------------------|------|--------------------------|
-| GET    | /api/agents/me    | yes  | Get agent profile        |
-| POST   | /api/agents/wallet| yes  | Update wallet address    |
-| GET    | /api/requests     | yes  | List your payment links  |
-| GET    | /api/request/:id  | no   | Get link details (public)|
-| DELETE | /api/request/:id  | yes  | Delete a payment link    |
-| POST   | /api/webhooks     | yes  | Register a webhook       |
-| GET    | /api/webhooks     | yes  | List your webhooks       |
-| GET    | /api/stats        | no   | Platform statistics      |
-| GET    | /health           | no   | Health check             |
+| Method | Path                   | Auth   | Description                       |
+|--------|------------------------|--------|-----------------------------------|
+| POST   | /api/auth/challenge    | no     | Get wallet login nonce            |
+| POST   | /api/auth/verify       | no     | Verify wallet signature → JWT     |
+| POST   | /api/agents/verify-x   | no     | X (Twitter) verification          |
+| POST   | /api/agents/rotate-key | JWT    | Rotate HMAC credentials           |
+| POST   | /api/agents/deactivate | JWT    | Soft-deactivate agent             |
+| DELETE | /api/agents/delete     | JWT    | Soft-delete agent                 |
+| GET    | /api/agents/me         | HMAC/JWT | Get agent profile               |
+| POST   | /api/agents/wallet     | HMAC/JWT | Update wallet address           |
+| GET    | /api/agents/logs       | HMAC/JWT | API request logs                |
+| GET    | /api/agents/ip-history | HMAC/JWT | IP address history              |
+| GET    | /api/requests          | HMAC   | List your payment links           |
+| GET    | /api/request/:id       | no     | Get link details (public)         |
+| GET    | /api/request/:id/fee   | no     | Fee breakdown for payer (public)  |
+| DELETE | /api/request/:id       | HMAC   | Delete a payment link             |
+| POST   | /api/webhooks          | HMAC   | Register a webhook                |
+| GET    | /api/webhooks          | HMAC   | List your webhooks                |
+| GET    | /api/stats             | no     | Platform statistics               |
+| GET    | /health                | no     | Health check                      |
 
 ---
 
@@ -374,8 +426,9 @@ npm install @payagent/sdk ethers
 const { PayAgentClient } = require('@payagent/sdk');
 
 const client = new PayAgentClient({
-  apiKey: 'pk_live_...',               // required
-  privateKey: '0x...',                  // required
+  apiKeyId: 'pk_live_...',              // required — public key identifier
+  apiSecret: 'sk_live_...',             // required — HMAC signing secret (never sent over the wire)
+  privateKey: '0x...',                  // required — wallet private key for signing transactions
   baseUrl: 'https://backend-two-chi-56.vercel.app',  // optional
   rpcUrl: {                             // optional — custom RPC URLs
     sepolia: 'https://sepolia.infura.io/v3/KEY',
@@ -384,6 +437,8 @@ const client = new PayAgentClient({
   },
 });
 ```
+
+> **HMAC Signing**: The SDK automatically signs every request using HMAC-SHA256. The `apiSecret` is used only locally to compute the signature — it is never transmitted.
 
 ### Methods
 
@@ -408,9 +463,10 @@ const link = await client.createLink({
 });
 console.log(link.linkId); // REQ-ABC123
 
-// Payer pays it (different agent, different private key)
+// Payer pays it (different agent, different credentials)
 const payer = new PayAgentClient({
-  apiKey: 'pk_live_PAYER_KEY',
+  apiKeyId: 'pk_live_PAYER_KEY_ID',
+  apiSecret: 'sk_live_PAYER_SECRET',
   privateKey: '0xPAYER_PRIVATE_KEY',
 });
 
@@ -425,12 +481,38 @@ See the full [SDK README](../sdk/README.md) for detailed documentation.
 
 ## Fee Model
 
-The **payer** covers the fee. Fee can be paid in LCX (preferred) or USDC equivalent.
+The **payer** covers the fee. Fee is paid in LCX (preferred) or deducted from the payment token (fallback).
 
-| Condition           | Fee                                    |
-|---------------------|----------------------------------------|
-| Payer holds >= 4 LCX | 4 LCX (2 platform + 2 creator reward) |
-| Payer holds < 4 LCX  | USDC equivalent of 4 LCX (50/50)     |
+| Condition             | Fee                                                   | Creator Receives     |
+|-----------------------|-------------------------------------------------------|----------------------|
+| Payer holds >= 4 LCX  | 4 LCX (2 platform + 2 creator reward)                | Full payment amount  |
+| Payer holds < 4 LCX   | Fee deducted from payment token (50/50 split)        | Amount minus fee     |
+
+**Fallback logic by token:**
+- **USDC / USDT**: Fee = LCX fee amount × LCX price (stablecoins ≈ $1)
+- **ETH**: Fee = (LCX fee amount × LCX price) / ETH price (converted via CoinGecko)
+- **LCX (as payment token)**: Fee = 4 LCX deducted from payment amount
+
+### Public Fee Endpoint (for human payers)
+
+```
+GET /api/request/:id/fee?payer=0xPayerWalletAddress
+```
+
+Returns fee-adjusted transfer instructions for any payer. No auth required.
+
+```json
+{
+  "success": true,
+  "payment": { "token": "USDT", "amount": "100", "network": "base" },
+  "fee": { "feeToken": "USDT", "feeTotal": 0.60, "platformShare": 0.30, "creatorReward": 0.30, "feeDeductedFromPayment": true },
+  "transfers": [
+    { "description": "Payment to creator", "to": "0x...", "token": "USDT", "amount": "99.40" },
+    { "description": "Platform fee", "to": "0x...", "token": "USDT", "amount": "0.30" },
+    { "description": "Creator reward", "to": "0x...", "token": "USDT", "amount": "0.30" }
+  ],
+  "creatorReceives": "99.40"
+}
 
 ---
 
@@ -440,7 +522,10 @@ Register a webhook URL to receive events:
 
 ```bash
 curl -X POST /api/webhooks \
-  -H "x-api-key: pk_live_..." \
+  -H "Content-Type: application/json" \
+  -H "x-api-key-id: pk_live_..." \
+  -H "x-timestamp: $(date +%s)" \
+  -H "x-signature: <computed HMAC>" \
   -d '{
     "url": "https://your-server.com/webhook",
     "events": ["payment.created", "payment.paid"]
