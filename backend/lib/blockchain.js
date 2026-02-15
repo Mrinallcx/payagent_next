@@ -143,7 +143,7 @@ async function verifyErc20Transfer(txHash, expectedAmount, expectedToken, expect
     // Validate amount (allow tiny tolerance for float) and receiver
     const expectedNum = parseFloat(expectedAmount);
     const actualNum = parseFloat(transferredAmount);
-    const amountValid = !isNaN(expectedNum) && !isNaN(actualNum) && actualNum >= expectedNum - 1e-6;
+    const amountValid = !isNaN(expectedNum) && !isNaN(actualNum) && actualNum >= expectedNum;
     const receiverValid = transferredTo === expectedReceiverLower;
 
     if (!amountValid || !receiverValid) {
@@ -190,67 +190,11 @@ async function getTokenBalance(address, tokenAddress, provider) {
   }
 }
 
-/**
- * Execute a payment: sends all transfers (payment + fees) on-chain.
- *
- * @param {string} privateKey - The payer's private key
- * @param {Array<{token: string, tokenAddress: string|null, amount: string, to: string, description: string}>} transfers
- * @param {string} network - Canonical network name
- * @returns {Promise<{success: boolean, transactions: Array<{description: string, txHash: string, token: string, amount: string, to: string}>}>}
- */
-async function executePayment(privateKey, transfers, network) {
-  const provider = getProvider(network);
-  const wallet = new ethers.Wallet(privateKey, provider);
-
-  const results = [];
-
-  for (const transfer of transfers) {
-    const { token, tokenAddress, amount, to, description } = transfer;
-
-    // Determine if this is a native token transfer
-    const isNative = registryIsNative(token, network);
-    const decimals = getTokenDecimals(network, token);
-
-    let tx;
-    if (isNative || !tokenAddress) {
-      // Native ETH transfer
-      const value = ethers.parseUnits(amount, decimals);
-      tx = await wallet.sendTransaction({
-        to,
-        value,
-      });
-    } else {
-      // ERC-20 transfer
-      const contract = new ethers.Contract(tokenAddress, ERC20_ABI, wallet);
-      const parsedAmount = ethers.parseUnits(amount, decimals);
-      tx = await contract.transfer(to, parsedAmount);
-    }
-
-    const receipt = await tx.wait();
-
-    results.push({
-      description,
-      txHash: receipt.hash,
-      token,
-      amount,
-      to,
-      blockNumber: receipt.blockNumber,
-      status: receipt.status === 1 ? 'confirmed' : 'failed',
-    });
-  }
-
-  return {
-    success: true,
-    transactions: results,
-  };
-}
-
 module.exports = {
   getProvider,
   verifyTransaction,
   verifyNativeTransfer,
   verifyEthTransfer,
   verifyErc20Transfer,
-  getTokenBalance,
-  executePayment
+  getTokenBalance
 };

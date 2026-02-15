@@ -39,24 +39,24 @@ async function upsertIpHistory(agentId, ip) {
   if (!agentId || !ip) return;
 
   if (supabase) {
-    // Try update first, then insert
-    const { data: existing } = await supabase
-      .from('ip_history')
-      .select('id, request_count')
-      .eq('agent_id', agentId)
-      .eq('ip_address', ip)
-      .single();
-
-    if (existing) {
-      await supabase.from('ip_history')
-        .update({ last_seen_at: new Date().toISOString(), request_count: existing.request_count + 1 })
-        .eq('id', existing.id);
-    } else {
-      await supabase.from('ip_history').insert({
+    // Security H7: Insert-first pattern to avoid TOCTOU race condition.
+    // Try insert (atomic via UNIQUE constraint); if duplicate, fall back to update.
+    try {
+      const { error: insertErr } = await supabase.from('ip_history').insert({
         id: 'IP-' + crypto.randomBytes(6).toString('hex'),
         agent_id: agentId,
         ip_address: ip
-      }).catch(() => {});
+      });
+
+      if (insertErr && insertErr.code === '23505') {
+        // Duplicate — update existing row (safe: concurrent updates just overwrite timestamp)
+        await supabase.from('ip_history')
+          .update({ last_seen_at: new Date().toISOString() })
+          .eq('agent_id', agentId)
+          .eq('ip_address', ip);
+      }
+    } catch {
+      // Non-fatal: IP history is best-effort
     }
   } else {
     const key = `${agentId}:${ip}`;

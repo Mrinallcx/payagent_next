@@ -217,6 +217,6 @@ VALUES (
   2.00,
   2.00,
   '0x98d99c88D31C27C5a591Fe7F023F9DB0B37E4B3b',  -- LCX token contract (Sepolia)
-  '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266',    -- Platform treasury wallet
+  '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266',    -- ⚠️ CHANGE THIS! Hardhat test wallet — private key is publicly known. Replace with your real treasury wallet.
   300
 ) ON CONFLICT (id) DO NOTHING;

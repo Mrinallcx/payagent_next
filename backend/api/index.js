@@ -631,6 +631,11 @@ app.get('/api/requests', optionalAuthMiddleware, async (req, res) => {
   try {
     const { wallet } = req.query;
 
+    // Security H2: Require auth or wallet filter — never return unfiltered data
+    if (!req.agent && !wallet) {
+      return res.status(400).json({ error: 'Missing wallet query parameter' });
+    }
+
     if (supabase) {
       let query = supabase
         .from('payment_requests')
@@ -675,17 +680,33 @@ app.get('/api/requests', optionalAuthMiddleware, async (req, res) => {
 app.delete('/api/request/:id', optionalAuthMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
+    const wallet = req.query.wallet;
+
+    // Security H1: Require authentication or wallet ownership — no anonymous deletes
+    if (!req.agent && !wallet) {
+      return res.status(401).json({ error: 'Authentication or wallet query parameter required' });
+    }
 
     if (supabase) {
-      if (req.agent) {
-        // Agent auth: only allow creator to delete
-        const { data: existing } = await supabase
-          .from('payment_requests')
-          .select('creator_agent_id')
-          .eq('id', id)
-          .single();
+      // Fetch the request to verify ownership
+      const { data: existing } = await supabase
+        .from('payment_requests')
+        .select('creator_agent_id, creator_wallet')
+        .eq('id', id)
+        .single();
 
-        if (existing && existing.creator_agent_id && existing.creator_agent_id !== req.agent.id) {
+      if (!existing) {
+        return res.status(404).json({ error: 'Payment request not found' });
+      }
+
+      // Agent auth: only allow creator agent to delete
+      if (req.agent) {
+        if (existing.creator_agent_id && existing.creator_agent_id !== req.agent.id) {
+          return res.status(403).json({ error: 'Only the creator can delete this payment request' });
+        }
+      } else if (wallet) {
+        // Wallet auth: only allow creator wallet to delete
+        if (!existing.creator_wallet || existing.creator_wallet.toLowerCase() !== wallet.toLowerCase()) {
           return res.status(403).json({ error: 'Only the creator can delete this payment request' });
         }
       }
@@ -697,12 +718,22 @@ app.delete('/api/request/:id', optionalAuthMiddleware, async (req, res) => {
 
       if (error) throw error;
     } else {
+      const req_data = memoryStore.requests[id];
+      if (!req_data) {
+        return res.status(404).json({ error: 'Payment request not found' });
+      }
+
       if (req.agent) {
-        const req_data = memoryStore.requests[id];
-        if (req_data && req_data.creator_agent_id && req_data.creator_agent_id !== req.agent.id) {
+        if (req_data.creator_agent_id && req_data.creator_agent_id !== req.agent.id) {
+          return res.status(403).json({ error: 'Only the creator can delete this payment request' });
+        }
+      } else if (wallet) {
+        const creatorWallet = req_data.creator_wallet || req_data.creatorWallet;
+        if (!creatorWallet || creatorWallet.toLowerCase() !== wallet.toLowerCase()) {
           return res.status(403).json({ error: 'Only the creator can delete this payment request' });
         }
       }
+
       delete memoryStore.requests[id];
     }
 
@@ -1176,28 +1207,12 @@ app.post('/api/chat', authMiddleware, async (req, res) => {
 
     const agent = req.agent;
 
-    // Gate 2: Wallet check
+    // Gate 2: Wallet check (Security C2: wallet registration only via POST /api/agents/wallet)
     if (!agent.wallet_address) {
-      // Check if message contains a wallet address
-      const walletMatch = message.match(/0x[a-fA-F0-9]{40}/);
-      if (walletMatch) {
-        // Auto-register wallet
-        try {
-          await updateWalletAddress(agent.id, walletMatch[0], agent.chain || 'sepolia');
-          agent.wallet_address = walletMatch[0];
-        } catch (err) {
-          return res.status(400).json({
-            error: 'Failed to register wallet address',
-            details: err.message
-          });
-        }
-        // Continue to AI with updated agent
-      } else {
-        return res.json({
-          action_required: 'provide_wallet',
-          message: "You don't have a wallet address registered. Please share your wallet address (0x...) to get started. You can send it in a message or call POST /api/agents/wallet."
-        });
-      }
+      return res.json({
+        action_required: 'provide_wallet',
+        message: "You don't have a wallet address registered. Please call POST /api/agents/wallet with your wallet address to get started."
+      });
     }
 
     // Load conversation history
@@ -1232,8 +1247,17 @@ app.post('/api/chat', authMiddleware, async (req, res) => {
       });
     }
 
-    // Gate 3: Validate and route action
+    // Gate 3: Validate and route action (Security C2: whitelist to prevent prompt injection)
+    const ALLOWED_AI_ACTIONS = ['create_link', 'check_status', 'pay_link', 'list_payments', 'clarify', 'select_chain'];
+
     if (parsedResponse.action) {
+      if (!ALLOWED_AI_ACTIONS.includes(parsedResponse.action)) {
+        return res.json({
+          message: `Action "${parsedResponse.action}" is not available via chat. Use the dedicated API endpoint instead.`,
+          action: null
+        });
+      }
+
       try {
         const actionResult = await routeIntent(parsedResponse.action, parsedResponse.params || {}, agent, { supabase, memoryStore });
 
@@ -1432,6 +1456,24 @@ app.get('/api/stats', async (req, res) => {
     return res.status(500).json({ error: 'Failed to get stats' });
   }
 });
+
+// Security H8: Warn if treasury wallet is a known test address
+const KNOWN_TEST_WALLETS = [
+  '0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266', // Hardhat Account #0
+  '0x70997970c51812dc3a010c7d01b50e0d17dc79c8', // Hardhat Account #1
+];
+(async () => {
+  try {
+    const feeConf = await getFeeConfig();
+    if (feeConf && feeConf.treasury_wallet && KNOWN_TEST_WALLETS.includes(feeConf.treasury_wallet.toLowerCase())) {
+      console.error('⚠️  SECURITY WARNING: Treasury wallet is a known test address with a publicly known private key!');
+      console.error(`⚠️  Current treasury: ${feeConf.treasury_wallet}`);
+      console.error('⚠️  Update fee_config.treasury_wallet to a real wallet IMMEDIATELY in production.');
+    }
+  } catch {
+    // Non-fatal: fee config might not be available (e.g., no Supabase)
+  }
+})();
 
 // Export for Vercel
 module.exports = app;
