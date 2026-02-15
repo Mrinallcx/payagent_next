@@ -1255,3 +1255,94 @@ describe('Edge Cases — Payment Amount vs Fee', () => {
     // Status 200 only if payer has LCX (unlikely for 0x000...003)
   });
 });
+
+// ═══════════════════════════════════════════════════════════════════
+//  27. DELETE AUTH — NEW-H1 (require real auth, no wallet query param)
+// ═══════════════════════════════════════════════════════════════════
+
+describe('DELETE Auth — NEW-H1', () => {
+  let tempLinkId;
+
+  it('creates a link for deletion tests', async () => {
+    const res = await request('POST', '/api/create-link', { amount: '2', network: 'sepolia' }, agents.creator);
+    assert.equal(res.status, 200);
+    tempLinkId = res.body.linkId;
+  });
+
+  it('rejects unauthenticated delete (no auth)', async () => {
+    const res = await request('DELETE', `/api/request/${tempLinkId}`);
+    assert.equal(res.status, 401, 'Unauthenticated delete should return 401');
+  });
+
+  it('rejects delete by non-creator agent', async () => {
+    const res = await request('DELETE', `/api/request/${tempLinkId}`, null, agents.payer);
+    assert.equal(res.status, 403, 'Non-creator should get 403');
+  });
+
+  it('allows delete by authenticated creator agent', async () => {
+    const res = await request('DELETE', `/api/request/${tempLinkId}`, null, agents.creator);
+    assert.equal(res.status, 200, 'Creator should be able to delete');
+    assert.ok(res.body.success);
+  });
+
+  it('returns 404 for already-deleted request', async () => {
+    const res = await request('DELETE', `/api/request/${tempLinkId}`, null, agents.creator);
+    assert.equal(res.status, 404);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════
+//  28. WEBHOOK SECRET ENCRYPTION — H3 (encrypt, not hash)
+// ═══════════════════════════════════════════════════════════════════
+
+describe('Webhook Secret Encryption — H3', () => {
+  const { encryptSecret, decryptSecret } = require('./lib/crypto');
+
+  it('encryptSecret produces a reversible iv:ciphertext:authTag format', () => {
+    const raw = 'whsec_' + crypto.randomBytes(32).toString('hex');
+    const encrypted = encryptSecret(raw);
+    // Should be in iv:ciphertext:authTag format
+    const parts = encrypted.split(':');
+    assert.equal(parts.length, 3, 'Encrypted secret should have 3 colon-separated parts');
+    // Decrypt should return original
+    const decrypted = decryptSecret(encrypted);
+    assert.equal(decrypted, raw, 'Decrypted secret should match original');
+  });
+
+  it('encrypted secret is NOT the same as a SHA256 hash', () => {
+    const raw = 'whsec_test123';
+    const encrypted = encryptSecret(raw);
+    const hash = crypto.createHash('sha256').update(raw).digest('hex');
+    assert.notEqual(encrypted, hash, 'Encrypted format should differ from SHA256 hash');
+    // Encrypted format has colons, hash does not
+    assert.ok(encrypted.includes(':'), 'Encrypted secret should contain colons');
+    assert.ok(!hash.includes(':'), 'SHA256 hash should not contain colons');
+  });
+
+  it('HMAC signed with decrypted secret matches HMAC signed with original', () => {
+    const rawSecret = 'whsec_' + crypto.randomBytes(32).toString('hex');
+    const encrypted = encryptSecret(rawSecret);
+    const decrypted = decryptSecret(encrypted);
+
+    const payload = JSON.stringify({ event: 'payment.paid', amount: '10.00' });
+
+    const sigFromOriginal = crypto.createHmac('sha256', rawSecret).update(payload).digest('hex');
+    const sigFromDecrypted = crypto.createHmac('sha256', decrypted).update(payload).digest('hex');
+
+    assert.equal(sigFromDecrypted, sigFromOriginal,
+      'Signature from decrypted secret must match signature from original secret');
+  });
+
+  it('HMAC signed with SHA256 hash does NOT match original (the old bug)', () => {
+    const rawSecret = 'whsec_' + crypto.randomBytes(32).toString('hex');
+    const hash = crypto.createHash('sha256').update(rawSecret).digest('hex');
+
+    const payload = JSON.stringify({ event: 'payment.paid', amount: '10.00' });
+
+    const sigFromOriginal = crypto.createHmac('sha256', rawSecret).update(payload).digest('hex');
+    const sigFromHash = crypto.createHmac('sha256', hash).update(payload).digest('hex');
+
+    assert.notEqual(sigFromHash, sigFromOriginal,
+      'Signature from SHA256 hash should NOT match (this was the H3 bug)');
+  });
+});

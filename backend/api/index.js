@@ -118,6 +118,7 @@ const { getLcxPriceUsd } = require('../lib/lcxPrice');
 // ============ Webhooks ============
 const { registerWebhook, getWebhooks, updateWebhook, deleteWebhook } = require('../lib/webhooks');
 const { dispatchEvent } = require('../lib/webhookDispatcher');
+const { decryptSecret } = require('../lib/crypto');
 
 // ============ AI ============
 const { chatWithAgent } = require('../lib/ai/grokClient');
@@ -676,22 +677,16 @@ app.get('/api/requests', optionalAuthMiddleware, async (req, res) => {
   }
 });
 
-// Delete request (optional auth for frontend compat)
-app.delete('/api/request/:id', optionalAuthMiddleware, async (req, res) => {
+// Delete request (requires real auth — HMAC or JWT)
+app.delete('/api/request/:id', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
-    const wallet = req.query.wallet;
-
-    // Security H1: Require authentication or wallet ownership — no anonymous deletes
-    if (!req.agent && !wallet) {
-      return res.status(401).json({ error: 'Authentication or wallet query parameter required' });
-    }
 
     if (supabase) {
       // Fetch the request to verify ownership
       const { data: existing } = await supabase
         .from('payment_requests')
-        .select('creator_agent_id, creator_wallet')
+        .select('creator_agent_id')
         .eq('id', id)
         .single();
 
@@ -699,16 +694,9 @@ app.delete('/api/request/:id', optionalAuthMiddleware, async (req, res) => {
         return res.status(404).json({ error: 'Payment request not found' });
       }
 
-      // Agent auth: only allow creator agent to delete
-      if (req.agent) {
-        if (existing.creator_agent_id && existing.creator_agent_id !== req.agent.id) {
-          return res.status(403).json({ error: 'Only the creator can delete this payment request' });
-        }
-      } else if (wallet) {
-        // Wallet auth: only allow creator wallet to delete
-        if (!existing.creator_wallet || existing.creator_wallet.toLowerCase() !== wallet.toLowerCase()) {
-          return res.status(403).json({ error: 'Only the creator can delete this payment request' });
-        }
+      // Only the creator agent can delete
+      if (existing.creator_agent_id !== req.agent.id) {
+        return res.status(403).json({ error: 'Only the creator can delete this payment request' });
       }
 
       const { error } = await supabase
@@ -723,15 +711,8 @@ app.delete('/api/request/:id', optionalAuthMiddleware, async (req, res) => {
         return res.status(404).json({ error: 'Payment request not found' });
       }
 
-      if (req.agent) {
-        if (req_data.creator_agent_id && req_data.creator_agent_id !== req.agent.id) {
-          return res.status(403).json({ error: 'Only the creator can delete this payment request' });
-        }
-      } else if (wallet) {
-        const creatorWallet = req_data.creator_wallet || req_data.creatorWallet;
-        if (!creatorWallet || creatorWallet.toLowerCase() !== wallet.toLowerCase()) {
-          return res.status(403).json({ error: 'Only the creator can delete this payment request' });
-        }
+      if (req_data.creator_agent_id !== req.agent.id) {
+        return res.status(403).json({ error: 'Only the creator can delete this payment request' });
       }
 
       delete memoryStore.requests[id];
@@ -1170,8 +1151,9 @@ app.post('/api/webhooks/:id/test', authMiddleware, async (req, res) => {
       timestamp: new Date().toISOString()
     };
 
-    // Send test event
-    const signature = crypto.createHmac('sha256', webhook.secret)
+    // Decrypt the encrypted secret, then sign with the raw secret (H3 fix)
+    const rawSecret = decryptSecret(webhook.secret);
+    const signature = crypto.createHmac('sha256', rawSecret)
       .update(JSON.stringify(testPayload))
       .digest('hex');
 

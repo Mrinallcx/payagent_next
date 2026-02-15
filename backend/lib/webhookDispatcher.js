@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 const { getWebhooksForEvent, markWebhookSuccess, markWebhookFailure } = require('./webhooks');
 const { isSafeUrl } = require('./urlSafety');
+const { decryptSecret } = require('./crypto');
 
 // Retry delays in ms
 const RETRY_DELAYS = [30000, 300000, 1800000]; // 30s, 5min, 30min
@@ -72,10 +73,11 @@ async function deliverWebhook(webhook, payload, attempt) {
 
   const timestamp = String(Date.now());
 
-  // Generate HMAC signature (uses stored hash as signing key — Security H5)
+  // Decrypt the encrypted secret, then sign with the raw secret (H3 fix)
   const payloadStr = JSON.stringify(payload);
+  const rawSecret = decryptSecret(webhook.secret);
   const signature = crypto
-    .createHmac('sha256', webhook.secret)
+    .createHmac('sha256', rawSecret)
     .update(payloadStr)
     .digest('hex');
 

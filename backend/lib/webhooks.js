@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 const { supabase } = require('./supabase');
 const { isSafeUrl } = require('./urlSafety');
+const { encryptSecret } = require('./crypto');
 
 // In-memory fallback store
 const memoryWebhooks = {};
@@ -8,7 +9,7 @@ const memoryWebhooks = {};
 /**
  * Register a new webhook for an agent
  * Security H1: Validates URL against SSRF before storing
- * Security H5: Stores SHA256(secret) in DB, returns raw secret only once
+ * Security H5: Stores AES-256-GCM encrypted secret in DB, returns raw secret only once
  */
 async function registerWebhook(agentId, url, events) {
   // Security H1: Validate webhook URL before registration
@@ -19,14 +20,14 @@ async function registerWebhook(agentId, url, events) {
   const id = 'wh_' + crypto.randomBytes(12).toString('hex');
   const rawSecret = 'whsec_' + crypto.randomBytes(32).toString('hex');
 
-  // Security H5: Store hash of secret, not the raw secret
-  const secretHash = crypto.createHash('sha256').update(rawSecret).digest('hex');
+  // Security H5/H3: Encrypt secret at rest (reversible for HMAC signing)
+  const encryptedSecret = encryptSecret(rawSecret);
 
   const webhook = {
     id,
     agent_id: agentId,
     url,
-    secret: secretHash,
+    secret: encryptedSecret,
     events: events || ['payment.paid', 'payment.created'],
     active: true,
     failure_count: 0

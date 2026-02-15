@@ -313,15 +313,22 @@ export async function getAllPaymentRequests(walletAddress?: string): Promise<Get
 }
 
 /**
- * Delete a payment request
+ * Delete a payment request (requires JWT auth)
  */
 export async function deletePaymentRequest(requestId: string): Promise<DeletePaymentResponse> {
   try {
     const response = await fetch(`${API_BASE_URL}/api/request/${requestId}`, {
       method: 'DELETE',
+      headers: getJwtHeaders(),
     });
 
     if (!response.ok) {
+      if (response.status === 401) {
+        throw new Error('Authentication required. Please log in again.');
+      }
+      if (response.status === 403) {
+        throw new Error('Only the creator can delete this payment request');
+      }
       if (response.status === 404) {
         throw new Error('Payment request not found');
       }
