@@ -45,7 +45,6 @@ const TOKENS = [
   { symbol: "USDC", name: "USD Coin" },
   { symbol: "USDT", name: "Tether" },
   { symbol: "ETH", name: "Ethereum" },
-  { symbol: "BNB", name: "BNB" },
   { symbol: "LCX", name: "LCX Token" },
 ];
 
@@ -65,14 +64,13 @@ const TOKEN_NETWORK_SUPPORT: Record<string, string[]> = {
   "USDT": ["Ethereum Mainnet", "Base", "Sepolia (ETH Testnet)"],
   "ETH": ["Ethereum Mainnet", "Base", "Sepolia (ETH Testnet)"],
   "LCX": ["Ethereum Mainnet", "Base", "Sepolia (ETH Testnet)"],
-  "BNB": ["Sepolia (ETH Testnet)"],
 };
 
 export function CreateLinkModal({ open, onOpenChange, onCreateLink }: CreateLinkModalProps) {
   const [step, setStep] = useState<Step>("amount-token");
   const [amount, setAmount] = useState("");
   const [selectedToken, setSelectedToken] = useState("");
-  const [selectedNetworks, setSelectedNetworks] = useState<string[]>([]);
+  const [selectedNetwork, setSelectedNetwork] = useState("");
   const [expiresInDays, setExpiresInDays] = useState("");
   const [address, setAddress] = useState("");
   const [description, setDescription] = useState("");
@@ -93,13 +91,15 @@ export function CreateLinkModal({ open, onOpenChange, onCreateLink }: CreateLink
       return;
     }
     const supportedNetworks = TOKEN_NETWORK_SUPPORT[selectedToken] || [];
-    setSelectedNetworks((prev) => prev.filter((n) => supportedNetworks.includes(n)));
+    if (selectedNetwork && !supportedNetworks.includes(selectedNetwork)) {
+      setSelectedNetwork("");
+    }
     setStep("network");
   };
 
   const handleContinueToExpiration = () => {
-    if (!selectedNetworks.length) {
-      toast.error("Please select at least one network");
+    if (!selectedNetwork) {
+      toast.error("Please select a network");
       return;
     }
     setStep("expiration");
@@ -122,10 +122,8 @@ export function CreateLinkModal({ open, onOpenChange, onCreateLink }: CreateLink
     setIsLoading(true);
 
     try {
-      // Map display names to canonical backend IDs (e.g. "Sepolia (ETH Testnet)" → "sepolia")
-      const canonicalNetwork = selectedNetworks
-        .map(n => NETWORK_ID_MAP[n] || n.toLowerCase())
-        .join(", ");
+      // Map display name to canonical backend ID (e.g. "Sepolia (ETH Testnet)" → "sepolia")
+      const canonicalNetwork = NETWORK_ID_MAP[selectedNetwork] || selectedNetwork.toLowerCase();
 
       const result = await createPaymentLink({
         token: selectedToken,
@@ -177,7 +175,7 @@ export function CreateLinkModal({ open, onOpenChange, onCreateLink }: CreateLink
     setStep("amount-token");
     setAmount("");
     setSelectedToken("");
-    setSelectedNetworks([]);
+    setSelectedNetwork("");
     setExpiresInDays("");
     setAddress("");
     setDescription("");
@@ -279,7 +277,7 @@ export function CreateLinkModal({ open, onOpenChange, onCreateLink }: CreateLink
                 <Label className="text-sm">Network</Label>
                 <div className="space-y-2">
                   {NETWORKS.map((network) => {
-                    const isSelected = selectedNetworks.includes(network.name);
+                    const isSelected = selectedNetwork === network.name;
                     const supportedNetworks = TOKEN_NETWORK_SUPPORT[selectedToken] || [];
                     const isDisabled = !supportedNetworks.includes(network.name);
                     
@@ -290,10 +288,8 @@ export function CreateLinkModal({ open, onOpenChange, onCreateLink }: CreateLink
                         disabled={isDisabled}
                         onClick={() => {
                           if (isDisabled) return;
-                          setSelectedNetworks((prev) =>
-                            prev.includes(network.name)
-                              ? prev.filter((n) => n !== network.name)
-                              : [...prev, network.name]
+                          setSelectedNetwork(
+                            isSelected ? "" : network.name
                           );
                         }}
                         className={`w-full flex items-center justify-between p-4 rounded-lg border transition-colors ${
@@ -366,7 +362,7 @@ export function CreateLinkModal({ open, onOpenChange, onCreateLink }: CreateLink
                   <span className="text-xs text-muted-foreground">{expiresInDays === "1" ? "24h" : `${expiresInDays} days`}</span>
                 </div>
                 <p className="text-2xl font-heading font-bold text-blue-700">{amount} {selectedToken}</p>
-                <p className="text-xs text-muted-foreground mt-1">{selectedNetworks.join(", ")}</p>
+                <p className="text-xs text-muted-foreground mt-1">{selectedNetwork}</p>
               </div>
 
               <div className="space-y-2">
