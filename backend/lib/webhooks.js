@@ -1,21 +1,32 @@
 const crypto = require('crypto');
 const { supabase } = require('./supabase');
+const { isSafeUrl } = require('./urlSafety');
 
 // In-memory fallback store
 const memoryWebhooks = {};
 
 /**
  * Register a new webhook for an agent
+ * Security H1: Validates URL against SSRF before storing
+ * Security H5: Stores SHA256(secret) in DB, returns raw secret only once
  */
 async function registerWebhook(agentId, url, events) {
+  // Security H1: Validate webhook URL before registration
+  if (!await isSafeUrl(url)) {
+    throw new Error('Invalid webhook URL. Must be HTTPS and resolve to a public IP address.');
+  }
+
   const id = 'wh_' + crypto.randomBytes(12).toString('hex');
-  const secret = 'whsec_' + crypto.randomBytes(32).toString('hex');
+  const rawSecret = 'whsec_' + crypto.randomBytes(32).toString('hex');
+
+  // Security H5: Store hash of secret, not the raw secret
+  const secretHash = crypto.createHash('sha256').update(rawSecret).digest('hex');
 
   const webhook = {
     id,
     agent_id: agentId,
     url,
-    secret,
+    secret: secretHash,
     events: events || ['payment.paid', 'payment.created'],
     active: true,
     failure_count: 0
@@ -28,11 +39,13 @@ async function registerWebhook(agentId, url, events) {
       .select()
       .single();
     if (error) throw error;
-    return data;
+    // Return raw secret only on creation (the only time the agent sees it)
+    return { ...data, secret: rawSecret };
   }
 
   memoryWebhooks[id] = { ...webhook, created_at: new Date().toISOString() };
-  return memoryWebhooks[id];
+  // Return raw secret only on creation
+  return { ...memoryWebhooks[id], secret: rawSecret };
 }
 
 /**
@@ -80,6 +93,11 @@ async function updateWebhook(webhookId, agentId, updates) {
   const filtered = {};
   for (const key of allowedFields) {
     if (updates[key] !== undefined) filtered[key] = updates[key];
+  }
+
+  // Security H1: Validate new URL if being updated
+  if (filtered.url && !await isSafeUrl(filtered.url)) {
+    throw new Error('Invalid webhook URL. Must be HTTPS and resolve to a public IP address.');
   }
 
   if (supabase) {

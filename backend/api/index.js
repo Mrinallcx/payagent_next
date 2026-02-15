@@ -127,6 +127,7 @@ const { saveMessage, getHistory, clearHistory } = require('../lib/ai/conversatio
 
 // ============ X Verification ============
 const { verifyTweet } = require('../lib/xVerification');
+const { isSafeUrl } = require('../lib/urlSafety');
 
 // ============ IP Monitor ============
 const { checkIpAnomaly } = require('../lib/ipMonitor');
@@ -1088,7 +1089,11 @@ app.post('/api/webhooks', authMiddleware, async (req, res) => {
 
 app.get('/api/webhooks', authMiddleware, async (req, res) => {
   try {
-    const webhooks = await getWebhooks(req.agent.id);
+    // Security H5: Strip secret hash from listed webhooks (never expose stored hashes)
+    const webhooks = (await getWebhooks(req.agent.id)).map(w => {
+      const { secret, ...rest } = w;
+      return rest;
+    });
     return res.json({ success: true, webhooks });
   } catch (error) {
     console.error('Webhook list error:', error);
@@ -1121,6 +1126,11 @@ app.post('/api/webhooks/:id/test', authMiddleware, async (req, res) => {
     const webhooks = await getWebhooks(req.agent.id);
     const webhook = webhooks.find(w => w.id === req.params.id);
     if (!webhook) return res.status(404).json({ error: 'Webhook not found' });
+
+    // Security H1: Validate URL before sending test event
+    if (!await isSafeUrl(webhook.url)) {
+      return res.status(400).json({ error: 'Webhook URL failed safety check. Must be HTTPS and resolve to a public IP.' });
+    }
 
     const testPayload = {
       id: 'TEST-' + Date.now(),

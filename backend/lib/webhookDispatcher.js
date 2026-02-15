@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const { getWebhooksForEvent, markWebhookSuccess, markWebhookFailure } = require('./webhooks');
+const { isSafeUrl } = require('./urlSafety');
 
 // Retry delays in ms
 const RETRY_DELAYS = [30000, 300000, 1800000]; // 30s, 5min, 30min
@@ -62,9 +63,16 @@ async function dispatchEvent(eventType, paymentData) {
  * Deliver a webhook payload to a single endpoint
  */
 async function deliverWebhook(webhook, payload, attempt) {
+  // Security H1: Validate URL before dispatch (catches pre-existing unsafe URLs)
+  if (!await isSafeUrl(webhook.url)) {
+    console.error(`Webhook ${webhook.id} blocked: URL failed safety check (${webhook.url})`);
+    await markWebhookFailure(webhook.id);
+    return;
+  }
+
   const timestamp = String(Date.now());
 
-  // Generate HMAC signature
+  // Generate HMAC signature (uses stored hash as signing key — Security H5)
   const payloadStr = JSON.stringify(payload);
   const signature = crypto
     .createHmac('sha256', webhook.secret)
