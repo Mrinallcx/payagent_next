@@ -6,6 +6,9 @@ const { ethers } = require('ethers');
 
 const app = express();
 
+// Security H3: Trust first proxy (Vercel/Cloudflare) for correct client IP in rate limiting
+app.set('trust proxy', 1);
+
 // CORS - Restrict to known frontend origins (Security: C2)
 const ALLOWED_ORIGINS = [
   'https://payagent.vercel.app',
@@ -569,7 +572,7 @@ app.post('/api/create', optionalAuthMiddleware, async (req, res) => {
       });
     }
 
-    const id = 'REQ-' + Math.random().toString(36).substr(2, 9).toUpperCase();
+    const id = 'REQ-' + crypto.randomUUID().split('-')[0].toUpperCase();
     const expiresAt = expiresInDays
       ? new Date(Date.now() + (parseInt(expiresInDays) * 24 * 60 * 60 * 1000)).toISOString()
       : null;
@@ -741,7 +744,7 @@ app.post('/api/create-link', authMiddleware, async (req, res) => {
     const resolvedToken = (token || 'USDC').toUpperCase();
 
     const receiverAddress = receiver || req.agent.wallet_address;
-    const id = 'REQ-' + Math.random().toString(36).substr(2, 9).toUpperCase();
+    const id = 'REQ-' + crypto.randomUUID().split('-')[0].toUpperCase();
     const expiresAt = expiresInDays
       ? new Date(Date.now() + (parseInt(expiresInDays, 10) * 24 * 60 * 60 * 1000)).toISOString()
       : null;
@@ -905,6 +908,18 @@ app.post('/api/verify', optionalAuthMiddleware, async (req, res) => {
       return res.status(400).json({ error: 'Missing requestId or txHash' });
     }
 
+    // Security C4: Early duplicate tx_hash check (before expensive on-chain verification)
+    if (supabase) {
+      const { data: existingTx } = await supabase
+        .from('payment_requests')
+        .select('id')
+        .eq('tx_hash', txHash)
+        .limit(1);
+      if (existingTx && existingTx.length > 0) {
+        return res.status(409).json({ error: 'This transaction hash has already been used for another payment' });
+      }
+    }
+
     let request;
     if (supabase) {
       const { data, error } = await supabase
@@ -926,7 +941,7 @@ app.post('/api/verify', optionalAuthMiddleware, async (req, res) => {
     }
 
     if (request.status === 'PAID') {
-      return res.status(400).json({ error: 'Request already paid' });
+      return res.status(409).json({ error: 'Payment already processed' });
     }
 
     const network = getCanonicalName(request.network || 'sepolia') || 'sepolia';
@@ -951,49 +966,7 @@ app.post('/api/verify', optionalAuthMiddleware, async (req, res) => {
       });
     }
 
-    // Record fee transaction if fee tx hashes provided (for both agent and human payers)
-    if (feeTxHash && supabase) {
-      try {
-        const payerWallet = req.agent ? req.agent.wallet_address : (req.body.payerWallet || null);
-        const feeInfo = await calculateFee(payerWallet, network, tokenSymbol);
-        const feeConfig = await getFeeConfig();
-        let lcxPrice = null;
-        try { lcxPrice = await getLcxPriceUsd(); } catch(e) {}
-
-        await supabase.from('fee_transactions').insert({
-          id: 'FEE-' + crypto.randomUUID(),
-          payment_request_id: requestId,
-          payer_agent_id: req.agent ? req.agent.id : null,
-          creator_agent_id: request.creatorAgentId || null,
-          payer_wallet: payerWallet,
-          creator_wallet: request.creatorWallet || null,
-          fee_token: feeInfo.feeToken,
-          fee_total: feeInfo.feeTotal,
-          platform_share: feeInfo.platformShare,
-          creator_reward: feeInfo.creatorReward,
-          lcx_price_usd: lcxPrice,
-          payment_amount: request.amount,
-          payment_token: request.token || 'USDC',
-          treasury_wallet: feeConfig.treasury_wallet,
-          platform_fee_tx_hash: feeTxHash,
-          creator_reward_tx_hash: creatorRewardTxHash || null,
-          payment_tx_hash: txHash,
-          status: 'COLLECTED'
-        });
-
-        // Update agent counters (only when agents are involved)
-        if (req.agent) {
-          try { await supabase.rpc('increment_agent_counter', { agent_id_param: req.agent.id, counter_name: 'total_payments_sent' }); } catch(e) {}
-          try { await supabase.rpc('increment_agent_fee', { agent_id_param: req.agent.id, fee_amount: feeInfo.feeTotal }); } catch(e) {}
-        }
-        if (request.creatorAgentId) {
-          try { await supabase.rpc('increment_agent_counter', { agent_id_param: request.creatorAgentId, counter_name: 'total_payments_received' }); } catch(e) {}
-        }
-      } catch (feeErr) {
-        console.error('Fee recording error (non-fatal):', feeErr);
-      }
-    }
-
+    // Security C4: Atomic update — only update if still PENDING (optimistic locking)
     if (supabase) {
       const { data, error } = await supabase
         .from('payment_requests')
@@ -1004,12 +977,60 @@ app.post('/api/verify', optionalAuthMiddleware, async (req, res) => {
           payer_agent_id: req.agent ? req.agent.id : null
         })
         .eq('id', requestId)
+        .eq('status', 'PENDING')
         .select()
         .single();
 
+      if (!data) {
+        return res.status(409).json({ error: 'Payment already processed or request not found' });
+      }
       if (error) throw error;
 
       const paidRequest = toCamelCase(data);
+
+      // Record fee transaction AFTER atomic update succeeds (prevents orphaned fee records)
+      if (feeTxHash) {
+        try {
+          const payerWallet = req.agent ? req.agent.wallet_address : (req.body.payerWallet || null);
+          const feeInfo = await calculateFee(payerWallet, network, tokenSymbol);
+          const feeConfig = await getFeeConfig();
+          let lcxPrice = null;
+          try { lcxPrice = await getLcxPriceUsd(); } catch(e) {}
+
+          await supabase.from('fee_transactions').insert({
+            id: 'FEE-' + crypto.randomUUID(),
+            payment_request_id: requestId,
+            payer_agent_id: req.agent ? req.agent.id : null,
+            creator_agent_id: request.creatorAgentId || null,
+            payer_wallet: payerWallet,
+            creator_wallet: request.creatorWallet || null,
+            fee_token: feeInfo.feeToken,
+            fee_total: feeInfo.feeTotal,
+            platform_share: feeInfo.platformShare,
+            creator_reward: feeInfo.creatorReward,
+            lcx_price_usd: lcxPrice,
+            payment_amount: request.amount,
+            payment_token: request.token || 'USDC',
+            treasury_wallet: feeConfig.treasury_wallet,
+            platform_fee_tx_hash: feeTxHash,
+            creator_reward_tx_hash: creatorRewardTxHash || null,
+            payment_tx_hash: txHash,
+            status: 'COLLECTED'
+          });
+
+          // Update agent counters (only when agents are involved)
+          if (req.agent) {
+            try { await supabase.rpc('increment_agent_counter', { agent_id_param: req.agent.id, counter_name: 'total_payments_sent' }); } catch(e) {}
+            try { await supabase.rpc('increment_agent_fee', { agent_id_param: req.agent.id, fee_amount: feeInfo.feeTotal }); } catch(e) {}
+          }
+          if (request.creatorAgentId) {
+            try { await supabase.rpc('increment_agent_counter', { agent_id_param: request.creatorAgentId, counter_name: 'total_payments_received' }); } catch(e) {}
+          }
+        } catch (feeErr) {
+          console.error('Fee recording error (non-fatal):', feeErr);
+        }
+      }
+
       dispatchEvent('payment.paid', paidRequest).catch(err => console.error('Webhook dispatch error:', err));
 
       return res.json({
@@ -1019,15 +1040,24 @@ app.post('/api/verify', optionalAuthMiddleware, async (req, res) => {
         verification
       });
     } else {
+      // In-memory fallback with PENDING guard (Security C4)
       const r = memoryStore.requests[requestId];
-      if (r) {
-        r.status = 'PAID';
-        r.tx_hash = txHash;
-        r.paid_at = new Date().toISOString();
-        r.payer_agent_id = req.agent ? req.agent.id : null;
+      if (!r || r.status === 'PAID') {
+        return res.status(409).json({ error: 'Payment already processed' });
       }
 
-      const paidRequest = toCamelCase(r || request);
+      // Check for duplicate tx_hash in memory store
+      const existingTxUse = Object.values(memoryStore.requests).find(req => req.tx_hash === txHash);
+      if (existingTxUse) {
+        return res.status(409).json({ error: 'This transaction hash has already been used for another payment' });
+      }
+
+      r.status = 'PAID';
+      r.tx_hash = txHash;
+      r.paid_at = new Date().toISOString();
+      r.payer_agent_id = req.agent ? req.agent.id : null;
+
+      const paidRequest = toCamelCase(r);
       dispatchEvent('payment.paid', paidRequest).catch(err => console.error('Webhook dispatch error:', err));
 
       return res.json({

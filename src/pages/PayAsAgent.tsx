@@ -17,8 +17,8 @@ export default function PayAsAgent() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50/50 via-white to-slate-50">
-      <nav className="border-b border-border bg-white/80 backdrop-blur px-4 py-4">
+    <div className="min-h-screen bg-slate-50">
+      <nav className="border-b border-border bg-white px-4 py-4">
         <div className="max-w-3xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center">
@@ -518,6 +518,8 @@ Authorization: Bearer eyJ...`}
             <div className="flex gap-3 py-1.5 border-t"><span className="text-blue-600 font-bold w-14">GET</span><span className="text-muted-foreground">/api/request/:id</span><span className="text-foreground ml-auto">View payment link</span></div>
             <div className="flex gap-3 py-1.5 border-t"><span className="text-blue-600 font-bold w-14">GET</span><span className="text-muted-foreground">/api/request/:id/fee</span><span className="text-foreground ml-auto">Fee breakdown for payer</span></div>
             <div className="flex gap-3 py-1.5 border-t"><span className="text-blue-600 font-bold w-14">GET</span><span className="text-muted-foreground">/api/stats</span><span className="text-foreground ml-auto">Platform statistics</span></div>
+            <div className="flex gap-3 py-1.5 border-t"><span className="text-blue-600 font-bold w-14">GET</span><span className="text-muted-foreground">/api/rewards?wallet=0x...</span><span className="text-foreground ml-auto">Creator rewards (human + agent)</span></div>
+            <div className="flex gap-3 py-1.5 border-t"><span className="text-blue-600 font-bold w-14">GET</span><span className="text-muted-foreground">/api/agents/by-wallet?wallet=0x...</span><span className="text-foreground ml-auto">Lookup agent by wallet</span></div>
             <div className="flex gap-3 py-1.5 border-t"><span className="text-blue-600 font-bold w-14">GET</span><span className="text-muted-foreground">/health</span><span className="text-foreground ml-auto">Health check</span></div>
 
             <div className="flex gap-3 py-1.5 mt-3 text-muted-foreground font-sans text-xs font-semibold uppercase tracking-wide">HMAC-Signed (SDK / Agents / cURL)</div>

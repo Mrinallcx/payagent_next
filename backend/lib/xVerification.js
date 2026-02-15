@@ -1,4 +1,41 @@
 const crypto = require('crypto');
+const dns = require('dns').promises;
+
+/**
+ * Security C3: Validate a URL is safe to fetch (not SSRF-able).
+ * Blocks non-HTTPS, private IPs, and DNS resolution failures.
+ */
+async function isSafeUrl(targetUrl) {
+  try {
+    const parsed = new URL(targetUrl);
+
+    // Block non-HTTPS
+    if (parsed.protocol !== 'https:') return false;
+
+    // Block obvious private/local hostnames
+    const blockedHosts = ['localhost', '127.0.0.1', '0.0.0.0', '::1', '[::1]'];
+    if (blockedHosts.includes(parsed.hostname)) return false;
+
+    // Resolve DNS and block private IP ranges
+    const { address } = await dns.lookup(parsed.hostname);
+    const blockedRanges = [
+      /^127\./,                       // loopback
+      /^10\./,                        // class A private
+      /^172\.(1[6-9]|2\d|3[01])\./,  // class B private
+      /^192\.168\./,                  // class C private
+      /^169\.254\./,                  // link-local
+      /^0\./,                         // current network
+      /^::1$/,                        // IPv6 loopback
+      /^fc00:/,                       // IPv6 unique local
+      /^fe80:/,                       // IPv6 link-local
+    ];
+    if (blockedRanges.some(re => re.test(address))) return false;
+
+    return true;
+  } catch {
+    return false; // DNS resolution failed or invalid URL — block
+  }
+}
 
 /**
  * Generate a unique verification challenge for an agent
@@ -46,14 +83,19 @@ async function verifyTweet(tweetUrl, expectedChallenge) {
 
   const xUsername = extractUsernameFromUrl(tweetUrl);
 
+  // Security C3: Validate URL before fetching to prevent SSRF
+  if (!await isSafeUrl(tweetUrl)) {
+    return { valid: false, x_username: xUsername, error: 'URL failed safety check' };
+  }
+
   try {
-    // Fetch the tweet page
+    // Fetch the tweet page — redirect: 'error' blocks SSRF via redirects (Security C3)
     const response = await fetch(tweetUrl, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (compatible; PayAgentBot/1.0; +https://payagent.dev)',
         'Accept': 'text/html,application/xhtml+xml',
       },
-      redirect: 'follow',
+      redirect: 'error',
       signal: AbortSignal.timeout(10000) // 10s timeout
     });
 
@@ -75,16 +117,21 @@ async function verifyTweet(tweetUrl, expectedChallenge) {
         .replace('https://x.com/', 'https://nitter.net/')
         .replace('https://twitter.com/', 'https://nitter.net/');
 
-      const nitterResponse = await fetch(nitterUrl, {
-        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; PayAgentBot/1.0)' },
-        redirect: 'follow',
-        signal: AbortSignal.timeout(10000)
-      });
+      // Security C3: Validate Nitter URL before fetching
+      if (!await isSafeUrl(nitterUrl)) {
+        // Nitter URL failed safety — skip this fallback
+      } else {
+        const nitterResponse = await fetch(nitterUrl, {
+          headers: { 'User-Agent': 'Mozilla/5.0 (compatible; PayAgentBot/1.0)' },
+          redirect: 'error',
+          signal: AbortSignal.timeout(10000)
+        });
 
-      if (nitterResponse.ok) {
-        const nitterHtml = await nitterResponse.text();
-        if (nitterHtml.includes(expectedChallenge)) {
-          return { valid: true, x_username: xUsername };
+        if (nitterResponse.ok) {
+          const nitterHtml = await nitterResponse.text();
+          if (nitterHtml.includes(expectedChallenge)) {
+            return { valid: true, x_username: xUsername };
+          }
         }
       }
     } catch {
@@ -105,4 +152,4 @@ async function verifyTweet(tweetUrl, expectedChallenge) {
   }
 }
 
-module.exports = { generateChallenge, verifyTweet, isValidTweetUrl, extractUsernameFromUrl };
+module.exports = { generateChallenge, verifyTweet, isValidTweetUrl, extractUsernameFromUrl, isSafeUrl };

@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const { supabase } = require('./supabase');
 
 // ============ In-memory storage (fallback for serverless) ============
@@ -5,7 +6,7 @@ let memoryStore = { requests: {} };
 
 // ============ Supabase storage ============
 async function createRequestSupabase({ token, amount, receiver, payer, description, network, expiresInDays, creatorWallet }) {
-  const id = 'REQ-' + Math.random().toString(36).substr(2, 9).toUpperCase();
+  const id = 'REQ-' + crypto.randomUUID().split('-')[0].toUpperCase();
   
   const expiresAt = expiresInDays 
     ? new Date(Date.now() + (parseInt(expiresInDays) * 24 * 60 * 60 * 1000)).toISOString()
@@ -112,7 +113,7 @@ async function deleteRequestSupabase(id) {
 
 // ============ Memory-based fallback functions ============
 function createRequestMemory({ token, amount, receiver, payer, description, network, expiresInDays, creatorWallet }) {
-  const id = 'REQ-' + Math.random().toString(36).substr(2, 9).toUpperCase();
+  const id = 'REQ-' + crypto.randomUUID().split('-')[0].toUpperCase();
   const expiresAt = expiresInDays ? Date.now() + (parseInt(expiresInDays) * 24 * 60 * 60 * 1000) : null;
 
   const request = {

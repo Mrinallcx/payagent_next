@@ -8,7 +8,7 @@ const globalLimiter = rateLimit({
   max: 100,
   standardHeaders: true,
   legacyHeaders: false,
-  validate: { xForwardedForHeader: false },
+  validate: { xForwardedForHeader: true },
   message: { error: 'Too many requests. Please try again later.', retryAfterMs: 60000 },
 });
 
@@ -21,7 +21,7 @@ const sensitiveLimiter = rateLimit({
   max: 30,
   standardHeaders: true,
   legacyHeaders: false,
-  validate: { xForwardedForHeader: false },
+  validate: { xForwardedForHeader: true },
   message: { error: 'Too many requests to this endpoint. Please try again later.', retryAfterMs: 60000 },
 });
 

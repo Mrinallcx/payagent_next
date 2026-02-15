@@ -3,6 +3,7 @@
  *
  * Routes parsed AI actions to their corresponding backend functions.
  */
+const crypto = require('crypto');
 const { updateWalletAddress, getAgentById } = require('../agents');
 const { calculateFee } = require('../feeCalculator');
 const { getFeeConfig } = require('../feeConfig');
@@ -95,7 +96,7 @@ async function handleCreateLink(params, agent, supabase, memoryStore) {
   }
   const resolvedToken = (params.token || 'USDC').toUpperCase();
 
-  const id = 'REQ-' + Math.random().toString(36).substr(2, 9).toUpperCase();
+  const id = 'REQ-' + crypto.randomUUID().split('-')[0].toUpperCase();
   const request = {
     id,
     token: resolvedToken,
