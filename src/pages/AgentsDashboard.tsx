@@ -13,9 +13,9 @@ import {
 import { useNavigate } from "react-router-dom";
 import { useAccount, useSignMessage } from "wagmi";
 import {
-  getPlatformStats, type PlatformStats,
   getAgentByWallet, type AgentProfile,
   getAgentsList, type AgentSummary,
+  getAllPaymentRequests, getRewards,
   getPrices, toUsd, formatUsd, type TokenPrices,
   rotateApiKey, deactivateAgent, deleteAgent,
   walletLogin, isJwtValid, clearJwt
@@ -94,15 +94,24 @@ export default function AgentsDashboard() {
     toast({ title: 'Session expired', description: 'Please sign in again with your wallet.', variant: 'destructive' });
   };
 
-  const { data: platformStats } = useQuery<PlatformStats>({
-    queryKey: ['platformStats'],
-    queryFn: getPlatformStats,
-    staleTime: 30000,
-  });
-
+  // Wallet-scoped data
   const { data: allAgents } = useQuery<AgentSummary[]>({
     queryKey: ['agentsList'],
     queryFn: getAgentsList,
+    staleTime: 30000,
+  });
+
+  const { data: paymentData } = useQuery({
+    queryKey: ['paymentRequests', walletAddress],
+    queryFn: () => getAllPaymentRequests(walletAddress!),
+    enabled: !!walletAddress,
+    staleTime: 10000,
+  });
+
+  const { data: rewardsData } = useQuery({
+    queryKey: ['rewards', walletAddress],
+    queryFn: () => getRewards(walletAddress!),
+    enabled: !!walletAddress,
     staleTime: 30000,
   });
 
@@ -115,21 +124,39 @@ export default function AgentsDashboard() {
 
   const priceData: TokenPrices = prices ?? { LCX: 0, ETH: 0, USDC: 1, USDT: 1 };
 
-  // Compute agent payment value in USD (only agent-created payments)
-  const agentPaymentValueUsd = useMemo(() => {
-    if (!platformStats?.agentPaymentsByToken) return 0;
-    return Object.entries(platformStats.agentPaymentsByToken).reduce(
-      (sum, [token, amount]) => sum + toUsd(amount, token, priceData), 0
-    );
-  }, [platformStats, priceData]);
+  // Filter agents to this wallet only
+  const myAgents = useMemo(() =>
+    (allAgents || []).filter(a => a.wallet_address?.toLowerCase() === walletAddress?.toLowerCase()),
+    [allAgents, walletAddress]
+  );
 
-  // Compute total fees in USD
-  const totalFeesUsd = useMemo(() => {
-    if (!platformStats?.feesByToken) return 0;
-    return Object.entries(platformStats.feesByToken).reduce(
-      (sum, [token, amount]) => sum + toUsd(amount, token, priceData), 0
-    );
-  }, [platformStats, priceData]);
+  // Agent-created payments received by this wallet (PAID only)
+  const agentPayments = useMemo(() =>
+    (paymentData?.requests || []).filter(r => r.status === 'PAID' && r.creatorAgentId),
+    [paymentData]
+  );
+
+  // Compute agent payment value in USD (wallet-scoped)
+  const agentPaymentValueUsd = useMemo(() =>
+    agentPayments.reduce((sum, p) => sum + toUsd(parseFloat(p.amount), p.token, priceData), 0),
+    [agentPayments, priceData]
+  );
+
+  // Compute total rewards in USD (wallet-scoped, agent tab only)
+  const agentRewards = rewardsData?.rewards?.agent ?? [];
+  const totalRewardsUsd = useMemo(() =>
+    agentRewards.reduce((sum, r) => sum + toUsd(r.creatorReward, r.feeToken, priceData), 0),
+    [agentRewards, priceData]
+  );
+
+  // Fee breakdown by token (wallet-scoped)
+  const feeBreakdown = useMemo(() => {
+    const breakdown: Record<string, number> = {};
+    agentRewards.forEach(r => {
+      breakdown[r.feeToken] = (breakdown[r.feeToken] || 0) + r.feeTotal;
+    });
+    return breakdown;
+  }, [agentRewards]);
 
   // Try to look up agent by connected wallet (public endpoint, no auth needed)
   const { data: agentProfile, isLoading: profileLoading } = useQuery<AgentProfile | null>({
@@ -444,7 +471,7 @@ export default function AgentsDashboard() {
                 </div>
               ) : null}
 
-              {/* Platform Stats */}
+              {/* Your Agent Stats */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="bg-white rounded-xl border border-border p-6">
                   <div className="flex items-center gap-3 mb-3">
@@ -452,8 +479,8 @@ export default function AgentsDashboard() {
                       <Users className="h-5 w-5 text-blue-600" />
                     </div>
                     <div>
-                      <p className="text-xs text-muted-foreground">Registered Agents</p>
-                      <p className="text-2xl font-heading font-bold">{platformStats?.totalAgents || 0}</p>
+                      <p className="text-xs text-muted-foreground">Your Agents</p>
+                      <p className="text-2xl font-heading font-bold">{myAgents.length}</p>
                     </div>
                   </div>
                 </div>
@@ -468,7 +495,7 @@ export default function AgentsDashboard() {
                       <p className="text-2xl font-heading font-bold text-emerald-600">
                         {agentPaymentValueUsd > 0 ? formatUsd(agentPaymentValueUsd) : '$0.00'}
                       </p>
-                      <p className="text-[10px] text-muted-foreground">{platformStats?.agentPayments || 0} agent payments</p>
+                      <p className="text-[10px] text-muted-foreground">{agentPayments.length} agent payments</p>
                     </div>
                   </div>
                 </div>
@@ -479,13 +506,13 @@ export default function AgentsDashboard() {
                       <Coins className="h-5 w-5 text-amber-600" />
                     </div>
                     <div>
-                      <p className="text-xs text-muted-foreground">Total Fees Collected</p>
+                      <p className="text-xs text-muted-foreground">Agent Rewards Earned</p>
                       <p className="text-2xl font-heading font-bold text-amber-600">
-                        {totalFeesUsd > 0 ? formatUsd(totalFeesUsd) : '$0.00'}
+                        {totalRewardsUsd > 0 ? formatUsd(totalRewardsUsd) : '$0.00'}
                       </p>
-                      {platformStats?.feesByToken && Object.keys(platformStats.feesByToken).length > 0 && (
+                      {Object.keys(feeBreakdown).length > 0 && (
                         <p className="text-[10px] text-muted-foreground">
-                          {Object.entries(platformStats.feesByToken).map(([token, amt]) => `${Number(amt).toFixed(2)} ${token}`).join(', ')}
+                          {Object.entries(feeBreakdown).map(([token, amt]) => `${Number(amt).toFixed(2)} ${token}`).join(', ')}
                         </p>
                       )}
                     </div>
@@ -493,11 +520,11 @@ export default function AgentsDashboard() {
                 </div>
               </div>
 
-              {/* All Agents List */}
-              {allAgents && allAgents.length > 0 && (
+              {/* Your Agents List */}
+              {myAgents.length > 0 && (
                 <div className="bg-white rounded-xl border border-border overflow-hidden">
                   <div className="px-6 py-4 border-b border-border">
-                    <h3 className="font-heading font-semibold">All Registered Agents ({allAgents.length})</h3>
+                    <h3 className="font-heading font-semibold">Your Agents ({myAgents.length})</h3>
                   </div>
                   <Table>
                     <TableHeader>
@@ -510,7 +537,7 @@ export default function AgentsDashboard() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {allAgents.map((agent) => (
+                      {myAgents.map((agent) => (
                         <TableRow key={agent.id} className="hover:bg-blue-50/50">
                           <TableCell>
                             <div className="flex items-center gap-3">
