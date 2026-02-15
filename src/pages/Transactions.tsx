@@ -10,7 +10,7 @@ import { ArrowDownLeft, Download, Loader2, ExternalLink, CheckCircle2, Wallet } 
 import { useToast } from "@/hooks/use-toast";
 import { useAccount } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
-import { getAllPaymentRequests, PaymentRequest } from "@/lib/api";
+import { getAllPaymentRequests, getRewards, PaymentRequest, type RewardEntry } from "@/lib/api";
 import { getExplorerUrl } from "@/lib/contracts";
 
 type FilterTab = 'all' | 'human' | 'agent';
@@ -48,6 +48,24 @@ const Transactions = () => {
     refetchIntervalInBackground: false,
     select: (data) => data.requests.filter(r => r.status === 'PAID'),
   });
+
+  const { data: rewardsData } = useQuery({
+    queryKey: ['rewards', address],
+    queryFn: () => getRewards(address!),
+    enabled: isConnected && !!address,
+    staleTime: 30000,
+  });
+
+  // Build a lookup: paymentId → RewardEntry (fee info)
+  const feeByPaymentId = useMemo(() => {
+    const map: Record<string, RewardEntry> = {};
+    if (rewardsData?.rewards) {
+      [...rewardsData.rewards.human, ...rewardsData.rewards.agent].forEach(r => {
+        map[r.paymentId] = r;
+      });
+    }
+    return map;
+  }, [rewardsData]);
 
   const allTransactions = data ?? [];
 
@@ -100,16 +118,22 @@ const Transactions = () => {
   };
 
   const handleExport = () => {
-    const headers = ["Date", "Amount", "Token", "Network", "Receiver", "Origin", "TxHash"];
-    const csvData = transactions.map((t) => [
-      formatDate(t.paidAt!),
-      t.amount,
-      t.token,
-      t.network,
-      t.receiver,
-      t.creatorAgentId ? 'Agent' : 'Human',
-      t.txHash || ''
-    ]);
+    const headers = ["Date", "Amount", "Token", "Fee", "FeeToken", "CreatorReward", "Network", "Receiver", "Origin", "TxHash"];
+    const csvData = transactions.map((t) => {
+      const fee = feeByPaymentId[t.id];
+      return [
+        formatDate(t.paidAt!),
+        t.amount,
+        t.token,
+        fee ? fee.feeTotal : '',
+        fee ? fee.feeToken : '',
+        fee ? fee.creatorReward : '',
+        t.network,
+        t.receiver,
+        t.creatorAgentId ? 'Agent' : 'Human',
+        t.txHash || ''
+      ];
+    });
 
     const csvContent = [
       headers.join(","),
@@ -233,6 +257,7 @@ const Transactions = () => {
                               <TableHead className="hidden md:table-cell text-xs font-semibold">Receiver</TableHead>
                               <TableHead className="hidden lg:table-cell text-xs font-semibold">Network</TableHead>
                               <TableHead className="text-right text-xs font-semibold">Amount</TableHead>
+                              <TableHead className="text-right text-xs font-semibold">Fee / Reward</TableHead>
                               <TableHead className="text-center w-[80px] text-xs font-semibold">Origin</TableHead>
                               <TableHead className="text-center w-[80px] text-xs font-semibold">Status</TableHead>
                               <TableHead className="w-[50px]"></TableHead>
@@ -270,6 +295,20 @@ const Transactions = () => {
                                   <span className="text-sm font-semibold text-emerald-600">
                                     +{transaction.amount} {transaction.token}
                                   </span>
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  {feeByPaymentId[transaction.id] ? (
+                                    <div>
+                                      <span className="text-sm font-medium text-blue-600">
+                                        {feeByPaymentId[transaction.id].feeTotal} {feeByPaymentId[transaction.id].feeToken}
+                                      </span>
+                                      <p className="text-[10px] text-muted-foreground">
+                                        +{feeByPaymentId[transaction.id].creatorReward} reward
+                                      </p>
+                                    </div>
+                                  ) : (
+                                    <span className="text-xs text-muted-foreground">—</span>
+                                  )}
                                 </TableCell>
                                 <TableCell>
                                   <div className="flex justify-center">
