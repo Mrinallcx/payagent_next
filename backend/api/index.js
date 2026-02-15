@@ -1,15 +1,32 @@
 // Vercel Serverless Function with Express
 const express = require('express');
 const cors = require('cors');
+const crypto = require('crypto');
 const { ethers } = require('ethers');
 
 const app = express();
 
-// CORS - Allow all origins
-app.use(cors({ origin: '*' }));
+// CORS - Restrict to known frontend origins (Security: C2)
+const ALLOWED_ORIGINS = [
+  'https://payagent.vercel.app',
+  process.env.FRONTEND_URL,
+  process.env.NODE_ENV !== 'production' && 'http://localhost:5173',
+  process.env.NODE_ENV !== 'production' && 'http://localhost:3000',
+].filter(Boolean);
+app.use(cors({ origin: ALLOWED_ORIGINS, credentials: true }));
+
+// Security headers (H7)
+app.use((req, res, next) => {
+  res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  next();
+});
 
 // Capture raw body for HMAC signature verification
 app.use(express.json({
+  limit: '50kb',
   verify: (req, res, buf) => {
     req._rawBody = buf.toString('utf8');
   }
@@ -868,188 +885,14 @@ app.post('/api/pay-link', authMiddleware, async (req, res) => {
   }
 });
 
-// ============ Execute Payment (on-chain) — DEPRECATED ============
-const { verifyTransaction, executePayment } = require('../lib/blockchain');
+// ============ Execute Payment — REMOVED (Security: C1) ============
+const { verifyTransaction } = require('../lib/blockchain');
 
-app.post('/api/execute-payment', authMiddleware, async (req, res) => {
-  // Always signal deprecation on every response from this endpoint
-  res.set('Deprecation', 'true');
-  res.set('X-PayAgent-Deprecated', 'execute-payment');
-  res.set('Link', '<https://www.npmjs.com/package/@payagent/sdk>; rel="successor-version"');
-
-  try {
-    const { linkId, privateKey } = req.body;
-
-    if (!linkId) {
-      return res.status(400).json({ error: 'Missing linkId' });
-    }
-    if (!privateKey) {
-      return res.status(400).json({ error: 'Missing privateKey. The payer private key is required to sign on-chain transactions.' });
-    }
-
-    // Validate the private key format
-    let payerAddress;
-    try {
-      const { ethers } = require('ethers');
-      const tempWallet = new ethers.Wallet(privateKey);
-      payerAddress = tempWallet.address;
-    } catch (e) {
-      return res.status(400).json({ error: 'Invalid privateKey format' });
-    }
-
-    if (!req.agent.wallet_address) {
-      return res.status(400).json({ error: 'You must register a wallet address before paying. POST /api/agents/wallet' });
-    }
-
-    // Fetch the payment request
-    let request;
-    if (supabase) {
-      const { data, error } = await supabase.from('payment_requests').select('*').eq('id', linkId).single();
-      if (error && error.code === 'PGRST116') {
-        return res.status(404).json({ error: 'Payment request not found' });
-      }
-      if (error) throw error;
-      request = data;
-    } else {
-      request = memoryStore.requests[linkId];
-      if (!request) {
-        return res.status(404).json({ error: 'Payment request not found' });
-      }
-    }
-
-    if (request.status === 'PAID') {
-      return res.json({ success: true, alreadyPaid: true, message: 'This link is already paid' });
-    }
-
-    if (request.expires_at && new Date(request.expires_at) < new Date()) {
-      return res.status(400).json({ error: 'This payment link has expired' });
-    }
-
-    // Build transfers (same logic as pay-link)
-    const paymentNetwork = request.network || 'sepolia';
-    const paymentToken = request.token || 'USDC';
-    const paymentTokenAddress = getTokenAddress(paymentNetwork, paymentToken);
-    const lcxTokenAddress = getTokenAddress(paymentNetwork, 'LCX');
-    const usdcTokenAddress = getTokenAddress(paymentNetwork, 'USDC');
-
-    const feeInfo = await calculateFee(req.agent.wallet_address, paymentNetwork, paymentToken);
-    const creatorAgent = request.creator_agent_id ? await getAgentById(request.creator_agent_id) : null;
-    const creatorWallet = creatorAgent ? creatorAgent.wallet_address : request.receiver;
-    const feeConfig = await getFeeConfig();
-
-    let transfers;
-    if (feeInfo.feeToken === 'LCX' && !feeInfo.feeDeductedFromPayment) {
-      transfers = [
-        { description: 'Payment to creator', token: paymentToken, tokenAddress: paymentTokenAddress, amount: request.amount, to: creatorWallet },
-        { description: 'Platform fee', token: 'LCX', tokenAddress: lcxTokenAddress, amount: String(feeInfo.platformShare), to: feeConfig.treasury_wallet },
-        { description: 'Creator reward', token: 'LCX', tokenAddress: lcxTokenAddress, amount: String(feeInfo.creatorReward), to: creatorWallet }
-      ];
-    } else {
-      const creatorReceives = Number((Number(request.amount) - feeInfo.feeTotal).toFixed(8));
-      const feeTokenAddress = isNativeToken(feeInfo.feeToken, paymentNetwork) ? null : getTokenAddress(paymentNetwork, feeInfo.feeToken);
-      transfers = [
-        { description: 'Payment to creator', token: paymentToken, tokenAddress: paymentTokenAddress, amount: String(creatorReceives), to: creatorWallet },
-        { description: 'Platform fee', token: feeInfo.feeToken, tokenAddress: feeTokenAddress || paymentTokenAddress, amount: String(feeInfo.platformShare), to: feeConfig.treasury_wallet },
-        { description: 'Creator reward', token: feeInfo.feeToken, tokenAddress: feeTokenAddress || paymentTokenAddress, amount: String(feeInfo.creatorReward), to: creatorWallet }
-      ];
-    }
-
-    // Execute all transfers on-chain
-    const executionResult = await executePayment(privateKey, transfers, paymentNetwork);
-
-    // Extract the main payment txHash for verification/recording
-    const paymentTxHash = executionResult.transactions[0]?.txHash;
-    const feeTxHash = executionResult.transactions[1]?.txHash || null;
-    const rewardTxHash = executionResult.transactions[2]?.txHash || null;
-
-    // Mark as PAID
-    if (supabase) {
-      await supabase
-        .from('payment_requests')
-        .update({
-          status: 'PAID',
-          tx_hash: paymentTxHash,
-          paid_at: new Date().toISOString(),
-          payer: payerAddress,
-          payer_agent_id: req.agent.id
-        })
-        .eq('id', linkId);
-
-      // Record fee transaction
-      try {
-        let lcxPrice = null;
-        try { lcxPrice = await getLcxPriceUsd(); } catch(e) {}
-
-        await supabase.from('fee_transactions').insert({
-          id: 'FEE-' + Math.random().toString(36).substr(2, 9).toUpperCase(),
-          payment_request_id: linkId,
-          payer_agent_id: req.agent.id,
-          creator_agent_id: request.creator_agent_id,
-          fee_token: feeInfo.feeToken,
-          fee_total: feeInfo.feeTotal,
-          platform_share: feeInfo.platformShare,
-          creator_reward: feeInfo.creatorReward,
-          lcx_price_usd: lcxPrice,
-          payment_amount: request.amount,
-          payment_token: paymentToken,
-          treasury_wallet: feeConfig.treasury_wallet,
-          platform_fee_tx_hash: feeTxHash,
-          creator_reward_tx_hash: rewardTxHash,
-          payment_tx_hash: paymentTxHash,
-          status: 'COLLECTED'
-        });
-      } catch (feeErr) {
-        console.error('Fee recording error (non-fatal):', feeErr);
-      }
-    } else {
-      // In-memory update
-      memoryStore.requests[linkId] = {
-        ...memoryStore.requests[linkId],
-        status: 'PAID',
-        tx_hash: paymentTxHash,
-        paid_at: new Date().toISOString(),
-        payer: payerAddress,
-        payer_agent_id: req.agent.id
-      };
-    }
-
-    // Dispatch webhook
-    dispatchEvent('payment.paid', {
-      id: linkId,
-      status: 'PAID',
-      txHash: paymentTxHash,
-      payer: payerAddress,
-      amount: request.amount,
-      token: paymentToken,
-      network: paymentNetwork
-    }).catch(err => console.error('Webhook dispatch error:', err));
-
-    return res.json({
-      success: true,
-      message: 'Payment executed and verified on-chain',
-      linkId,
-      payer: payerAddress,
-      network: paymentNetwork,
-      transactions: executionResult.transactions,
-      status: 'PAID',
-      deprecated: true,
-      migration: 'This endpoint is deprecated. Use @payagent/sdk instead. Install: npm install @payagent/sdk ethers'
-    });
-
-  } catch (err) {
-    console.error('Execute payment error:', err);
-
-    // Provide user-friendly error messages for common blockchain errors
-    const msg = err.message || 'Failed to execute payment';
-    if (msg.includes('insufficient funds')) {
-      return res.status(400).json({ error: 'Insufficient funds in payer wallet for this transaction (check token balance and gas)' });
-    }
-    if (msg.includes('nonce')) {
-      return res.status(400).json({ error: 'Transaction nonce conflict. Please try again.' });
-    }
-
-    return res.status(500).json({ error: msg });
-  }
+app.post('/api/execute-payment', (req, res) => {
+  return res.status(410).json({
+    error: 'This endpoint has been permanently removed.',
+    message: 'Use the @payagent/sdk for client-side transaction signing.'
+  });
 });
 
 // ============ Verify Payment ============
@@ -1118,7 +961,7 @@ app.post('/api/verify', optionalAuthMiddleware, async (req, res) => {
         try { lcxPrice = await getLcxPriceUsd(); } catch(e) {}
 
         await supabase.from('fee_transactions').insert({
-          id: 'FEE-' + Math.random().toString(36).substr(2, 9).toUpperCase(),
+          id: 'FEE-' + crypto.randomUUID(),
           payment_request_id: requestId,
           payer_agent_id: req.agent ? req.agent.id : null,
           creator_agent_id: request.creatorAgentId || null,
@@ -1257,7 +1100,6 @@ app.post('/api/webhooks/:id/test', authMiddleware, async (req, res) => {
     };
 
     // Send test event
-    const crypto = require('crypto');
     const signature = crypto.createHmac('sha256', webhook.secret)
       .update(JSON.stringify(testPayload))
       .digest('hex');

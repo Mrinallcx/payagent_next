@@ -111,18 +111,7 @@ const NETWORK_ALIASES = {
 function resolveNetwork(network) {
   if (!network) return null;
   const key = network.toLowerCase().trim();
-
-  // Direct alias lookup
-  if (NETWORK_ALIASES[key]) {
-    return NETWORK_ALIASES[key];
-  }
-
-  // Fuzzy matching for common patterns
-  if (key.includes('sepolia')) return 'sepolia';
-  if (key.includes('base'))    return 'base';
-  if (key.includes('mainnet') || key === 'ethereum') return 'ethereum';
-
-  return null;
+  return NETWORK_ALIASES[key] || null;
 }
 
 /**

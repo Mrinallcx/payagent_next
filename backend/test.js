@@ -603,35 +603,17 @@ describe('Pay-Link (multi-chain token resolution)', () => {
 });
 
 // ═══════════════════════════════════════════════════════════════════
-//  9b. EXECUTE-PAYMENT VALIDATION
+//  9b. EXECUTE-PAYMENT — REMOVED (Security C1)
 // ═══════════════════════════════════════════════════════════════════
 
-describe('Execute Payment — Input Validation', () => {
-  it('requires linkId', async () => {
-    const res = await request('POST', '/api/execute-payment', {
-      privateKey: '0x0000000000000000000000000000000000000000000000000000000000000001',
-    }, agents.payer);
-    assert.equal(res.status, 400);
-  });
-
-  it('requires privateKey', async () => {
-    const res = await request('POST', '/api/execute-payment', { linkId: links.sepolia }, agents.payer);
-    assert.equal(res.status, 400);
-  });
-});
-
-// ═══════════════════════════════════════════════════════════════════
-//  9c. EXECUTE-PAYMENT DEPRECATION
-// ═══════════════════════════════════════════════════════════════════
-
-describe('Execute Payment — Deprecation Headers', () => {
-  it('returns Deprecation header on valid request', async () => {
+describe('Execute Payment — Removed (Security C1)', () => {
+  it('returns 410 Gone', async () => {
     const res = await request('POST', '/api/execute-payment', {
       linkId: links.sepolia,
       privateKey: '0x0000000000000000000000000000000000000000000000000000000000000001',
     }, agents.payer);
-    assert.equal(res.headers['deprecation'], 'true');
-    assert.equal(res.headers['x-payagent-deprecated'], 'execute-payment');
+    assert.equal(res.status, 410);
+    assert.ok(res.body.error.includes('permanently removed'));
   });
 });
 
