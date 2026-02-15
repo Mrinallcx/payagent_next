@@ -130,22 +130,11 @@ const Index = () => {
           <main className="flex-1 p-6 lg:p-8">
             <div className="max-w-6xl mx-auto space-y-8">
               {/* Header */}
-              <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
-                <div>
-                  <p className="text-sm text-muted-foreground mb-1">Dashboard</p>
-                  <h1 className="text-2xl font-heading font-bold text-foreground">
-                    {isConnected ? 'Welcome back' : 'Welcome to PayAgent'}
-                  </h1>
-                </div>
-                {isConnected && (
-                  <Button 
-                    onClick={handleCreateLinkClick}
-                    className="gap-2 bg-blue-600 hover:bg-blue-700 rounded-lg"
-                  >
-                    <Plus className="h-4 w-4" />
-                    Create Link
-                  </Button>
-                )}
+              <div>
+                <p className="text-sm text-muted-foreground mb-1">Dashboard</p>
+                <h1 className="text-2xl font-heading font-bold text-foreground">
+                  {isConnected ? 'Welcome back' : 'Welcome to PayAgent'}
+                </h1>
               </div>
 
               {/* Connect Prompt */}

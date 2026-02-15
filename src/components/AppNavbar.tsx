@@ -30,7 +30,7 @@ export function AppNavbar() {
             <div className="hidden md:block">
               <ConnectButton 
                 accountStatus="address"
-                chainStatus="icon"
+                chainStatus="none"
                 showBalance={false}
               />
             </div>
