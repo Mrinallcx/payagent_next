@@ -81,7 +81,9 @@ CREATE TABLE IF NOT EXISTS fee_transactions (
   payment_request_id TEXT REFERENCES payment_requests(id),
   payer_agent_id TEXT REFERENCES agents(id),
   creator_agent_id TEXT REFERENCES agents(id),
-  fee_token TEXT NOT NULL CHECK (fee_token IN ('LCX', 'USDC')),
+  payer_wallet TEXT,
+  creator_wallet TEXT,
+  fee_token TEXT NOT NULL,
   fee_total NUMERIC NOT NULL,
   platform_share NUMERIC NOT NULL,
   creator_reward NUMERIC NOT NULL,
@@ -99,6 +101,9 @@ CREATE TABLE IF NOT EXISTS fee_transactions (
 CREATE INDEX IF NOT EXISTS idx_fee_transactions_payment ON fee_transactions(payment_request_id);
 CREATE INDEX IF NOT EXISTS idx_fee_transactions_payer ON fee_transactions(payer_agent_id);
 CREATE INDEX IF NOT EXISTS idx_fee_transactions_status ON fee_transactions(status);
+CREATE INDEX IF NOT EXISTS idx_fee_transactions_creator_wallet ON fee_transactions(creator_wallet);
+CREATE INDEX IF NOT EXISTS idx_fee_transactions_payer_wallet ON fee_transactions(payer_wallet);
+CREATE INDEX IF NOT EXISTS idx_fee_transactions_creator_agent ON fee_transactions(creator_agent_id);
 
 -- ============ WEBHOOKS ============
 CREATE TABLE IF NOT EXISTS webhooks (

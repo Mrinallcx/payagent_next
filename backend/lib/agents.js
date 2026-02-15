@@ -227,15 +227,20 @@ async function getAgentByUsername(username) {
  */
 async function getAgentByWallet(walletAddress) {
   if (supabase) {
+    // Only return active (non-deleted) agents; filter out inactive/deleted to avoid
+    // .single() failing when multiple agents share the same wallet (e.g. after soft-delete)
     const { data, error } = await supabase
       .from('agents')
       .select('*')
       .eq('wallet_address', walletAddress)
+      .is('deleted_at', null)
+      .order('created_at', { ascending: false })
+      .limit(1)
       .single();
     if (error) return null;
     return data;
   }
-  return Object.values(memoryAgents).find(a => a.wallet_address === walletAddress) || null;
+  return Object.values(memoryAgents).find(a => a.wallet_address === walletAddress && !a.deleted_at) || null;
 }
 
 /**

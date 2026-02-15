@@ -1108,10 +1108,11 @@ app.post('/api/verify', optionalAuthMiddleware, async (req, res) => {
       });
     }
 
-    // Record fee transaction if fee tx hashes provided
-    if (feeTxHash && supabase && req.agent) {
+    // Record fee transaction if fee tx hashes provided (for both agent and human payers)
+    if (feeTxHash && supabase) {
       try {
-        const feeInfo = await calculateFee(req.agent.wallet_address, network, tokenSymbol);
+        const payerWallet = req.agent ? req.agent.wallet_address : (req.body.payerWallet || null);
+        const feeInfo = await calculateFee(payerWallet, network, tokenSymbol);
         const feeConfig = await getFeeConfig();
         let lcxPrice = null;
         try { lcxPrice = await getLcxPriceUsd(); } catch(e) {}
@@ -1119,8 +1120,10 @@ app.post('/api/verify', optionalAuthMiddleware, async (req, res) => {
         await supabase.from('fee_transactions').insert({
           id: 'FEE-' + Math.random().toString(36).substr(2, 9).toUpperCase(),
           payment_request_id: requestId,
-          payer_agent_id: req.agent.id,
-          creator_agent_id: request.creatorAgentId,
+          payer_agent_id: req.agent ? req.agent.id : null,
+          creator_agent_id: request.creatorAgentId || null,
+          payer_wallet: payerWallet,
+          creator_wallet: request.creatorWallet || null,
           fee_token: feeInfo.feeToken,
           fee_total: feeInfo.feeTotal,
           platform_share: feeInfo.platformShare,
@@ -1135,12 +1138,14 @@ app.post('/api/verify', optionalAuthMiddleware, async (req, res) => {
           status: 'COLLECTED'
         });
 
-        // Update agent counters
-        await supabase.rpc('increment_agent_counter', { agent_id_param: req.agent.id, counter_name: 'total_payments_sent' }).catch(() => {});
-        if (request.creatorAgentId) {
-          await supabase.rpc('increment_agent_counter', { agent_id_param: request.creatorAgentId, counter_name: 'total_payments_received' }).catch(() => {});
+        // Update agent counters (only when agents are involved)
+        if (req.agent) {
+          try { await supabase.rpc('increment_agent_counter', { agent_id_param: req.agent.id, counter_name: 'total_payments_sent' }); } catch(e) {}
+          try { await supabase.rpc('increment_agent_fee', { agent_id_param: req.agent.id, fee_amount: feeInfo.feeTotal }); } catch(e) {}
         }
-        await supabase.rpc('increment_agent_fee', { agent_id_param: req.agent.id, fee_amount: feeInfo.feeTotal }).catch(() => {});
+        if (request.creatorAgentId) {
+          try { await supabase.rpc('increment_agent_counter', { agent_id_param: request.creatorAgentId, counter_name: 'total_payments_received' }); } catch(e) {}
+        }
       } catch (feeErr) {
         console.error('Fee recording error (non-fatal):', feeErr);
       }
@@ -1386,20 +1391,146 @@ app.get('/api/chains', (req, res) => {
   return res.json({ success: true, chains });
 });
 
+// ============ Rewards (for dashboard, public by wallet) ============
+app.get('/api/rewards', async (req, res) => {
+  try {
+    const { wallet } = req.query;
+    if (!wallet) {
+      return res.status(400).json({ error: 'Missing wallet query parameter' });
+    }
+
+    if (!supabase) {
+      return res.json({
+        success: true,
+        rewards: { human: [], agent: [] },
+        totals: { humanRewardsCount: 0, agentRewardsCount: 0, humanRewardsTotal: 0, agentRewardsTotal: 0 }
+      });
+    }
+
+    // Query fee_transactions where the wallet is the creator (received rewards)
+    // Join with payment_requests to get payment details
+    const { data: feeRows, error: feeErr } = await supabase
+      .from('fee_transactions')
+      .select('*, payment_requests!inner(id, token, amount, network, description, created_at, creator_wallet, creator_agent_id, payer_agent_id)')
+      .eq('status', 'COLLECTED')
+      .eq('payment_requests.creator_wallet', wallet)
+      .order('created_at', { ascending: false });
+
+    if (feeErr) {
+      console.error('Rewards query error:', feeErr);
+      // Fallback: query without join
+      const { data: fallbackData, error: fallbackErr } = await supabase
+        .from('fee_transactions')
+        .select('*')
+        .eq('status', 'COLLECTED')
+        .eq('creator_wallet', wallet)
+        .order('created_at', { ascending: false });
+
+      if (fallbackErr) throw fallbackErr;
+
+      const humanRewards = (fallbackData || []).filter(r => !r.creator_agent_id);
+      const agentRewards = (fallbackData || []).filter(r => !!r.creator_agent_id);
+
+      return res.json({
+        success: true,
+        rewards: {
+          human: humanRewards.map(r => ({
+            feeId: r.id,
+            paymentId: r.payment_request_id,
+            creatorReward: Number(r.creator_reward),
+            feeToken: r.fee_token,
+            feeTotal: Number(r.fee_total),
+            platformShare: Number(r.platform_share),
+            paymentAmount: Number(r.payment_amount),
+            paymentToken: r.payment_token,
+            paymentTxHash: r.payment_tx_hash,
+            creatorRewardTxHash: r.creator_reward_tx_hash,
+            createdAt: r.created_at
+          })),
+          agent: agentRewards.map(r => ({
+            feeId: r.id,
+            paymentId: r.payment_request_id,
+            creatorReward: Number(r.creator_reward),
+            feeToken: r.fee_token,
+            feeTotal: Number(r.fee_total),
+            platformShare: Number(r.platform_share),
+            paymentAmount: Number(r.payment_amount),
+            paymentToken: r.payment_token,
+            paymentTxHash: r.payment_tx_hash,
+            creatorRewardTxHash: r.creator_reward_tx_hash,
+            createdAt: r.created_at
+          }))
+        },
+        totals: {
+          humanRewardsCount: humanRewards.length,
+          agentRewardsCount: agentRewards.length,
+          humanRewardsTotal: humanRewards.reduce((sum, r) => sum + Number(r.creator_reward || 0), 0),
+          agentRewardsTotal: agentRewards.reduce((sum, r) => sum + Number(r.creator_reward || 0), 0)
+        }
+      });
+    }
+
+    // Process joined data
+    const humanRewards = [];
+    const agentRewards = [];
+
+    for (const row of (feeRows || [])) {
+      const pr = row.payment_requests;
+      const reward = {
+        feeId: row.id,
+        paymentId: row.payment_request_id,
+        creatorReward: Number(row.creator_reward),
+        feeToken: row.fee_token,
+        feeTotal: Number(row.fee_total),
+        platformShare: Number(row.platform_share),
+        paymentAmount: Number(row.payment_amount),
+        paymentToken: row.payment_token,
+        paymentTxHash: row.payment_tx_hash,
+        creatorRewardTxHash: row.creator_reward_tx_hash,
+        network: pr?.network || null,
+        description: pr?.description || null,
+        createdAt: row.created_at
+      };
+
+      if (!pr?.creator_agent_id) {
+        humanRewards.push(reward);
+      } else {
+        agentRewards.push(reward);
+      }
+    }
+
+    return res.json({
+      success: true,
+      rewards: { human: humanRewards, agent: agentRewards },
+      totals: {
+        humanRewardsCount: humanRewards.length,
+        agentRewardsCount: agentRewards.length,
+        humanRewardsTotal: humanRewards.reduce((sum, r) => sum + r.creatorReward, 0),
+        agentRewardsTotal: agentRewards.reduce((sum, r) => sum + r.creatorReward, 0)
+      }
+    });
+  } catch (error) {
+    console.error('Rewards error:', error);
+    return res.status(500).json({ error: 'Failed to get rewards' });
+  }
+});
+
 // ============ Platform Stats (for dashboard, public) ============
 app.get('/api/stats', async (req, res) => {
   try {
     if (!supabase) {
       return res.json({
         success: true,
-        stats: { totalAgents: 0, totalPayments: 0, totalFeesCollected: 0 }
+        stats: { totalAgents: 0, totalPayments: 0, totalFeesCollected: 0, humanPayments: 0, agentPayments: 0 }
       });
     }
 
-    const [agentsResult, paymentsResult, feesResult] = await Promise.all([
+    const [agentsResult, paymentsResult, feesResult, humanPaymentsResult, agentPaymentsResult] = await Promise.all([
       supabase.from('agents').select('id', { count: 'exact', head: true }),
       supabase.from('payment_requests').select('id', { count: 'exact', head: true }).eq('status', 'PAID'),
-      supabase.from('fee_transactions').select('fee_total').eq('status', 'COLLECTED')
+      supabase.from('fee_transactions').select('fee_total').eq('status', 'COLLECTED'),
+      supabase.from('payment_requests').select('id', { count: 'exact', head: true }).eq('status', 'PAID').is('creator_agent_id', null),
+      supabase.from('payment_requests').select('id', { count: 'exact', head: true }).eq('status', 'PAID').not('creator_agent_id', 'is', null)
     ]);
 
     const totalFees = (feesResult.data || []).reduce((sum, f) => sum + Number(f.fee_total || 0), 0);
@@ -1409,7 +1540,9 @@ app.get('/api/stats', async (req, res) => {
       stats: {
         totalAgents: agentsResult.count || 0,
         totalPayments: paymentsResult.count || 0,
-        totalFeesCollected: totalFees
+        totalFeesCollected: totalFees,
+        humanPayments: humanPaymentsResult.count || 0,
+        agentPayments: agentPaymentsResult.count || 0
       }
     });
   } catch (error) {

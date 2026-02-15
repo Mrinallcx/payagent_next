@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { SidebarProvider } from "@/components/ui/sidebar";
@@ -15,6 +15,8 @@ import { getAllPaymentRequests, deletePaymentRequest, PaymentRequest } from "@/l
 import { getExplorerUrl } from "@/lib/contracts";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
+type FilterTab = 'all' | 'human' | 'agent';
+
 const PaymentLinks = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -22,6 +24,7 @@ const PaymentLinks = () => {
   const [isCreateLinkOpen, setIsCreateLinkOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [activeTab, setActiveTab] = useState<FilterTab>('all');
   const { address, isConnected } = useAccount();
   const { openConnectModal } = useConnectModal();
 
@@ -35,7 +38,15 @@ const PaymentLinks = () => {
     refetchIntervalInBackground: false,
   });
 
-  const paymentLinks = data?.requests ?? [];
+  const allLinks = data?.requests ?? [];
+
+  const filteredLinks = useMemo(() => {
+    switch (activeTab) {
+      case 'human': return allLinks.filter(l => !l.creatorAgentId);
+      case 'agent': return allLinks.filter(l => !!l.creatorAgentId);
+      default: return allLinks;
+    }
+  }, [allLinks, activeTab]);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -90,6 +101,21 @@ const PaymentLinks = () => {
     );
   };
 
+  const getOriginBadge = (link: PaymentRequest) => {
+    if (link.creatorAgentId) {
+      return (
+        <Badge variant="secondary" className="bg-purple-50 text-purple-700 border-0 text-xs">
+          Agent
+        </Badge>
+      );
+    }
+    return (
+      <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-0 text-xs">
+        Human
+      </Badge>
+    );
+  };
+
   const handleViewLink = (id: string) => {
     navigate(`/pay/${id}`);
   };
@@ -138,6 +164,15 @@ const PaymentLinks = () => {
   const truncateAddress = (addr: string) => {
     return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
   };
+
+  const paidCount = filteredLinks.filter(l => l.status === 'PAID').length;
+  const pendingCount = filteredLinks.filter(l => l.status === 'PENDING' && (!l.expiresAt || Date.now() < l.expiresAt)).length;
+
+  const tabs: { key: FilterTab; label: string; count: number }[] = [
+    { key: 'all', label: 'All', count: allLinks.length },
+    { key: 'human', label: 'Human', count: allLinks.filter(l => !l.creatorAgentId).length },
+    { key: 'agent', label: 'Agent', count: allLinks.filter(l => !!l.creatorAgentId).length },
+  ];
 
   return (
     <SidebarProvider>
@@ -197,24 +232,42 @@ const PaymentLinks = () => {
                 </div>
               )}
 
+              {/* Filter Tabs */}
+              {isConnected && (
+                <div className="flex items-center gap-1 mb-4 bg-white rounded-lg border border-border p-1 w-fit">
+                  {tabs.map(tab => (
+                    <button
+                      key={tab.key}
+                      onClick={() => setActiveTab(tab.key)}
+                      className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                        activeTab === tab.key
+                          ? 'bg-blue-600 text-white'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-gray-50'
+                      }`}
+                    >
+                      {tab.label}
+                      <span className={`ml-1.5 text-xs ${activeTab === tab.key ? 'text-white/70' : 'text-muted-foreground'}`}>
+                        {tab.count}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+
               {/* Stats */}
-              {isConnected && paymentLinks.length > 0 && (
+              {isConnected && filteredLinks.length > 0 && (
                 <div className="grid grid-cols-3 gap-4 mb-6">
                   <div className="bg-white rounded-xl border border-border p-4">
                     <p className="text-xs text-muted-foreground mb-1">Total</p>
-                    <p className="text-2xl font-heading font-bold">{paymentLinks.length}</p>
+                    <p className="text-2xl font-heading font-bold">{filteredLinks.length}</p>
                   </div>
                   <div className="bg-white rounded-xl border border-border p-4">
                     <p className="text-xs text-muted-foreground mb-1">Paid</p>
-                    <p className="text-2xl font-heading font-bold text-emerald-600">
-                      {paymentLinks.filter(l => l.status === 'PAID').length}
-                    </p>
+                    <p className="text-2xl font-heading font-bold text-emerald-600">{paidCount}</p>
                   </div>
                   <div className="bg-white rounded-xl border border-border p-4">
                     <p className="text-xs text-muted-foreground mb-1">Pending</p>
-                    <p className="text-2xl font-heading font-bold text-amber-600">
-                      {paymentLinks.filter(l => l.status === 'PENDING' && (!l.expiresAt || Date.now() < l.expiresAt)).length}
-                    </p>
+                    <p className="text-2xl font-heading font-bold text-amber-600">{pendingCount}</p>
                   </div>
                 </div>
               )}
@@ -230,7 +283,7 @@ const PaymentLinks = () => {
               {/* Links List */}
               {isConnected && !isLoading && (
                 <div className="space-y-3">
-                  {paymentLinks.map(link => (
+                  {filteredLinks.map(link => (
                     <div 
                       key={link.id} 
                       className="bg-white rounded-xl border border-border p-5 hover:border-blue-200 transition-colors"
@@ -258,6 +311,7 @@ const PaymentLinks = () => {
                                 {link.amount} {link.token}
                               </h3>
                               {getStatusBadge(link)}
+                              {getOriginBadge(link)}
                             </div>
                             {link.description && (
                               <p className="text-sm text-muted-foreground mb-2 truncate">
@@ -321,22 +375,26 @@ const PaymentLinks = () => {
                     </div>
                   ))}
 
-                  {paymentLinks.length === 0 && (
+                  {filteredLinks.length === 0 && (
                     <div className="text-center py-16 bg-white rounded-xl border border-border">
                       <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center mx-auto mb-4">
                         <LinkIcon className="h-5 w-5 text-blue-400" />
                       </div>
                       <h3 className="font-semibold mb-1">No payment links</h3>
                       <p className="text-sm text-muted-foreground mb-4">
-                        Create your first link to start receiving payments
+                        {activeTab === 'human' ? 'No human-created links found' : 
+                         activeTab === 'agent' ? 'No agent-created links found' :
+                         'Create your first link to start receiving payments'}
                       </p>
-                      <Button 
-                        onClick={handleCreateLinkClick} 
-                        className="gap-2 bg-blue-600 hover:bg-blue-700 rounded-lg"
-                      >
-                        <Plus className="h-4 w-4" />
-                        Create Link
-                      </Button>
+                      {activeTab !== 'agent' && (
+                        <Button 
+                          onClick={handleCreateLinkClick} 
+                          className="gap-2 bg-blue-600 hover:bg-blue-700 rounded-lg"
+                        >
+                          <Plus className="h-4 w-4" />
+                          Create Link
+                        </Button>
+                      )}
                     </div>
                   )}
                 </div>

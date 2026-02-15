@@ -1,6 +1,6 @@
 import { MdSpaceDashboard } from "react-icons/md";
 import { IoLink, IoLogOut } from "react-icons/io5";
-import { FaMoneyBill, FaRobot } from "react-icons/fa";
+import { FaMoneyBill, FaRobot, FaGift } from "react-icons/fa";
 import { NavLink } from "@/components/NavLink";
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { useAccount, useDisconnect } from 'wagmi';
@@ -20,6 +20,7 @@ const menuItems = [
   { title: "Dashboard", url: "/dashboard", icon: MdSpaceDashboard },
   { title: "Payment Links", url: "/payment-links", icon: IoLink },
   { title: "Transactions", url: "/transactions", icon: FaMoneyBill },
+  { title: "Rewards", url: "/rewards", icon: FaGift },
   { title: "Agents", url: "/agents", icon: FaRobot },
 ];
 

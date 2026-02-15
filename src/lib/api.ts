@@ -14,6 +14,8 @@ export interface PaymentRequest {
   txHash: string | null;
   paidAt: number | null;
   creatorWallet: string | null;
+  creatorAgentId: string | null;
+  payerAgentId: string | null;
   isExpired?: boolean;
   isPaid?: boolean;
 }
@@ -367,6 +369,8 @@ export interface PlatformStats {
   totalAgents: number;
   totalPayments: number;
   totalFeesCollected: number;
+  humanPayments: number;
+  agentPayments: number;
 }
 
 export async function getPlatformStats(): Promise<PlatformStats> {
@@ -378,6 +382,55 @@ export async function getPlatformStats(): Promise<PlatformStats> {
   } catch (error) {
     console.error('Error fetching platform stats:', error);
     return { totalAgents: 0, totalPayments: 0, totalFeesCollected: 0 };
+  }
+}
+
+// ============ Rewards API (public, by wallet) ============
+
+export interface RewardEntry {
+  feeId: string;
+  paymentId: string;
+  creatorReward: number;
+  feeToken: string;
+  feeTotal: number;
+  platformShare: number;
+  paymentAmount: number;
+  paymentToken: string;
+  paymentTxHash: string | null;
+  creatorRewardTxHash: string | null;
+  network?: string;
+  description?: string;
+  createdAt: string;
+}
+
+export interface RewardsResponse {
+  success: boolean;
+  rewards: {
+    human: RewardEntry[];
+    agent: RewardEntry[];
+  };
+  totals: {
+    humanRewardsCount: number;
+    agentRewardsCount: number;
+    humanRewardsTotal: number;
+    agentRewardsTotal: number;
+  };
+}
+
+export async function getRewards(walletAddress: string): Promise<RewardsResponse> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/rewards?wallet=${encodeURIComponent(walletAddress)}`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch rewards');
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching rewards:', error);
+    return {
+      success: false,
+      rewards: { human: [], agent: [] },
+      totals: { humanRewardsCount: 0, agentRewardsCount: 0, humanRewardsTotal: 0, agentRewardsTotal: 0 }
+    };
   }
 }
 

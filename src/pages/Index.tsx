@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { SidebarProvider } from "@/components/ui/sidebar";
@@ -19,11 +19,12 @@ import {
   ArrowRight,
   ArrowUpRight,
   Bot,
-  Users
+  Users,
+  Gift
 } from "lucide-react";
 import { useAccount } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
-import { getAllPaymentRequests, getPlatformStats, type PlatformStats } from "@/lib/api";
+import { getAllPaymentRequests, getRewards } from "@/lib/api";
 import { getExplorerUrl } from "@/lib/contracts";
 
 const formatDate = (timestamp: number) => {
@@ -66,17 +67,22 @@ const Index = () => {
     refetchIntervalInBackground: false,
   });
 
-  const { data: platformStats } = useQuery<PlatformStats>({
-    queryKey: ['platformStats'],
-    queryFn: getPlatformStats,
+  const { data: rewardsData } = useQuery({
+    queryKey: ['rewards', address],
+    queryFn: () => getRewards(address!),
+    enabled: isConnected && !!address,
     staleTime: 30000,
     refetchInterval: 60000,
   });
 
-  const paymentLinks = data?.requests?.slice(0, 5) ?? [];
-  const recentTransactions = data?.requests?.filter(r => r.status === 'PAID').slice(0, 5) ?? [];
-  const totalReceived = recentTransactions.reduce((acc, t) => acc + parseFloat(t.amount), 0);
-  const pendingLinks = paymentLinks.filter(l => l.status === 'PENDING').length;
+  // Filter to human-only data (creatorAgentId is null = created by human via frontend)
+  const allRequests = data?.requests ?? [];
+  const humanLinks = useMemo(() => allRequests.filter(r => !r.creatorAgentId), [allRequests]);
+  const humanPaymentLinks = humanLinks.slice(0, 5);
+  const humanTransactions = useMemo(() => humanLinks.filter(r => r.status === 'PAID').slice(0, 5), [humanLinks]);
+  const totalReceived = humanTransactions.reduce((acc, t) => acc + parseFloat(t.amount), 0);
+  const pendingLinks = humanPaymentLinks.filter(l => l.status === 'PENDING').length;
+  const totalHumanRewards = rewardsData?.totals?.humanRewardsTotal ?? 0;
 
   const handleCreateLinkClick = () => {
     if (!isConnected) {
@@ -123,27 +129,6 @@ const Index = () => {
                 )}
               </div>
 
-              {/* Platform Stats Banner */}
-              {platformStats && (
-                <div className="bg-gradient-to-r from-blue-600 to-blue-600 rounded-xl p-5 text-white">
-                  <p className="text-sm text-white/70 mb-3">Platform Overview</p>
-                  <div className="grid grid-cols-3 gap-4">
-                    <div>
-                      <p className="text-2xl font-heading font-bold">{platformStats.totalAgents}</p>
-                      <p className="text-xs text-white/60">Registered Agents</p>
-                    </div>
-                    <div>
-                      <p className="text-2xl font-heading font-bold">{platformStats.totalPayments}</p>
-                      <p className="text-xs text-white/60">Total Payments</p>
-                    </div>
-                    <div>
-                      <p className="text-2xl font-heading font-bold">{platformStats.totalFeesCollected > 0 ? platformStats.totalFeesCollected.toFixed(2) : '0'}</p>
-                      <p className="text-xs text-white/60">Fees Collected</p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
               {/* Connect Prompt */}
               {!isConnected ? (
                 <div className="bg-white rounded-2xl border border-border p-12 text-center">
@@ -164,26 +149,39 @@ const Index = () => {
                 </div>
               ) : (
                 <>
-                  {/* Stats */}
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    {[
-                      { label: "Total Links", value: paymentLinks.length, color: "blue" },
-                      { label: "Completed", value: recentTransactions.length, color: "emerald" },
-                      { label: "Pending", value: pendingLinks, color: "amber" },
-                      { label: "Total Received", value: totalReceived > 0 ? totalReceived.toFixed(2) : "0", color: "blue" },
-                    ].map((stat) => (
-                      <div key={stat.label} className="bg-white rounded-xl border border-border p-5">
-                        <p className="text-xs text-muted-foreground mb-1">{stat.label}</p>
-                        <p className={`text-2xl font-heading font-bold ${
-                          stat.color === "emerald" ? "text-emerald-600" : 
-                          stat.color === "amber" ? "text-amber-600" : "text-foreground"
-                        }`}>{stat.value}</p>
-                      </div>
-                    ))}
+                  {/* Stats — Human only */}
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                    <div className="bg-white rounded-xl border border-border p-5">
+                      <p className="text-xs text-muted-foreground mb-1">Total Links</p>
+                      <p className="text-2xl font-heading font-bold text-foreground">{humanPaymentLinks.length}</p>
+                    </div>
+                    <div className="bg-white rounded-xl border border-border p-5">
+                      <p className="text-xs text-muted-foreground mb-1">Completed</p>
+                      <p className="text-2xl font-heading font-bold text-emerald-600">{humanTransactions.length}</p>
+                    </div>
+                    <div className="bg-white rounded-xl border border-border p-5">
+                      <p className="text-xs text-muted-foreground mb-1">Pending</p>
+                      <p className="text-2xl font-heading font-bold text-amber-600">{pendingLinks}</p>
+                    </div>
+                    <div className="bg-white rounded-xl border border-border p-5">
+                      <p className="text-xs text-muted-foreground mb-1">Received</p>
+                      <p className="text-2xl font-heading font-bold text-foreground">{totalReceived > 0 ? totalReceived.toFixed(2) : "0"}</p>
+                    </div>
+                    <div 
+                      className="bg-white rounded-xl border border-border p-5 cursor-pointer hover:border-blue-200 transition-colors"
+                      onClick={() => navigate('/rewards')}
+                    >
+                      <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                        <Gift className="h-3 w-3" /> Rewards
+                      </p>
+                      <p className="text-2xl font-heading font-bold text-blue-600">
+                        {totalHumanRewards > 0 ? totalHumanRewards.toFixed(2) : "0"}
+                      </p>
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* Transactions */}
+                    {/* Transactions — Human only */}
                     <DashboardCard 
                       title="Recent Transactions"
                       action={
@@ -202,9 +200,9 @@ const Index = () => {
                         <div className="flex items-center justify-center py-12">
                           <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
                         </div>
-                      ) : recentTransactions.length > 0 ? (
+                      ) : humanTransactions.length > 0 ? (
                         <div className="space-y-0">
-                          {recentTransactions.map((txn) => (
+                          {humanTransactions.map((txn) => (
                             <div 
                               key={txn.id} 
                               className="flex items-center justify-between py-3.5 border-b last:border-0 border-border/50"
@@ -254,7 +252,7 @@ const Index = () => {
                       )}
                     </DashboardCard>
 
-                    {/* Payment Links */}
+                    {/* Payment Links — Human only */}
                     <DashboardCard 
                       title="Payment Links"
                       action={
@@ -273,9 +271,9 @@ const Index = () => {
                         <div className="flex items-center justify-center py-12">
                           <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
                         </div>
-                      ) : paymentLinks.length > 0 ? (
+                      ) : humanPaymentLinks.length > 0 ? (
                         <div className="space-y-0">
-                          {paymentLinks.map((link) => (
+                          {humanPaymentLinks.map((link) => (
                             <PaymentLinkItem 
                               key={link.id} 
                               id={link.id}
@@ -339,17 +337,17 @@ const Index = () => {
                     </button>
 
                     <button 
-                      onClick={() => navigate('/transactions')}
+                      onClick={() => navigate('/rewards')}
                       className="group bg-white rounded-xl p-5 text-left border border-border hover:border-blue-200 transition-colors"
                     >
                       <div className="flex items-center justify-between mb-3">
                         <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
-                          <ArrowDownLeft className="h-5 w-5 text-blue-600" />
+                          <Gift className="h-5 w-5 text-blue-600" />
                         </div>
                         <ArrowRight className="h-4 w-4 text-muted-foreground opacity-40 group-hover:opacity-100 transition-opacity" />
                       </div>
-                      <h3 className="font-medium text-foreground mb-0.5">Transactions</h3>
-                      <p className="text-sm text-muted-foreground">View payment history</p>
+                      <h3 className="font-medium text-foreground mb-0.5">Rewards</h3>
+                      <p className="text-sm text-muted-foreground">View earned creator rewards</p>
                     </button>
                   </div>
 
