@@ -59,6 +59,9 @@ export interface CreatePaymentLinkResponse {
 export interface VerifyPaymentData {
   requestId: string;
   txHash: string;
+  feeTxHash?: string;
+  creatorRewardTxHash?: string;
+  payerWallet?: string;
 }
 
 export interface VerifyPaymentResponse {

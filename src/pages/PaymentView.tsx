@@ -313,6 +313,9 @@ export default function PaymentView() {
         const result = await verifyPayment({
           requestId: paymentRequest.id,
           txHash: txHashes[0],
+          feeTxHash: txHashes[1] || undefined,
+          creatorRewardTxHash: txHashes[2] || undefined,
+          payerWallet: address || undefined,
         });
 
         if (result.success && result.status === 'PAID') {
