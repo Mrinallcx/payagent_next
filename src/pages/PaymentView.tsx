@@ -316,6 +316,11 @@ export default function PaymentView() {
           feeTxHash: txHashes[1] || undefined,
           creatorRewardTxHash: txHashes[2] || undefined,
           payerWallet: address || undefined,
+          // Pass actual fee info so backend doesn't re-calculate (payer's LCX balance changed after payment)
+          feeToken: feeInfo?.fee?.feeToken,
+          feeTotal: feeInfo?.fee?.feeTotal,
+          platformShare: feeInfo?.fee?.platformShare,
+          creatorReward: feeInfo?.fee?.creatorReward,
         });
 
         if (result.success && result.status === 'PAID') {

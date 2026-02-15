@@ -62,6 +62,10 @@ export interface VerifyPaymentData {
   feeTxHash?: string;
   creatorRewardTxHash?: string;
   payerWallet?: string;
+  feeToken?: string;
+  feeTotal?: number;
+  platformShare?: number;
+  creatorReward?: number;
 }
 
 export interface VerifyPaymentResponse {

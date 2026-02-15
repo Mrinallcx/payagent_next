@@ -1005,7 +1005,21 @@ app.post('/api/verify', optionalAuthMiddleware, async (req, res) => {
       if (feeTxHash) {
         try {
           const payerWallet = req.agent ? req.agent.wallet_address : (req.body.payerWallet || null);
-          const feeInfo = await calculateFee(payerWallet, network, tokenSymbol);
+
+          // Use fee info passed from frontend (avoids re-calculating after payer's LCX balance changed)
+          let feeInfo;
+          if (req.body.feeToken && req.body.feeTotal != null) {
+            feeInfo = {
+              feeToken: req.body.feeToken,
+              feeTotal: Number(req.body.feeTotal),
+              platformShare: Number(req.body.platformShare || 0),
+              creatorReward: Number(req.body.creatorReward || 0),
+              feeDeductedFromPayment: req.body.feeToken !== 'LCX'
+            };
+          } else {
+            feeInfo = await calculateFee(payerWallet, network, tokenSymbol);
+          }
+
           const feeConfig = await getFeeConfig();
           let lcxPrice = null;
           try { lcxPrice = await getLcxPriceUsd(); } catch(e) {}
