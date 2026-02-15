@@ -382,9 +382,36 @@ export async function verifyPayment(data: VerifyPaymentData): Promise<VerifyPaym
 export interface PlatformStats {
   totalAgents: number;
   totalPayments: number;
-  totalFeesCollected: number;
+  feesByToken: Record<string, number>;
+  paymentsByToken: Record<string, number>;
+  agentPaymentsByToken: Record<string, number>;
   humanPayments: number;
   agentPayments: number;
+}
+
+export interface AgentSummary {
+  id: string;
+  username: string;
+  email: string;
+  wallet_address: string | null;
+  status: string;
+  verification_status: string;
+  x_username: string | null;
+  created_at: string;
+  total_payments_sent: number;
+  total_payments_received: number;
+}
+
+export async function getAgentsList(): Promise<AgentSummary[]> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/agents/list`);
+    if (!response.ok) throw new Error('Failed to fetch agents list');
+    const data = await response.json();
+    return data.agents || [];
+  } catch (error) {
+    console.error('Error fetching agents list:', error);
+    return [];
+  }
 }
 
 export async function getPlatformStats(): Promise<PlatformStats> {
@@ -395,7 +422,7 @@ export async function getPlatformStats(): Promise<PlatformStats> {
     return result.stats;
   } catch (error) {
     console.error('Error fetching platform stats:', error);
-    return { totalAgents: 0, totalPayments: 0, totalFeesCollected: 0 };
+    return { totalAgents: 0, totalPayments: 0, feesByToken: {}, paymentsByToken: {}, agentPaymentsByToken: {}, humanPayments: 0, agentPayments: 0 };
   }
 }
 

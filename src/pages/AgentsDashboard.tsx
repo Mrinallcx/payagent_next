@@ -1,10 +1,11 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { AppNavbar } from "@/components/AppNavbar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   Bot, Users, Loader2, ExternalLink, DollarSign, Coins,
   RotateCcw, Power, Trash2, ShieldCheck, Clock, FileText, Copy, Check, AlertTriangle, Wallet
@@ -14,6 +15,8 @@ import { useAccount, useSignMessage } from "wagmi";
 import {
   getPlatformStats, type PlatformStats,
   getAgentByWallet, type AgentProfile,
+  getAgentsList, type AgentSummary,
+  getPrices, toUsd, formatUsd, type TokenPrices,
   rotateApiKey, deactivateAgent, deleteAgent,
   walletLogin, isJwtValid, clearJwt
 } from "@/lib/api";
@@ -96,6 +99,37 @@ export default function AgentsDashboard() {
     queryFn: getPlatformStats,
     staleTime: 30000,
   });
+
+  const { data: allAgents } = useQuery<AgentSummary[]>({
+    queryKey: ['agentsList'],
+    queryFn: getAgentsList,
+    staleTime: 30000,
+  });
+
+  const { data: prices } = useQuery({
+    queryKey: ['prices'],
+    queryFn: getPrices,
+    staleTime: 60000,
+    refetchInterval: 300000,
+  });
+
+  const priceData: TokenPrices = prices ?? { LCX: 0, ETH: 0, USDC: 1, USDT: 1 };
+
+  // Compute agent payment value in USD (only agent-created payments)
+  const agentPaymentValueUsd = useMemo(() => {
+    if (!platformStats?.agentPaymentsByToken) return 0;
+    return Object.entries(platformStats.agentPaymentsByToken).reduce(
+      (sum, [token, amount]) => sum + toUsd(amount, token, priceData), 0
+    );
+  }, [platformStats, priceData]);
+
+  // Compute total fees in USD
+  const totalFeesUsd = useMemo(() => {
+    if (!platformStats?.feesByToken) return 0;
+    return Object.entries(platformStats.feesByToken).reduce(
+      (sum, [token, amount]) => sum + toUsd(amount, token, priceData), 0
+    );
+  }, [platformStats, priceData]);
 
   // Try to look up agent by connected wallet (public endpoint, no auth needed)
   const { data: agentProfile, isLoading: profileLoading } = useQuery<AgentProfile | null>({
@@ -430,8 +464,11 @@ export default function AgentsDashboard() {
                       <DollarSign className="h-5 w-5 text-emerald-600" />
                     </div>
                     <div>
-                      <p className="text-xs text-muted-foreground">Completed Payments</p>
-                      <p className="text-2xl font-heading font-bold text-emerald-600">{platformStats?.totalPayments || 0}</p>
+                      <p className="text-xs text-muted-foreground">Agent Payment Value</p>
+                      <p className="text-2xl font-heading font-bold text-emerald-600">
+                        {agentPaymentValueUsd > 0 ? formatUsd(agentPaymentValueUsd) : '$0.00'}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground">{platformStats?.agentPayments || 0} agent payments</p>
                     </div>
                   </div>
                 </div>
@@ -444,12 +481,79 @@ export default function AgentsDashboard() {
                     <div>
                       <p className="text-xs text-muted-foreground">Total Fees Collected</p>
                       <p className="text-2xl font-heading font-bold text-amber-600">
-                        {platformStats?.totalFeesCollected ? platformStats.totalFeesCollected.toFixed(2) : '0.00'}
+                        {totalFeesUsd > 0 ? formatUsd(totalFeesUsd) : '$0.00'}
                       </p>
+                      {platformStats?.feesByToken && Object.keys(platformStats.feesByToken).length > 0 && (
+                        <p className="text-[10px] text-muted-foreground">
+                          {Object.entries(platformStats.feesByToken).map(([token, amt]) => `${Number(amt).toFixed(2)} ${token}`).join(', ')}
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>
               </div>
+
+              {/* All Agents List */}
+              {allAgents && allAgents.length > 0 && (
+                <div className="bg-white rounded-xl border border-border overflow-hidden">
+                  <div className="px-6 py-4 border-b border-border">
+                    <h3 className="font-heading font-semibold">All Registered Agents ({allAgents.length})</h3>
+                  </div>
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="hover:bg-transparent">
+                        <TableHead className="text-xs font-semibold">Agent</TableHead>
+                        <TableHead className="hidden md:table-cell text-xs font-semibold">Wallet</TableHead>
+                        <TableHead className="text-xs font-semibold">Status</TableHead>
+                        <TableHead className="hidden lg:table-cell text-xs font-semibold">Payments</TableHead>
+                        <TableHead className="hidden lg:table-cell text-xs font-semibold">Joined</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {allAgents.map((agent) => (
+                        <TableRow key={agent.id} className="hover:bg-blue-50/50">
+                          <TableCell>
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-lg bg-purple-50 flex items-center justify-center">
+                                <Bot className="h-4 w-4 text-purple-600" />
+                              </div>
+                              <div>
+                                <p className="text-sm font-medium">{agent.username}</p>
+                                <p className="text-xs text-muted-foreground">{agent.email}</p>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell className="hidden md:table-cell">
+                            <code className="text-xs font-mono text-muted-foreground">
+                              {truncateAddress(agent.wallet_address)}
+                            </code>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1.5">
+                              <Badge className={`${statusColor(agent.status)} border-0 text-[10px]`}>
+                                {agent.status}
+                              </Badge>
+                              {agent.verification_status === 'verified' && (
+                                <ShieldCheck className="h-3.5 w-3.5 text-blue-600" />
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="hidden lg:table-cell">
+                            <span className="text-xs text-muted-foreground">
+                              {agent.total_payments_sent} sent / {agent.total_payments_received} received
+                            </span>
+                          </TableCell>
+                          <TableCell className="hidden lg:table-cell">
+                            <span className="text-xs text-muted-foreground">
+                              {formatDate(agent.created_at)}
+                            </span>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
 
               {/* Fee Model Info */}
               <div className="bg-gradient-to-r from-blue-50 to-blue-50 rounded-xl border border-blue-200 p-6">

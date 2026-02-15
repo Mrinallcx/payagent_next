@@ -518,6 +518,28 @@ app.get('/api/agents/ip-history', authMiddleware, async (req, res) => {
   }
 });
 
+// ============ All Agents List (for dashboard, public summary) ============
+app.get('/api/agents/list', async (req, res) => {
+  try {
+    if (!supabase) {
+      return res.json({ success: true, agents: [] });
+    }
+
+    const { data, error } = await supabase
+      .from('agents')
+      .select('id, username, email, wallet_address, status, verification_status, x_username, created_at, total_payments_sent, total_payments_received')
+      .is('deleted_at', null)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    return res.json({ success: true, agents: data || [] });
+  } catch (error) {
+    console.error('List agents error:', error);
+    return res.status(500).json({ error: 'Failed to list agents' });
+  }
+});
+
 // ============ Agent By Wallet (for frontend dashboard) ============
 app.get('/api/agents/by-wallet', async (req, res) => {
   try {
@@ -1462,22 +1484,49 @@ app.get('/api/stats', async (req, res) => {
       });
     }
 
-    const [agentsResult, paymentsResult, feesResult, humanPaymentsResult, agentPaymentsResult] = await Promise.all([
+    const [
+      agentsResult, paymentsResult, feesResult,
+      humanPaymentsResult, agentPaymentsResult,
+      allPaidResult, agentPaidResult
+    ] = await Promise.all([
       supabase.from('agents').select('id', { count: 'exact', head: true }),
       supabase.from('payment_requests').select('id', { count: 'exact', head: true }).eq('status', 'PAID'),
-      supabase.from('fee_transactions').select('fee_total').eq('status', 'COLLECTED'),
+      supabase.from('fee_transactions').select('fee_total, fee_token').eq('status', 'COLLECTED'),
       supabase.from('payment_requests').select('id', { count: 'exact', head: true }).eq('status', 'PAID').is('creator_agent_id', null),
-      supabase.from('payment_requests').select('id', { count: 'exact', head: true }).eq('status', 'PAID').not('creator_agent_id', 'is', null)
+      supabase.from('payment_requests').select('id', { count: 'exact', head: true }).eq('status', 'PAID').not('creator_agent_id', 'is', null),
+      supabase.from('payment_requests').select('amount, token').eq('status', 'PAID'),
+      supabase.from('payment_requests').select('amount, token').eq('status', 'PAID').not('creator_agent_id', 'is', null)
     ]);
 
-    const totalFees = (feesResult.data || []).reduce((sum, f) => sum + Number(f.fee_total || 0), 0);
+    // Group fees by token
+    const feesByToken = {};
+    (feesResult.data || []).forEach(f => {
+      const token = f.fee_token || 'UNKNOWN';
+      feesByToken[token] = (feesByToken[token] || 0) + Number(f.fee_total || 0);
+    });
+
+    // Group ALL payment values by token
+    const paymentsByToken = {};
+    (allPaidResult.data || []).forEach(p => {
+      const token = p.token || 'UNKNOWN';
+      paymentsByToken[token] = (paymentsByToken[token] || 0) + Number(p.amount || 0);
+    });
+
+    // Group AGENT-only payment values by token
+    const agentPaymentsByToken = {};
+    (agentPaidResult.data || []).forEach(p => {
+      const token = p.token || 'UNKNOWN';
+      agentPaymentsByToken[token] = (agentPaymentsByToken[token] || 0) + Number(p.amount || 0);
+    });
 
     return res.json({
       success: true,
       stats: {
         totalAgents: agentsResult.count || 0,
         totalPayments: paymentsResult.count || 0,
-        totalFeesCollected: totalFees,
+        feesByToken,
+        paymentsByToken,
+        agentPaymentsByToken,
         humanPayments: humanPaymentsResult.count || 0,
         agentPayments: agentPaymentsResult.count || 0
       }
