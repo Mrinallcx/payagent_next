@@ -100,9 +100,9 @@ const Login = () => {
           <div className="flex items-center gap-8 text-sm text-white/50">
             <span>Ethereum</span>
             <span className="w-1 h-1 rounded-full bg-white/30" />
-            <span>BNB Chain</span>
+            <span>Base</span>
             <span className="w-1 h-1 rounded-full bg-white/30" />
-            <span>Polygon</span>
+            <span>Sepolia</span>
           </div>
         </div>
       </div>
@@ -224,7 +224,7 @@ const Login = () => {
                 </div>
                 <div>
                   <h4 className="font-medium text-foreground text-sm">Multi-Chain</h4>
-                  <p className="text-xs text-muted-foreground">Ethereum, BNB Chain & more</p>
+                  <p className="text-xs text-muted-foreground">Ethereum, Base & Sepolia</p>
                 </div>
               </div>
             </div>
