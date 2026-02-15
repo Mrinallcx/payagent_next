@@ -21,6 +21,9 @@ const NotFound = () => {
           <span className="text-lg font-heading font-semibold text-foreground">
             PayAgent
           </span>
+          <span className="px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider bg-blue-100 text-blue-700 rounded-md">
+            Beta
+          </span>
         </Link>
       </header>
 

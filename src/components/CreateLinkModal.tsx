@@ -50,10 +50,15 @@ const TOKENS = [
 ];
 
 const NETWORKS = [
-  { name: "Ethereum Mainnet", short: "Ethereum" },
-  { name: "Base", short: "Base" },
-  { name: "Sepolia (ETH Testnet)", short: "Sepolia" },
+  { name: "Ethereum Mainnet", short: "Ethereum", id: "ethereum" },
+  { name: "Base", short: "Base", id: "base" },
+  { name: "Sepolia (ETH Testnet)", short: "Sepolia", id: "sepolia" },
 ];
+
+// Map display name → canonical backend ID
+const NETWORK_ID_MAP: Record<string, string> = Object.fromEntries(
+  NETWORKS.map(n => [n.name, n.id])
+);
 
 const TOKEN_NETWORK_SUPPORT: Record<string, string[]> = {
   "USDC": ["Ethereum Mainnet", "Base", "Sepolia (ETH Testnet)"],
@@ -117,11 +122,16 @@ export function CreateLinkModal({ open, onOpenChange, onCreateLink }: CreateLink
     setIsLoading(true);
 
     try {
+      // Map display names to canonical backend IDs (e.g. "Sepolia (ETH Testnet)" → "sepolia")
+      const canonicalNetwork = selectedNetworks
+        .map(n => NETWORK_ID_MAP[n] || n.toLowerCase())
+        .join(", ");
+
       const result = await createPaymentLink({
         token: selectedToken,
         amount,
         receiver: address,
-        network: selectedNetworks.join(", "),
+        network: canonicalNetwork,
         expiresInDays: parseInt(expiresInDays),
         description,
         creatorWallet: walletAddress,
@@ -136,7 +146,7 @@ export function CreateLinkModal({ open, onOpenChange, onCreateLink }: CreateLink
           description,
           amount,
           token: selectedToken,
-          network: selectedNetworks.join(", "),
+          network: canonicalNetwork,
           expiresInDays: parseInt(expiresInDays),
           link: frontendUrl,
         });

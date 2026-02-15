@@ -25,6 +25,9 @@ export default function PayAsAgent() {
               <Bot className="w-5 h-5 text-white" />
             </div>
             <span className="text-xl font-heading font-semibold text-foreground">PayAgent API</span>
+            <span className="px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider bg-blue-100 text-blue-700 rounded-md">
+              Beta
+            </span>
           </div>
           <Button variant="ghost" size="sm" onClick={() => navigate("/")} className="gap-2">
             <ArrowLeft className="h-4 w-4" />

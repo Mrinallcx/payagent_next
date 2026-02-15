@@ -424,6 +424,9 @@ export default function PaymentView() {
             <span className="text-xl font-heading font-bold text-blue-600">
               PayAgent
             </span>
+            <span className="px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider bg-blue-100 text-blue-700 rounded-md">
+              Beta
+            </span>
           </div>
           <div className="flex items-center gap-3">
             <ConnectButton 
