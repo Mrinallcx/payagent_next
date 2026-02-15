@@ -10,7 +10,7 @@ import { ArrowDownLeft, Download, Loader2, ExternalLink, CheckCircle2, Wallet } 
 import { useToast } from "@/hooks/use-toast";
 import { useAccount } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
-import { getAllPaymentRequests, getRewards, PaymentRequest, type RewardEntry } from "@/lib/api";
+import { getAllPaymentRequests, getRewards, getPrices, toUsd, formatUsd, PaymentRequest, type RewardEntry, type TokenPrices } from "@/lib/api";
 import { getExplorerUrl } from "@/lib/contracts";
 
 type FilterTab = 'all' | 'human' | 'agent';
@@ -56,6 +56,15 @@ const Transactions = () => {
     staleTime: 30000,
   });
 
+  const { data: prices } = useQuery({
+    queryKey: ['prices'],
+    queryFn: getPrices,
+    staleTime: 60000,
+    refetchInterval: 300000,
+  });
+
+  const priceData: TokenPrices = prices ?? { LCX: 0, ETH: 0, USDC: 1, USDT: 1 };
+
   // Build a lookup: paymentId → RewardEntry (fee info)
   const feeByPaymentId = useMemo(() => {
     const map: Record<string, RewardEntry> = {};
@@ -88,13 +97,16 @@ const Transactions = () => {
   }, [transactions, currentPage]);
 
   const tokenTotals = useMemo(() => {
-    const totals: Record<string, number> = {};
+    const totals: Record<string, { amount: number; usd: number }> = {};
     transactions.forEach(t => {
       const token = t.token;
-      totals[token] = (totals[token] || 0) + parseFloat(t.amount || '0');
+      const amt = parseFloat(t.amount || '0');
+      if (!totals[token]) totals[token] = { amount: 0, usd: 0 };
+      totals[token].amount += amt;
+      totals[token].usd += toUsd(amt, token, priceData);
     });
     return totals;
-  }, [transactions]);
+  }, [transactions, priceData]);
 
   const tabs: { key: FilterTab; label: string; count: number }[] = [
     { key: 'all', label: 'All', count: allTransactions.length },
@@ -224,12 +236,13 @@ const Transactions = () => {
                           <p className="text-xs text-muted-foreground mb-1">Total</p>
                           <p className="text-2xl font-heading font-bold">{transactions.length}</p>
                         </div>
-                        {Object.entries(tokenTotals).slice(0, 3).map(([token, total]) => (
+                        {Object.entries(tokenTotals).slice(0, 3).map(([token, { amount, usd }]) => (
                           <div key={token} className="bg-white rounded-xl border border-border p-4">
                             <p className="text-xs text-muted-foreground mb-1">{token}</p>
                             <p className="text-2xl font-heading font-bold text-emerald-600">
-                              {total.toFixed(2)}
+                              {amount.toFixed(2)}
                             </p>
+                            <p className="text-xs text-muted-foreground">{formatUsd(usd)}</p>
                           </div>
                         ))}
                       </div>
@@ -292,21 +305,29 @@ const Transactions = () => {
                                   </span>
                                 </TableCell>
                                 <TableCell className="text-right">
-                                  <span className="text-sm font-semibold text-emerald-600">
-                                    +{transaction.amount} {transaction.token}
-                                  </span>
+                                  <div>
+                                    <span className="text-sm font-semibold text-emerald-600">
+                                      +{transaction.amount} {transaction.token}
+                                    </span>
+                                    <p className="text-xs text-muted-foreground">
+                                      {formatUsd(toUsd(parseFloat(transaction.amount), transaction.token, priceData))}
+                                    </p>
+                                  </div>
                                 </TableCell>
                                 <TableCell className="text-right">
-                                  {feeByPaymentId[transaction.id] ? (
-                                    <div>
-                                      <span className="text-sm font-medium text-blue-600">
-                                        {feeByPaymentId[transaction.id].feeTotal} {feeByPaymentId[transaction.id].feeToken}
-                                      </span>
-                                      <p className="text-[10px] text-muted-foreground">
-                                        +{feeByPaymentId[transaction.id].creatorReward} reward
-                                      </p>
-                                    </div>
-                                  ) : (
+                                  {feeByPaymentId[transaction.id] ? (() => {
+                                    const fee = feeByPaymentId[transaction.id];
+                                    return (
+                                      <div>
+                                        <span className="text-sm font-medium text-blue-600">
+                                          {fee.feeTotal} {fee.feeToken}
+                                        </span>
+                                        <p className="text-[10px] text-muted-foreground">
+                                          +{fee.creatorReward} reward ({formatUsd(toUsd(fee.creatorReward, fee.feeToken, priceData))})
+                                        </p>
+                                      </div>
+                                    );
+                                  })() : (
                                     <span className="text-xs text-muted-foreground">—</span>
                                   )}
                                 </TableCell>

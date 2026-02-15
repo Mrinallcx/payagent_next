@@ -448,6 +448,44 @@ export async function getRewards(walletAddress: string): Promise<RewardsResponse
   }
 }
 
+// ============ Token Prices (public, cached) ============
+
+export interface TokenPrices {
+  LCX: number;
+  ETH: number;
+  USDC: number;
+  USDT: number;
+}
+
+export async function getPrices(): Promise<TokenPrices> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/prices`);
+    if (!response.ok) throw new Error('Failed to fetch prices');
+    const data = await response.json();
+    return data.prices as TokenPrices;
+  } catch {
+    // Sensible fallbacks
+    return { LCX: 0.15, ETH: 2500, USDC: 1, USDT: 1 };
+  }
+}
+
+/**
+ * Convert a token amount to USD using live prices.
+ */
+export function toUsd(amount: number, token: string, prices: TokenPrices): number {
+  const key = token.toUpperCase() as keyof TokenPrices;
+  const price = prices[key] ?? 0;
+  return amount * price;
+}
+
+/**
+ * Format a number as USD string, e.g. "$1,234.56"
+ */
+export function formatUsd(value: number): string {
+  if (value < 0.01 && value > 0) return '<$0.01';
+  return '$' + value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
 // ============ Agent Management API Functions (JWT auth) ============
 
 /**

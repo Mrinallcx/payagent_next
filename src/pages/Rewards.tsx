@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Gift, Loader2, ExternalLink, Wallet, Users, Bot, Coins } from "lucide-react";
 import { useAccount } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
-import { getRewards, type RewardEntry } from "@/lib/api";
+import { getRewards, getPrices, toUsd, formatUsd, type RewardEntry, type TokenPrices } from "@/lib/api";
 
 type RewardTab = 'human' | 'agent';
 
@@ -44,23 +44,43 @@ const Rewards = () => {
     refetchInterval: 60000,
   });
 
+  const { data: prices } = useQuery({
+    queryKey: ['prices'],
+    queryFn: getPrices,
+    staleTime: 60000,
+    refetchInterval: 300000,
+  });
+
+  const priceData: TokenPrices = prices ?? { LCX: 0, ETH: 0, USDC: 1, USDT: 1 };
+
   const humanRewards = rewardsData?.rewards?.human ?? [];
   const agentRewards = rewardsData?.rewards?.agent ?? [];
   const totals = rewardsData?.totals ?? { humanRewardsCount: 0, agentRewardsCount: 0, humanRewardsTotal: 0, agentRewardsTotal: 0 };
 
   const activeRewards = activeTab === 'human' ? humanRewards : agentRewards;
-  const activeTotal = activeTab === 'human' ? totals.humanRewardsTotal : totals.agentRewardsTotal;
   const activeCount = activeTab === 'human' ? totals.humanRewardsCount : totals.agentRewardsCount;
 
-  // Group rewards by token
+  // Compute USD totals per tab
+  const humanRewardsUsd = useMemo(() =>
+    humanRewards.reduce((acc, r) => acc + toUsd(r.creatorReward, r.feeToken, priceData), 0),
+    [humanRewards, priceData]
+  );
+  const agentRewardsUsd = useMemo(() =>
+    agentRewards.reduce((acc, r) => acc + toUsd(r.creatorReward, r.feeToken, priceData), 0),
+    [agentRewards, priceData]
+  );
+
+  // Group rewards by token (with USD)
   const tokenBreakdown = useMemo(() => {
-    const breakdown: Record<string, number> = {};
+    const breakdown: Record<string, { amount: number; usd: number }> = {};
     activeRewards.forEach(r => {
       const token = r.feeToken;
-      breakdown[token] = (breakdown[token] || 0) + r.creatorReward;
+      if (!breakdown[token]) breakdown[token] = { amount: 0, usd: 0 };
+      breakdown[token].amount += r.creatorReward;
+      breakdown[token].usd += toUsd(r.creatorReward, r.feeToken, priceData);
     });
     return breakdown;
-  }, [activeRewards]);
+  }, [activeRewards, priceData]);
 
   const totalPages = Math.ceil(activeRewards.length / itemsPerPage);
   const paginatedRewards = useMemo(() => {
@@ -68,9 +88,9 @@ const Rewards = () => {
     return activeRewards.slice(start, start + itemsPerPage);
   }, [activeRewards, currentPage]);
 
-  const tabs: { key: RewardTab; label: string; icon: typeof Users; count: number; total: number }[] = [
-    { key: 'human', label: 'Humans', icon: Users, count: totals.humanRewardsCount, total: totals.humanRewardsTotal },
-    { key: 'agent', label: 'Agents', icon: Bot, count: totals.agentRewardsCount, total: totals.agentRewardsTotal },
+  const tabs: { key: RewardTab; label: string; icon: typeof Users; count: number; totalUsd: number }[] = [
+    { key: 'human', label: 'Humans', icon: Users, count: totals.humanRewardsCount, totalUsd: humanRewardsUsd },
+    { key: 'agent', label: 'Agents', icon: Bot, count: totals.agentRewardsCount, totalUsd: agentRewardsUsd },
   ];
 
   return (
@@ -142,9 +162,9 @@ const Rewards = () => {
                         <p className={`text-2xl font-heading font-bold ${
                           tab.key === 'human' ? 'text-blue-600' : 'text-purple-600'
                         }`}>
-                          {tab.total > 0 ? tab.total.toFixed(4) : '0'}
+                          {tab.totalUsd > 0 ? formatUsd(tab.totalUsd) : '$0.00'}
                         </p>
-                        <p className="text-xs text-muted-foreground mt-1">Total rewards earned</p>
+                        <p className="text-xs text-muted-foreground mt-1">Total rewards earned (USD)</p>
                       </div>
                     ))}
                   </div>
@@ -152,13 +172,14 @@ const Rewards = () => {
                   {/* Token Breakdown */}
                   {Object.keys(tokenBreakdown).length > 0 && (
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-                      {Object.entries(tokenBreakdown).map(([token, amount]) => (
+                      {Object.entries(tokenBreakdown).map(([token, { amount, usd }]) => (
                         <div key={token} className="bg-white rounded-lg border border-border p-3">
                           <div className="flex items-center gap-2 mb-1">
                             <Coins className="h-3.5 w-3.5 text-muted-foreground" />
                             <span className="text-xs text-muted-foreground">{token}</span>
                           </div>
                           <p className="text-lg font-heading font-bold text-emerald-600">{amount.toFixed(4)}</p>
+                          <p className="text-xs text-muted-foreground">{formatUsd(usd)}</p>
                         </div>
                       ))}
                     </div>
@@ -199,9 +220,14 @@ const Rewards = () => {
                                   </div>
                                 </TableCell>
                                 <TableCell>
-                                  <span className="text-sm font-semibold text-emerald-600">
-                                    +{reward.creatorReward.toFixed(4)} {reward.feeToken}
-                                  </span>
+                                  <div>
+                                    <span className="text-sm font-semibold text-emerald-600">
+                                      +{reward.creatorReward.toFixed(4)} {reward.feeToken}
+                                    </span>
+                                    <p className="text-xs text-muted-foreground">
+                                      {formatUsd(toUsd(reward.creatorReward, reward.feeToken, priceData))}
+                                    </p>
+                                  </div>
                                 </TableCell>
                                 <TableCell className="hidden md:table-cell">
                                   <Badge variant="secondary" className="bg-gray-50 text-gray-700 border-0 text-xs">

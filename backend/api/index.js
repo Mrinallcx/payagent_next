@@ -113,7 +113,7 @@ const {
 // ============ Fee system ============
 const { getFeeConfig } = require('../lib/feeConfig');
 const { calculateFee } = require('../lib/feeCalculator');
-const { getLcxPriceUsd } = require('../lib/lcxPrice');
+const { getLcxPriceUsd, getEthPriceUsd } = require('../lib/lcxPrice');
 
 // ============ Webhooks ============
 const { registerWebhook, getWebhooks, updateWebhook, deleteWebhook } = require('../lib/webhooks');
@@ -1291,6 +1291,41 @@ app.post('/api/chat', authMiddleware, async (req, res) => {
 app.get('/api/chains', (req, res) => {
   const chains = getSupportedNetworkList();
   return res.json({ success: true, chains });
+});
+
+// ============ Token Prices (public, cached) ============
+app.get('/api/prices', async (req, res) => {
+  try {
+    // Single CoinGecko call for all tokens (5-min cache on each)
+    const [lcx, eth] = await Promise.allSettled([getLcxPriceUsd(), getEthPriceUsd()]);
+
+    // Fetch USDC + USDT from CoinGecko in one call
+    let usdcPrice = 1, usdtPrice = 1;
+    try {
+      const cgRes = await fetch(
+        'https://api.coingecko.com/api/v3/simple/price?ids=usd-coin,tether&vs_currencies=usd',
+        { headers: { 'Accept': 'application/json' }, signal: AbortSignal.timeout(10000) }
+      );
+      if (cgRes.ok) {
+        const cgData = await cgRes.json();
+        if (cgData['usd-coin']?.usd) usdcPrice = cgData['usd-coin'].usd;
+        if (cgData['tether']?.usd) usdtPrice = cgData['tether'].usd;
+      }
+    } catch { /* fallback to $1 */ }
+
+    return res.json({
+      success: true,
+      prices: {
+        LCX: lcx.status === 'fulfilled' ? lcx.value : 0.15,
+        ETH: eth.status === 'fulfilled' ? eth.value : 2500,
+        USDC: usdcPrice,
+        USDT: usdtPrice
+      }
+    });
+  } catch (error) {
+    console.error('Prices error:', error);
+    return res.json({ success: true, prices: { LCX: 0.15, ETH: 2500, USDC: 1, USDT: 1 } });
+  }
 });
 
 // ============ Rewards (for dashboard, public by wallet) ============

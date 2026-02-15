@@ -24,7 +24,7 @@ import {
 } from "lucide-react";
 import { useAccount } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
-import { getAllPaymentRequests, getRewards } from "@/lib/api";
+import { getAllPaymentRequests, getRewards, getPrices, toUsd, formatUsd, type TokenPrices } from "@/lib/api";
 import { getExplorerUrl } from "@/lib/contracts";
 
 const formatDate = (timestamp: number) => {
@@ -75,14 +75,33 @@ const Index = () => {
     refetchInterval: 60000,
   });
 
+  const { data: prices } = useQuery({
+    queryKey: ['prices'],
+    queryFn: getPrices,
+    staleTime: 60000,
+    refetchInterval: 300000,
+  });
+
+  const priceData: TokenPrices = prices ?? { LCX: 0, ETH: 0, USDC: 1, USDT: 1 };
+
   // Filter to human-only data (creatorAgentId is null = created by human via frontend)
   const allRequests = data?.requests ?? [];
   const humanLinks = useMemo(() => allRequests.filter(r => !r.creatorAgentId), [allRequests]);
   const humanPaymentLinks = humanLinks.slice(0, 5);
   const humanTransactions = useMemo(() => humanLinks.filter(r => r.status === 'PAID').slice(0, 5), [humanLinks]);
-  const totalReceived = humanTransactions.reduce((acc, t) => acc + parseFloat(t.amount), 0);
   const pendingLinks = humanPaymentLinks.filter(l => l.status === 'PENDING').length;
-  const totalHumanRewards = rewardsData?.totals?.humanRewardsTotal ?? 0;
+
+  // Convert received amounts to USD
+  const totalReceivedUsd = useMemo(() => 
+    humanTransactions.reduce((acc, t) => acc + toUsd(parseFloat(t.amount), t.token, priceData), 0),
+    [humanTransactions, priceData]
+  );
+
+  // Convert rewards to USD (sum individual reward entries by their fee token)
+  const totalHumanRewardsUsd = useMemo(() => {
+    const entries = rewardsData?.rewards?.human ?? [];
+    return entries.reduce((acc, r) => acc + toUsd(r.creatorReward, r.feeToken, priceData), 0);
+  }, [rewardsData, priceData]);
 
   const handleCreateLinkClick = () => {
     if (!isConnected) {
@@ -165,7 +184,7 @@ const Index = () => {
                     </div>
                     <div className="bg-white rounded-xl border border-border p-5">
                       <p className="text-xs text-muted-foreground mb-1">Received</p>
-                      <p className="text-2xl font-heading font-bold text-foreground">{totalReceived > 0 ? totalReceived.toFixed(2) : "0"}</p>
+                      <p className="text-2xl font-heading font-bold text-foreground">{totalReceivedUsd > 0 ? formatUsd(totalReceivedUsd) : "$0.00"}</p>
                     </div>
                     <div 
                       className="bg-white rounded-xl border border-border p-5 cursor-pointer hover:border-blue-200 transition-colors"
@@ -175,7 +194,7 @@ const Index = () => {
                         <Gift className="h-3 w-3" /> Rewards
                       </p>
                       <p className="text-2xl font-heading font-bold text-blue-600">
-                        {totalHumanRewards > 0 ? totalHumanRewards.toFixed(2) : "0"}
+                        {totalHumanRewardsUsd > 0 ? formatUsd(totalHumanRewardsUsd) : "$0.00"}
                       </p>
                     </div>
                   </div>
