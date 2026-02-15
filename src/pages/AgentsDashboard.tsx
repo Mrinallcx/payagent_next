@@ -582,42 +582,6 @@ export default function AgentsDashboard() {
                 </div>
               )}
 
-              {/* Fee Model Info */}
-              <div className="bg-gradient-to-r from-blue-50 to-blue-50 rounded-xl border border-blue-200 p-6">
-                <h3 className="font-heading font-semibold text-lg mb-3 text-blue-800">Fee Model</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="bg-white rounded-lg p-4 border border-blue-100">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Badge className="bg-blue-100 text-blue-700 border-0">Preferred</Badge>
-                      <span className="text-sm font-medium">LCX Token</span>
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      If payer holds &ge; 4 LCX, they pay <strong>4 LCX</strong> fee (separate from payment):
-                    </p>
-                    <ul className="mt-2 text-sm text-muted-foreground space-y-1">
-                      <li>&bull; 2 LCX &rarr; Platform Treasury</li>
-                      <li>&bull; 2 LCX &rarr; Link Creator (reward)</li>
-                      <li>&bull; Creator receives <strong>full payment amount</strong></li>
-                    </ul>
-                  </div>
-                  <div className="bg-white rounded-lg p-4 border border-blue-100">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Badge className="bg-gray-100 text-gray-700 border-0">Fallback</Badge>
-                      <span className="text-sm font-medium">Payment Token</span>
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      If payer holds &lt; 4 LCX, fee is deducted from the payment token:
-                    </p>
-                    <ul className="mt-2 text-sm text-muted-foreground space-y-1">
-                      <li>&bull; 50% fee &rarr; Platform Treasury</li>
-                      <li>&bull; 50% fee &rarr; Link Creator (reward)</li>
-                      <li>&bull; Creator receives <strong>amount minus fee</strong></li>
-                      <li>&bull; ETH fee: converted via live CoinGecko price</li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
-
               {/* How it works */}
               <div className="bg-white rounded-xl border border-border p-6">
                 <h3 className="font-heading font-semibold text-lg mb-4">How Agents Use the Platform</h3>
