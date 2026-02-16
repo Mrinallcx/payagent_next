@@ -3,6 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { WalletProvider } from "@/components/WalletProvider";
+import { Analytics } from "@vercel/analytics/react";
 import { useAccount } from "wagmi";
 import Login from "./pages/Login";
 import Index from "./pages/Index";
@@ -76,6 +77,7 @@ const App = () => (
       <BrowserRouter>
         <AppRoutes />
       </BrowserRouter>
+      <Analytics />
     </TooltipProvider>
   </WalletProvider>
 );
