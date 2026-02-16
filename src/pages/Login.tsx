@@ -1,13 +1,14 @@
-import { useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAccount } from "wagmi";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
-import { Wallet } from "lucide-react";
+
 
 const Login = () => {
   const { isConnected } = useAccount();
   const navigate = useNavigate();
   const sectionsRef = useRef<HTMLDivElement[]>([]);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     if (isConnected) {
@@ -45,27 +46,44 @@ const Login = () => {
       <div className="max-w-[680px] mx-auto px-6 relative z-[1]">
 
         {/* ── HEADER ── */}
-        <header className="pt-6 flex justify-between items-center animate-fade-up">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center">
-              <Wallet className="w-4.5 h-4.5 text-white" />
+        <header className="pt-6 animate-fade-up">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center">
+                <img src="/robot.svg" alt="PayAgent" className="w-8 h-8" />
+              </div>
+              <div className="flex flex-col leading-none">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xl font-bold text-blue-600">PayAgent</span>
+                  <span className="px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider bg-blue-100 text-blue-700 rounded-md">
+                    Beta
+                  </span>
+                </div>
+                <span className="text-[10px] text-gray-400 font-medium mt-0.5">by LCX</span>
+              </div>
             </div>
-            <span className="text-xl font-bold text-blue-600">PayAgent</span>
-            <span className="px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider bg-blue-100 text-blue-700 rounded-md">
-              Beta
-            </span>
+            <nav className="hidden sm:flex items-center">
+              <a href="/about" className="text-sm font-semibold text-gray-500 hover:text-blue-600 transition-colors ml-5">About</a>
+              <a href="/changelog" className="text-sm font-semibold text-gray-500 hover:text-blue-600 transition-colors ml-5">Changelog</a>
+              <a href="/docs" className="text-sm font-semibold text-gray-500 hover:text-blue-600 transition-colors ml-5">Docs</a>
+            </nav>
+            <button className="sm:hidden w-9 h-9 flex items-center justify-center rounded-lg text-gray-500 hover:bg-slate-100 transition-colors" onClick={() => setMobileMenuOpen(!mobileMenuOpen)} aria-label="Toggle menu">
+              {mobileMenuOpen ? <span className="text-lg leading-none">✕</span> : <span className="text-xl leading-none">☰</span>}
+            </button>
           </div>
-          <nav className="flex items-center">
-            <a href="/about" className="text-sm font-semibold text-gray-500 hover:text-blue-600 transition-colors ml-5">About</a>
-            <a href="/changelog" className="text-sm font-semibold text-gray-500 hover:text-blue-600 transition-colors ml-5">Changelog</a>
-            <a href="/docs" className="text-sm font-semibold text-gray-500 hover:text-blue-600 transition-colors ml-5">Docs</a>
-          </nav>
+          {mobileMenuOpen && (
+            <nav className="sm:hidden mt-3 pb-3 border-b border-slate-200 flex flex-col gap-1">
+              <a href="/about" className="text-sm font-semibold text-gray-600 hover:text-blue-600 py-2 px-3 rounded-lg hover:bg-blue-50 transition-colors">About</a>
+              <a href="/changelog" className="text-sm font-semibold text-gray-600 hover:text-blue-600 py-2 px-3 rounded-lg hover:bg-blue-50 transition-colors">Changelog</a>
+              <a href="/docs" className="text-sm font-semibold text-gray-600 hover:text-blue-600 py-2 px-3 rounded-lg hover:bg-blue-50 transition-colors">Docs</a>
+            </nav>
+          )}
         </header>
 
         {/* ── HERO ── */}
         <section className="pt-11 animate-fade-up">
           <h1 className="text-[clamp(28px,5.5vw,40px)] font-bold leading-[1.15] tracking-tight text-slate-900 mb-4">
-            PayAgent<br />Payments for Humans and AI&nbsp;Agents
+            Payments for Humans<br />and AI&nbsp;Agents
           </h1>
           <p className="text-[17px] leading-relaxed text-gray-500 mb-6">
             Send, receive, and automate crypto payments, manually or fully autonomous.

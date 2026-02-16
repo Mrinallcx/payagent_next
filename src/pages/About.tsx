@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Wallet } from "lucide-react";
+
 
 const FAQ_ITEMS = [
   {
@@ -54,6 +55,7 @@ const FAQ_ITEMS = [
 
 export default function About() {
   const navigate = useNavigate();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const lcxLink = (text: string) => (
     <a href="https://lcx.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 font-semibold hover:underline">{text}</a>
@@ -64,22 +66,40 @@ export default function About() {
       <div className="max-w-[720px] mx-auto px-6 relative z-[1]">
 
         {/* ── HEADER ── */}
-        <header className="pt-8 flex justify-between items-center animate-fade-up">
-          <button onClick={() => navigate("/")} className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center">
-              <Wallet className="w-4.5 h-4.5 text-white" />
-            </div>
-            <span className="text-xl font-bold text-blue-600">PayAgent</span>
-            <span className="px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider bg-blue-100 text-blue-700 rounded-md">
-              Beta
-            </span>
-          </button>
-          <nav className="flex items-center">
-            <a href="/" className="text-sm font-semibold text-gray-500 hover:text-blue-600 transition-colors ml-5">Home</a>
-            <span className="text-sm font-semibold text-blue-600 ml-5">About</span>
-            <a href="/changelog" className="text-sm font-semibold text-gray-500 hover:text-blue-600 transition-colors ml-5">Changelog</a>
-            <a href="/docs" className="text-sm font-semibold text-gray-500 hover:text-blue-600 transition-colors ml-5">Docs</a>
-          </nav>
+        <header className="pt-8 animate-fade-up">
+          <div className="flex justify-between items-center">
+            <button onClick={() => navigate("/")} className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center">
+                <img src="/robot.svg" alt="PayAgent" className="w-6 h-6" />
+              </div>
+              <div className="flex flex-col leading-none">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xl font-bold text-blue-600">PayAgent</span>
+                  <span className="px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider bg-blue-100 text-blue-700 rounded-md">
+                    Beta
+                  </span>
+                </div>
+                <span className="text-[10px] text-gray-400 font-medium mt-0.5">by LCX</span>
+              </div>
+            </button>
+            <nav className="hidden sm:flex items-center">
+              <a href="/" className="text-sm font-semibold text-gray-500 hover:text-blue-600 transition-colors ml-5">Home</a>
+              <span className="text-sm font-semibold text-blue-600 ml-5">About</span>
+              <a href="/changelog" className="text-sm font-semibold text-gray-500 hover:text-blue-600 transition-colors ml-5">Changelog</a>
+              <a href="/docs" className="text-sm font-semibold text-gray-500 hover:text-blue-600 transition-colors ml-5">Docs</a>
+            </nav>
+            <button className="sm:hidden w-9 h-9 flex items-center justify-center rounded-lg text-gray-500 hover:bg-slate-100 transition-colors" onClick={() => setMobileMenuOpen(!mobileMenuOpen)} aria-label="Toggle menu">
+              {mobileMenuOpen ? <span className="text-lg leading-none">✕</span> : <span className="text-xl leading-none">☰</span>}
+            </button>
+          </div>
+          {mobileMenuOpen && (
+            <nav className="sm:hidden mt-3 pb-3 border-b border-slate-200 flex flex-col gap-1">
+              <a href="/" className="text-sm font-semibold text-gray-600 hover:text-blue-600 py-2 px-3 rounded-lg hover:bg-blue-50 transition-colors">Home</a>
+              <span className="text-sm font-semibold text-blue-600 py-2 px-3 rounded-lg bg-blue-50">About</span>
+              <a href="/changelog" className="text-sm font-semibold text-gray-600 hover:text-blue-600 py-2 px-3 rounded-lg hover:bg-blue-50 transition-colors">Changelog</a>
+              <a href="/docs" className="text-sm font-semibold text-gray-600 hover:text-blue-600 py-2 px-3 rounded-lg hover:bg-blue-50 transition-colors">Docs</a>
+            </nav>
+          )}
         </header>
 
         {/* ── BREADCRUMB ── */}
