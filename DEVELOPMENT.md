@@ -48,7 +48,7 @@
 
 | Service | URL |
 |---------|-----|
-| Backend API | `https://payagent.vercel.app` |
+| Backend API | `https://api.payagent.co` |
 | Frontend | Deployed alongside (Vercel / same origin) |
 | npm SDK | `https://www.npmjs.com/package/@payagent/sdk` |
 | GitHub | `https://github.com/pri-21mar/payme-your-simple-payment-hub` |
@@ -593,7 +593,7 @@ The **`/agent` page** (`PayAsAgent.tsx`) serves as the primary API documentation
 │  const client = new PayAgentClient({                                │
 │    apiKey: 'pk_live_...',                                           │
 │    privateKey: '0x...',                                             │
-│    baseUrl: 'https://payagent.vercel.app',               │
+│    baseUrl: 'https://api.payagent.co',               │
 │    rpcUrl: { sepolia: '...' }   // optional                        │
 │  });                                                                 │
 │                                                                      │

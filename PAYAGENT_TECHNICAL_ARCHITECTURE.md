@@ -369,7 +369,7 @@ API Secret Storage:
        |
   [1. TLS Termination]     ← Vercel Edge (HTTPS enforced)
        |
-  [2. CORS Validation]     ← Whitelist: payagent.vercel.app + env
+  [2. CORS Validation]     ← Whitelist: api.payagent.co + env
        |
   [3. Security Headers]    ← HSTS, X-Frame-Options, nosniff, Referrer-Policy
        |

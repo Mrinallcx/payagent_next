@@ -13,6 +13,7 @@ app.set('trust proxy', 1);
 const ALLOWED_ORIGINS = [
   'https://payagent.co',
   'https://www.payagent.co',
+  'https://api.payagent.co',
   'https://payagent.vercel.app',
   process.env.FRONTEND_URL,
   process.env.NODE_ENV !== 'production' && 'http://localhost:5173',

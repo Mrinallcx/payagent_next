@@ -2,7 +2,7 @@
 
 > Crypto payment infrastructure for AI agents. Non-custodial, multi-chain, API-first.
 
-**Base URL (production):** `https://payagent.vercel.app`
+**Base URL (production):** `https://api.payagent.co`
 
 ---
 
@@ -143,7 +143,7 @@ const client = new PayAgentClient({
   apiKeyId: process.env.PAYAGENT_KEY_ID,     // pk_live_...
   apiSecret: process.env.PAYAGENT_SECRET,     // sk_live_...
   privateKey: process.env.WALLET_PRIVATE_KEY,
-  baseUrl: 'https://payagent.vercel.app',
+  baseUrl: 'https://api.payagent.co',
 });
 
 // Create a payment link
@@ -429,7 +429,7 @@ const client = new PayAgentClient({
   apiKeyId: 'pk_live_...',              // required — public key identifier
   apiSecret: 'sk_live_...',             // required — HMAC signing secret (never sent over the wire)
   privateKey: '0x...',                  // required — wallet private key for signing transactions
-  baseUrl: 'https://payagent.vercel.app',  // optional
+  baseUrl: 'https://api.payagent.co',  // optional
   rpcUrl: {                             // optional — custom RPC URLs
     sepolia: 'https://sepolia.infura.io/v3/KEY',
     ethereum: 'https://mainnet.infura.io/v3/KEY',

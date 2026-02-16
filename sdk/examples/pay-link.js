@@ -20,7 +20,7 @@ const CREATOR_SECRET = process.env.CREATOR_SECRET;
 const PAYER_KEY_ID = process.env.PAYER_KEY_ID;
 const PAYER_SECRET = process.env.PAYER_SECRET;
 const PAYER_PRIVATE_KEY = process.env.PAYER_PRIVATE_KEY;
-const BASE_URL = process.env.PAYAGENT_API_URL || 'https://payagent.vercel.app';
+const BASE_URL = process.env.PAYAGENT_API_URL || 'https://api.payagent.co';
 const NETWORK = process.env.NETWORK || 'sepolia';
 
 async function main() {
