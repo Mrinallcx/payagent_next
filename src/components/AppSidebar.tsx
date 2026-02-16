@@ -4,7 +4,6 @@ import { FaMoneyBill, FaRobot, FaGift } from "react-icons/fa";
 import { NavLink } from "@/components/NavLink";
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { useAccount, useDisconnect } from 'wagmi';
-import { Wallet } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -35,14 +34,19 @@ export function AppSidebar() {
         <div className="p-5 pb-6">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center">
-              <Wallet className="w-4 h-4 text-white" />
+              <img src="/robot.svg" alt="PayAgent" className="w-8 h-8" />
             </div>
-            <span className="text-lg font-heading font-semibold text-foreground">
-              PayAgent
-            </span>
-            <span className="px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider bg-blue-100 text-blue-700 rounded-md">
-              Beta
-            </span>
+            <div className="flex flex-col leading-none">
+              <div className="flex items-center gap-1.5">
+                <span className="text-lg font-heading font-semibold text-foreground">
+                  PayAgent
+                </span>
+                <span className="px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider bg-blue-100 text-blue-700 rounded-md">
+                  Beta
+                </span>
+              </div>
+              <span className="text-[10px] text-gray-400 font-medium mt-0.5">by LCX</span>
+            </div>
           </div>
         </div>
         

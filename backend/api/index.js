@@ -16,8 +16,9 @@ const ALLOWED_ORIGINS = [
   'https://api.payagent.co',
   'https://payagent.vercel.app',
   process.env.FRONTEND_URL,
-  process.env.NODE_ENV !== 'production' && 'http://localhost:5173',
-  process.env.NODE_ENV !== 'production' && 'http://localhost:3000',
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'http://localhost:8080',
 ].filter(Boolean);
 app.use(cors({ origin: ALLOWED_ORIGINS, credentials: true }));
 
