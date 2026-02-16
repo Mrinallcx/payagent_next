@@ -114,12 +114,12 @@ export default function Changelog() {
           <div className="flex justify-between items-center">
             <button
               onClick={() => navigate("/")}
-              className="flex items-center gap-2.5"
+              className="flex items-center gap-2.5 text-left"
             >
-              <div className="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center">
-                <img src="/robot.svg" alt="PayAgent" className="w-6 h-6" />
+              <div className="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center shrink-0">
+                <img src="/robot.svg" alt="PayAgent" className="w-7 h-7" />
               </div>
-              <div className="flex flex-col leading-none">
+              <div className="flex flex-col items-start leading-none">
                 <div className="flex items-center gap-1.5">
                   <span className="text-xl font-bold text-blue-600">PayAgent</span>
                   <span className="px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider bg-blue-100 text-blue-700 rounded-md">

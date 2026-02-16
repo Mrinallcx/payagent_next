@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from "react";
-import { Wallet } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_URL
   ? `${(import.meta.env.VITE_API_URL as string).replace(/\/$/, "")}/api`
@@ -146,15 +145,18 @@ export default function Docs() {
       {/* ── SIDEBAR ── */}
       <aside className={`docs-sidebar ${sidebarOpen ? "open" : ""}`}>
         <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-200">
-          <a href="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center shrink-0">
-              <Wallet className="w-4 h-4 text-white" />
+          <a href="/" className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center shrink-0">
+              <img src="/robot.svg" alt="PayAgent" className="w-8 h-8" />
+            </div>
+            <div className="flex flex-col leading-none">
+              <div className="flex items-center gap-1.5">
+                <span className="text-sm font-bold text-slate-900">PayAgent</span>
+                <span className="px-1 py-0.5 text-[9px] font-semibold uppercase tracking-wider bg-blue-100 text-blue-700 rounded">Beta</span>
+              </div>
+              <span className="text-[10px] text-gray-400 font-medium mt-0.5">by LCX</span>
             </div>
           </a>
-          <div>
-            <div className="text-sm font-bold text-slate-900 leading-tight">Docs</div>
-            <div className="text-[11px] text-gray-500">payagent.co/docs</div>
-          </div>
         </div>
 
         <nav className="py-4">
