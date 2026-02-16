@@ -699,13 +699,22 @@ app.get('/api/requests', optionalAuthMiddleware, async (req, res) => {
   }
 });
 
-// Delete request (requires real auth — HMAC or JWT)
-app.delete('/api/request/:id', authMiddleware, async (req, res) => {
+// Delete request
+// Agents: require HMAC or JWT auth
+// Humans: pass ?wallet=0x... (connected wallet address)
+app.delete('/api/request/:id', optionalAuthMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
+    const walletParam = (req.query.wallet || '').toLowerCase();
+
+    // Determine the caller's wallet (from auth or query param)
+    const callerWallet = req.wallet || walletParam;
+
+    if (!req.agent && !callerWallet) {
+      return res.status(400).json({ error: 'Provide wallet address (?wallet=0x...) or authenticate with HMAC/JWT' });
+    }
 
     if (supabase) {
-      // Fetch the request to verify ownership
       const { data: existing } = await supabase
         .from('payment_requests')
         .select('creator_agent_id, creator_wallet')
@@ -716,9 +725,8 @@ app.delete('/api/request/:id', authMiddleware, async (req, res) => {
         return res.status(404).json({ error: 'Payment request not found' });
       }
 
-      // Check ownership: agent-created links check agent ID, human-created links check wallet
       const isAgentOwner = req.agent && existing.creator_agent_id && existing.creator_agent_id === req.agent.id;
-      const isWalletOwner = req.wallet && existing.creator_wallet && existing.creator_wallet.toLowerCase() === req.wallet;
+      const isWalletOwner = callerWallet && existing.creator_wallet && existing.creator_wallet.toLowerCase() === callerWallet;
 
       if (!isAgentOwner && !isWalletOwner) {
         return res.status(403).json({ error: 'Only the creator can delete this payment request' });
@@ -737,8 +745,8 @@ app.delete('/api/request/:id', authMiddleware, async (req, res) => {
       }
 
       const isAgentOwner = req.agent && req_data.creator_agent_id && req_data.creator_agent_id === req.agent.id;
-      const isWalletOwner = req.wallet && (req_data.creator_wallet || req_data.creatorWallet) &&
-        (req_data.creator_wallet || req_data.creatorWallet).toLowerCase() === req.wallet;
+      const storedWallet = (req_data.creator_wallet || req_data.creatorWallet || '').toLowerCase();
+      const isWalletOwner = callerWallet && storedWallet && storedWallet === callerWallet;
 
       if (!isAgentOwner && !isWalletOwner) {
         return res.status(403).json({ error: 'Only the creator can delete this payment request' });

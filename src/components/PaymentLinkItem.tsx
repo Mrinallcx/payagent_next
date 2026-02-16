@@ -1,10 +1,10 @@
-import { Link2, Copy, MoreVertical, Trash2, CheckCircle2, Clock, XCircle, ExternalLink, Loader2 } from "lucide-react";
+import { Link2, Copy, MoreVertical, Trash2, CheckCircle2, Clock, XCircle, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAccount, useSignMessage } from "wagmi";
+import { useAccount } from "wagmi";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import {
   AlertDialog,
+  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -20,7 +21,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { deletePaymentRequest, walletLogin, isJwtValid } from "@/lib/api";
+import { deletePaymentRequest } from "@/lib/api";
 
 interface PaymentLinkItemProps {
   id: string;
@@ -35,10 +36,8 @@ interface PaymentLinkItemProps {
 export function PaymentLinkItem({ id, amount, token, status, link, onDelete }: PaymentLinkItemProps) {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [deleteStatus, setDeleteStatus] = useState("");
   const navigate = useNavigate();
   const { address } = useAccount();
-  const { signMessageAsync } = useSignMessage();
 
   const handleCopy = () => {
     navigator.clipboard.writeText(link);
@@ -50,35 +49,21 @@ export function PaymentLinkItem({ id, amount, token, status, link, onDelete }: P
   };
 
   const handleRemoveLink = async () => {
+    if (!address) {
+      toast.error("Please connect your wallet first");
+      return;
+    }
     setIsDeleting(true);
     try {
-      if (!isJwtValid()) {
-        if (!address) {
-          toast.error("Please connect your wallet first");
-          return;
-        }
-        setDeleteStatus("Sign the message in your wallet...");
-        await walletLogin(address, async (msg: string) => signMessageAsync({ message: msg }));
-      }
-
-      setDeleteStatus("Deleting...");
-      await deletePaymentRequest(id);
-      setShowDeleteDialog(false);
+      await deletePaymentRequest(id, address);
       toast.success("Payment link deleted");
       onDelete?.();
     } catch (error: any) {
       console.error("Delete error:", error);
-      const msg = error?.message || "";
-      if (msg === 'WALLET_LOGIN_REQUIRED') {
-        toast.error("Wallet verification required. Please try again.");
-      } else if (msg.includes("User rejected") || msg.includes("user rejected")) {
-        toast.error("Signature rejected. Please try again.");
-      } else {
-        toast.error(msg || "Failed to delete link");
-      }
+      toast.error(error?.message || "Failed to delete link");
     } finally {
       setIsDeleting(false);
-      setDeleteStatus("");
+      setShowDeleteDialog(false);
     }
   };
 
@@ -166,30 +151,23 @@ export function PaymentLinkItem({ id, amount, token, status, link, onDelete }: P
         </div>
       </div>
 
-      <AlertDialog open={showDeleteDialog} onOpenChange={(open) => { if (!isDeleting) setShowDeleteDialog(open); }}>
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent className="rounded-xl">
           <AlertDialogHeader>
             <AlertDialogTitle className="font-heading">Remove Payment Link?</AlertDialogTitle>
             <AlertDialogDescription>
-              {isDeleting && deleteStatus
-                ? deleteStatus
-                : `This will permanently delete the ${amount} ${token} payment link.`}
+              This will permanently delete the {amount} {token} payment link.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isDeleting} className="rounded-lg">Cancel</AlertDialogCancel>
-            <Button
-              onClick={handleRemoveLink}
+            <AlertDialogAction 
+              onClick={handleRemoveLink} 
               disabled={isDeleting}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-lg"
             >
-              {isDeleting ? (
-                <span className="flex items-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  {deleteStatus || "Removing..."}
-                </span>
-              ) : "Remove"}
-            </Button>
+              {isDeleting ? "Removing..." : "Remove"}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

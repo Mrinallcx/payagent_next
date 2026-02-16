@@ -287,6 +287,7 @@ async function optionalAuthMiddleware(req, res, next) {
         try {
           const payload = jwt.verify(token, jwtSecret);
           if (payload.wallet_address) {
+            req.wallet = payload.wallet_address.toLowerCase();
             const agent = await getAgentByWallet(payload.wallet_address);
             if (agent && !agent.deleted_at && agent.status === 'active') {
               req.agent = buildAgentPayload(agent);

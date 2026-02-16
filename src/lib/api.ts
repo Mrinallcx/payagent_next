@@ -320,30 +320,34 @@ export async function getAllPaymentRequests(walletAddress?: string): Promise<Get
 }
 
 /**
- * Delete a payment request (requires JWT auth)
+ * Delete a payment request.
+ * Human users: pass walletAddress (no signing needed).
+ * Agents: use HMAC auth (handled separately).
  */
-export async function deletePaymentRequest(requestId: string): Promise<DeletePaymentResponse> {
+export async function deletePaymentRequest(requestId: string, walletAddress?: string): Promise<DeletePaymentResponse> {
   try {
-    if (!isJwtValid()) {
-      throw new Error('WALLET_LOGIN_REQUIRED');
+    const params = walletAddress ? `?wallet=${walletAddress}` : '';
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+
+    // Use JWT if available (e.g. agent dashboard), otherwise rely on wallet param
+    if (isJwtValid()) {
+      headers['Authorization'] = `Bearer ${_jwtToken}`;
     }
 
-    const response = await fetch(`${API_BASE_URL}/api/request/${requestId}`, {
+    const response = await fetch(`${API_BASE_URL}/api/request/${requestId}${params}`, {
       method: 'DELETE',
-      headers: getJwtHeaders(),
+      headers,
     });
 
     if (!response.ok) {
-      if (response.status === 401) {
-        throw new Error('WALLET_LOGIN_REQUIRED');
-      }
+      const data = await response.json().catch(() => ({}));
       if (response.status === 403) {
-        throw new Error('Only the creator can delete this payment request');
+        throw new Error(data.error || 'Only the creator can delete this payment request');
       }
       if (response.status === 404) {
         throw new Error('Payment request not found');
       }
-      throw new Error('Failed to delete payment request');
+      throw new Error(data.error || 'Failed to delete payment request');
     }
 
     const result = await response.json();

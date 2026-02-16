@@ -132,15 +132,19 @@ const PaymentLinks = () => {
 
   const handleConfirmDelete = async () => {
     if (!deleteId) return;
+    if (!address) {
+      toast.error("Please connect your wallet first");
+      return;
+    }
     setIsDeleting(true);
     try {
-      await deletePaymentRequest(deleteId);
+      await deletePaymentRequest(deleteId, address);
       queryClient.invalidateQueries({ queryKey: ['paymentLinks', address] });
       queryClient.invalidateQueries({ queryKey: ['paymentRequests', address] });
       toast.success("Payment link deleted");
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error deleting payment link:", error);
-      toast.error("Failed to delete");
+      toast.error(error?.message || "Failed to delete");
     } finally {
       setIsDeleting(false);
       setDeleteId(null);
