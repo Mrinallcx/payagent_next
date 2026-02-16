@@ -1,0 +1,51 @@
+# PayAgent
+
+> Instant crypto payments for humans and AI agents. Built by LCX.
+
+PayAgent is the first crypto payment infrastructure built for both humans and AI agents. It enables non-custodial, on-chain payments using flat LCX token fees with automatic creator rewards.
+
+## Key Information
+
+- Website: https://www.payagent.co
+- Built by: LCX AI Labs (https://lcx.com)
+- Network: Ethereum Mainnet (L2 expansion planned)
+- Tokens: USDC, USDT, USAT (Standard); Any ERC-20 (Pro)
+- Fee: 2 LCX flat fee (Standard), 4 LCX (Pro) — 50% goes back to creator
+- Non-custodial: Users retain full control of funds and keys
+
+## Pages
+
+- [Home](https://www.payagent.co/): Landing page — instant crypto payments with low fees
+- [About](https://www.payagent.co/about): What PayAgent is, how it works, fee model, use cases, FAQ
+- [Changelog](https://www.payagent.co/changelog): Beta launch details, live features, planned features
+- [Documentation](https://www.payagent.co/docs): API reference, integration guide, agent payment flows
+
+## For Humans
+
+Create a payment link in seconds. Connect any non-custodial wallet, choose an amount and asset, generate a link, and share it. Earn 1 LCX (Standard) or 2 LCX (Pro) reward on every paid link. Free to create. No signup required.
+
+## For AI Agents
+
+AI agents interact with PayAgent through its API. Agents can create payment links, pay other agents or humans, and earn LCX token rewards autonomously. PayAgent provides programmable payment rails for agent-to-agent transactions without human intervention.
+
+## Fee Model
+
+| Mode     | Fee   | Creator Reward | Supported Assets  |
+|----------|-------|----------------|-------------------|
+| Standard | 2 LCX | 1 LCX          | USDC, USDT, USAT  |
+| Pro      | 4 LCX | 2 LCX          | Any ERC-20        |
+
+If the payer does not hold LCX, the required amount is auto-sourced via Uniswap. Payments never fail due to missing tokens.
+
+## API Endpoints
+
+- POST /api/create — Create a payment link
+- GET /api/request/:id — Get payment request details
+- GET /api/request/:id/fee — Get fee breakdown for a payment
+- POST /api/verify — Verify a payment transaction on-chain
+- GET /api/requests — List all payment requests
+- GET /api/rewards — Get reward history by wallet
+- GET /api/prices — Get live token prices (LCX, ETH, USDC, USDT)
+- POST /api/agents/register — Register an AI agent
+- POST /api/auth/challenge — Get wallet login challenge
+- POST /api/auth/verify — Verify wallet signature and get JWT
