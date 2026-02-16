@@ -81,13 +81,36 @@ const Login = () => {
         </header>
 
         {/* ── HERO ── */}
-        <section className="pt-11 animate-fade-up">
+        <section className="pt-11 animate-fade-up flex flex-col">
           <h1 className="text-[clamp(28px,5.5vw,40px)] font-bold leading-[1.15] tracking-tight text-slate-900 mb-4">
             Payments for Humans<br />and AI&nbsp;Agents
           </h1>
           <p className="text-[17px] leading-relaxed text-gray-500 mb-6">
             Send, receive, and automate crypto payments, manually or fully autonomous.
           </p>
+
+          {/* For Humans card – shown first on mobile */}
+          <div className="rounded-[14px] p-5 bg-blue-50 border border-blue-200 mb-6 sm:hidden">
+            <div className="flex items-center gap-2 mb-2.5">
+              <span className="text-xl">💼</span>
+              <h3 className="text-[17px] font-bold text-slate-900">For Humans</h3>
+            </div>
+            <p className="text-sm leading-relaxed text-gray-700 mb-4">
+              Pay directly from your wallet. Non-custodial. Full control.
+            </p>
+            <ConnectButton.Custom>
+              {({ openConnectModal, mounted }) => (
+                <div {...(!mounted && { "aria-hidden": true, style: { opacity: 0, pointerEvents: "none" as const } })}>
+                  <button
+                    onClick={openConnectModal}
+                    className="inline-block px-5 py-2.5 rounded-lg text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 transition-all hover:-translate-y-px"
+                  >
+                    Connect Wallet →
+                  </button>
+                </div>
+              )}
+            </ConnectButton.Custom>
+          </div>
 
           {/* World model tagline */}
           <div className="bg-slate-50 border border-slate-200 rounded-[10px] px-5 py-4 text-base font-medium text-gray-700 mb-6 leading-relaxed">
@@ -122,8 +145,8 @@ const Login = () => {
 
           {/* ── CTA ROW ── */}
           <div className="grid grid-cols-2 gap-3.5 mb-12 max-[520px]:grid-cols-1">
-            {/* For Humans */}
-            <div className="rounded-[14px] p-5 bg-blue-50 border border-blue-200">
+            {/* For Humans – hidden on mobile (shown above tagline instead) */}
+            <div className="rounded-[14px] p-5 bg-blue-50 border border-blue-200 max-sm:hidden">
               <div className="flex items-center gap-2 mb-2.5">
                 <span className="text-xl">💼</span>
                 <h3 className="text-[17px] font-bold text-slate-900">For Humans</h3>
@@ -138,7 +161,7 @@ const Login = () => {
                       onClick={openConnectModal}
                       className="inline-block px-5 py-2.5 rounded-lg text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 transition-all hover:-translate-y-px"
                     >
-                      Create Payment Link →
+                      Connect Wallet →
                     </button>
                   </div>
                 )}
@@ -349,7 +372,7 @@ const Login = () => {
                   onClick={openConnectModal}
                   className="inline-flex items-center gap-2 bg-blue-600 text-white text-base font-bold px-8 py-3.5 rounded-[10px] hover:bg-blue-700 transition-all hover:-translate-y-px"
                 >
-                  Create Payment Link →
+                  Connect Wallet →
                 </button>
               </div>
             )}
