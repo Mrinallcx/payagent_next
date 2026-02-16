@@ -394,6 +394,10 @@ app.get('/api/agents/me', authMiddleware, async (req, res) => {
   try {
     const agent = req.agent;
 
+    if (!agent) {
+      return res.status(404).json({ error: 'No agent associated with this wallet' });
+    }
+
     // Trigger IP anomaly check (non-blocking)
     if (req.clientIp) {
       checkIpAnomaly(agent.id, req.clientIp, agent.last_known_ip, agent.ip_change_count).catch(() => {});

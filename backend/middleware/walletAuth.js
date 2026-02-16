@@ -147,7 +147,7 @@ async function verifyHandler(req, res) {
     }
 
     // Look up agent by wallet (optional — human users may not have one)
-    const agent = await getAgentByWallet(wallet_address);
+    const agent = await getAgentByWallet(normalizedAddress);
 
     if (agent && agent.deleted_at) {
       return res.status(403).json({ error: 'Agent account has been deleted' });

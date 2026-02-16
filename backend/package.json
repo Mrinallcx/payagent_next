@@ -5,7 +5,10 @@
   "scripts": {
     "dev": "node --watch server.js",
     "start": "node server.js",
-    "test": "node --test --test-force-exit test.js"
+    "test": "node --test --test-force-exit test.js",
+    "test:e2e": "node --test --test-force-exit e2e-all-features-test.js",
+    "test:frontend-flows": "node --test --test-force-exit e2e-frontend-flows.test.js",
+    "test:real-human": "node --test --test-timeout 300000 e2e-real-human-flow.test.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.86.0",
