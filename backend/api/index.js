@@ -1002,9 +1002,26 @@ app.post('/api/verify', optionalAuthMiddleware, async (req, res) => {
     const tokenSymbol = (request.token || 'USDC').toUpperCase();
     const tokenAddress = isNativeToken(tokenSymbol, network) ? null : getTokenAddress(network, tokenSymbol);
 
+    // When fee is deducted from payment (no LCX), the on-chain transfer is amount - fee
+    let expectedVerifyAmount = request.amount;
+    if (req.body.feeToken && req.body.feeToken !== 'LCX' && req.body.feeTotal != null) {
+      expectedVerifyAmount = String(Number((Number(request.amount) - Number(req.body.feeTotal)).toFixed(8)));
+    } else if (!req.body.feeToken) {
+      // Caller didn't pass fee info — recalculate to check
+      try {
+        const payerAddr = req.agent ? req.agent.wallet_address : (req.body.payerWallet || null);
+        if (payerAddr) {
+          const calcFee = await calculateFee(payerAddr, network, tokenSymbol);
+          if (calcFee.feeDeductedFromPayment) {
+            expectedVerifyAmount = String(Number((Number(request.amount) - calcFee.feeTotal).toFixed(8)));
+          }
+        }
+      } catch (e) { /* use full amount if fee calc fails */ }
+    }
+
     const verification = await verifyTransaction(
       txHash,
-      request.amount,
+      expectedVerifyAmount,
       tokenAddress,
       request.receiver,
       tokenSymbol,
