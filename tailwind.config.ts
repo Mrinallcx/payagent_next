@@ -16,6 +16,8 @@ export default {
       fontFamily: {
         sans: ['Inter', 'sans-serif'],
         heading: ['Space Grotesk', 'sans-serif'],
+        landing: ['DM Sans', '-apple-system', 'sans-serif'],
+        mono: ['Space Mono', 'monospace'],
       },
       colors: {
         blue: {
