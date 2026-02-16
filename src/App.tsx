@@ -48,7 +48,7 @@ const AppRoutes = () => {
       <Route path="/" element={<AuthRoute><Login /></AuthRoute>} />
       <Route path="/pay/:linkId" element={<PaymentView />} />
       <Route path="/r/:linkId" element={<PaymentView />} />
-      <Route path="/agent" element={<PayAsAgent />} />
+      <Route path="/agent" element={<Navigate to="/docs" replace />} />
       <Route path="/about" element={<About />} />
       <Route path="/changelog" element={<Changelog />} />
       <Route path="/docs" element={<DocsPage />} />

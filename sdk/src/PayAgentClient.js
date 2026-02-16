@@ -12,7 +12,7 @@
  *   apiKeyId: 'pk_live_...',
  *   apiSecret: 'sk_live_...',
  *   privateKey: '0x...',
- *   baseUrl: 'https://backend-two-chi-56.vercel.app',
+ *   baseUrl: 'https://payagent.vercel.app',
  * });
  *
  * const result = await client.payLink('REQ-ABC123');
@@ -38,7 +38,7 @@ class PayAgentClient {
    * @param {string} options.apiKeyId - Your PayAgent API key ID (pk_live_...)
    * @param {string} options.apiSecret - Your PayAgent API secret (sk_live_...) — used for HMAC signing, never transmitted
    * @param {string} options.privateKey - Your wallet private key
-   * @param {string} [options.baseUrl='https://backend-two-chi-56.vercel.app'] - PayAgent API base URL
+   * @param {string} [options.baseUrl='https://payagent.vercel.app'] - PayAgent API base URL
    * @param {string|Object} [options.rpcUrl] - Custom RPC URL(s). String for all chains, or { sepolia: '...', ethereum: '...', base: '...' }
    *
    * @deprecated options.apiKey - Use apiKeyId + apiSecret instead (backward compat removed in v0.2.0)
@@ -58,7 +58,7 @@ class PayAgentClient {
 
     this.apiKeyId = apiKeyId;
     this.apiSecret = apiSecret;
-    this.baseUrl = (baseUrl || 'https://backend-two-chi-56.vercel.app').replace(/\/$/, '');
+    this.baseUrl = (baseUrl || 'https://payagent.vercel.app').replace(/\/$/, '');
 
     this._wallet = new ethers.Wallet(privateKey);
     this._rpcUrl = rpcUrl || null;

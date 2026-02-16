@@ -1,6 +1,6 @@
 # @payagent/sdk
 
-SDK for [PayAgent](https://backend-two-chi-56.vercel.app) crypto payments. Uses HMAC-SHA256 request signing — your `api_secret` never leaves your environment.
+SDK for [PayAgent](https://payagent.vercel.app) crypto payments. Uses HMAC-SHA256 request signing — your `api_secret` never leaves your environment.
 
 ## Install
 
@@ -19,7 +19,7 @@ const client = new PayAgentClient({
   apiKeyId: 'pk_live_YOUR_KEY_ID',
   apiSecret: 'sk_live_YOUR_SECRET',
   privateKey: process.env.WALLET_PRIVATE_KEY,
-  baseUrl: 'https://backend-two-chi-56.vercel.app',
+  baseUrl: 'https://payagent.vercel.app',
 });
 
 // Pay a link in one call
@@ -59,7 +59,7 @@ const client = new PayAgentClient({
   apiKeyId: 'pk_live_YOUR_KEY_ID',
   apiSecret: 'sk_live_YOUR_SECRET',
   privateKey: process.env.WALLET_PRIVATE_KEY,
-  baseUrl: 'https://backend-two-chi-56.vercel.app',
+  baseUrl: 'https://payagent.vercel.app',
 });
 
 console.log('Wallet address:', client.address);
@@ -105,7 +105,7 @@ The SDK computes this automatically. For manual curl usage, see the [API documen
 | `apiKeyId` | string | yes | Your PayAgent API key ID (`pk_live_...`) |
 | `apiSecret` | string | yes | Your PayAgent API secret (`sk_live_...`) — used for HMAC signing |
 | `privateKey` | string | yes | Your wallet private key |
-| `baseUrl` | string | no | API base URL (default: `https://backend-two-chi-56.vercel.app`) |
+| `baseUrl` | string | no | API base URL (default: `https://payagent.vercel.app`) |
 | `rpcUrl` | string or object | no | Custom RPC URL. String for all chains, or `{ sepolia: '...', ethereum: '...', base: '...' }` |
 
 ### `client.payLink(linkId)` -> Promise

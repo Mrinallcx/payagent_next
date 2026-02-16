@@ -11,6 +11,8 @@ app.set('trust proxy', 1);
 
 // CORS - Restrict to known frontend origins (Security: C2)
 const ALLOWED_ORIGINS = [
+  'https://payagent.co',
+  'https://www.payagent.co',
   'https://payagent.vercel.app',
   process.env.FRONTEND_URL,
   process.env.NODE_ENV !== 'production' && 'http://localhost:5173',
