@@ -190,17 +190,18 @@ async function jwtAuth(req, res) {
     return false;
   }
 
+  // Always set req.wallet for wallet-based operations
+  req.wallet = wallet_address.toLowerCase();
+  req.clientIp = getClientIp(req);
+
+  // Optionally look up agent (wallet-only JWTs may not have one)
   const agent = await getAgentByWallet(wallet_address);
-  if (!agent) {
-    res.status(404).json({ error: 'No agent found for this wallet address' });
-    return false;
+  if (agent) {
+    if (!checkAgentStatus(agent, res)) return false;
+    req.agent = buildAgentPayload(agent);
+    touchAgent(agent.id).catch(() => {});
   }
 
-  if (!checkAgentStatus(agent, res)) return false;
-
-  req.agent = buildAgentPayload(agent);
-  req.clientIp = getClientIp(req);
-  touchAgent(agent.id).catch(() => {});
   return true;
 }
 

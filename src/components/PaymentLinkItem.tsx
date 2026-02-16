@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAccount, useSignMessage } from "wagmi";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,7 +21,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { deletePaymentRequest } from "@/lib/api";
+import { deletePaymentRequest, walletLogin, isJwtValid } from "@/lib/api";
 
 interface PaymentLinkItemProps {
   id: string;
@@ -36,6 +37,8 @@ export function PaymentLinkItem({ id, amount, token, status, link, onDelete }: P
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const navigate = useNavigate();
+  const { address } = useAccount();
+  const { signMessageAsync } = useSignMessage();
 
   const handleCopy = () => {
     navigator.clipboard.writeText(link);
@@ -49,12 +52,22 @@ export function PaymentLinkItem({ id, amount, token, status, link, onDelete }: P
   const handleRemoveLink = async () => {
     setIsDeleting(true);
     try {
+      // Auto-login with wallet if no JWT session
+      if (!isJwtValid() && address) {
+        toast.info("Please sign the message to verify your wallet");
+        await walletLogin(address, async (msg: string) => signMessageAsync({ message: msg }));
+      }
+
       await deletePaymentRequest(id);
       toast.success("Payment link deleted");
       onDelete?.();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error deleting link:", error);
-      toast.error("Failed to delete link");
+      if (error?.message === 'WALLET_LOGIN_REQUIRED') {
+        toast.error("Wallet verification required. Please try again.");
+      } else {
+        toast.error(error?.message || "Failed to delete link");
+      }
     } finally {
       setIsDeleting(false);
       setShowDeleteDialog(false);

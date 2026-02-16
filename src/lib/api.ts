@@ -183,7 +183,7 @@ function getJwtHeaders(): Record<string, string> {
 export async function walletLogin(
   walletAddress: string,
   signMessage: (message: string) => Promise<string>
-): Promise<AgentProfile> {
+): Promise<AgentProfile | null> {
   // Step 1: Get challenge nonce
   const challengeRes = await fetch(`${API_BASE_URL}/api/auth/challenge`, {
     method: 'POST',
@@ -218,7 +218,7 @@ export async function walletLogin(
   // Store JWT in memory
   setJwt(token, expires_in);
 
-  return agent;
+  return agent || null;
 }
 
 // ============ Public API Functions (no auth) ============
@@ -324,6 +324,10 @@ export async function getAllPaymentRequests(walletAddress?: string): Promise<Get
  */
 export async function deletePaymentRequest(requestId: string): Promise<DeletePaymentResponse> {
   try {
+    if (!isJwtValid()) {
+      throw new Error('WALLET_LOGIN_REQUIRED');
+    }
+
     const response = await fetch(`${API_BASE_URL}/api/request/${requestId}`, {
       method: 'DELETE',
       headers: getJwtHeaders(),
@@ -331,7 +335,7 @@ export async function deletePaymentRequest(requestId: string): Promise<DeletePay
 
     if (!response.ok) {
       if (response.status === 401) {
-        throw new Error('Authentication required. Please log in again.');
+        throw new Error('WALLET_LOGIN_REQUIRED');
       }
       if (response.status === 403) {
         throw new Error('Only the creator can delete this payment request');

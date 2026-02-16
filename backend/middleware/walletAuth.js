@@ -146,36 +146,29 @@ async function verifyHandler(req, res) {
       delete memoryNonces[normalizedAddress];
     }
 
-    // Look up agent by wallet
+    // Look up agent by wallet (optional — human users may not have one)
     const agent = await getAgentByWallet(wallet_address);
-    if (!agent) {
-      return res.status(404).json({ error: 'No agent found for this wallet address. Register first via POST /api/agents/register' });
-    }
 
-    if (agent.deleted_at) {
+    if (agent && agent.deleted_at) {
       return res.status(403).json({ error: 'Agent account has been deleted' });
     }
 
-    // Issue JWT
+    // Issue JWT (works for both agent and wallet-only users)
     const jwtSecret = process.env.JWT_SECRET;
     if (!jwtSecret) {
       return res.status(500).json({ error: 'JWT authentication not configured on server' });
     }
 
-    const token = jwt.sign(
-      {
-        agent_id: agent.id,
-        wallet_address: agent.wallet_address
-      },
-      jwtSecret,
-      { expiresIn: JWT_EXPIRY }
-    );
+    const jwtPayload = { wallet_address: normalizedAddress };
+    if (agent) jwtPayload.agent_id = agent.id;
 
-    return res.json({
+    const token = jwt.sign(jwtPayload, jwtSecret, { expiresIn: JWT_EXPIRY });
+
+    const response = {
       success: true,
       token,
       expires_in: 3600,
-      agent: {
+      agent: agent ? {
         id: agent.id,
         username: agent.username,
         email: agent.email,
@@ -184,8 +177,10 @@ async function verifyHandler(req, res) {
         verification_status: agent.verification_status,
         x_username: agent.x_username,
         api_key_expires_at: agent.api_key_expires_at
-      }
-    });
+      } : null
+    };
+
+    return res.json(response);
   } catch (error) {
     console.error('Verify wallet error:', error);
     return res.status(500).json({ error: 'Failed to verify wallet signature' });

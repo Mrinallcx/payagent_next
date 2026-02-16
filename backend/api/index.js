@@ -708,7 +708,7 @@ app.delete('/api/request/:id', authMiddleware, async (req, res) => {
       // Fetch the request to verify ownership
       const { data: existing } = await supabase
         .from('payment_requests')
-        .select('creator_agent_id')
+        .select('creator_agent_id, creator_wallet')
         .eq('id', id)
         .single();
 
@@ -716,8 +716,11 @@ app.delete('/api/request/:id', authMiddleware, async (req, res) => {
         return res.status(404).json({ error: 'Payment request not found' });
       }
 
-      // Only the creator agent can delete
-      if (existing.creator_agent_id !== req.agent.id) {
+      // Check ownership: agent-created links check agent ID, human-created links check wallet
+      const isAgentOwner = req.agent && existing.creator_agent_id && existing.creator_agent_id === req.agent.id;
+      const isWalletOwner = req.wallet && existing.creator_wallet && existing.creator_wallet.toLowerCase() === req.wallet;
+
+      if (!isAgentOwner && !isWalletOwner) {
         return res.status(403).json({ error: 'Only the creator can delete this payment request' });
       }
 
@@ -733,7 +736,11 @@ app.delete('/api/request/:id', authMiddleware, async (req, res) => {
         return res.status(404).json({ error: 'Payment request not found' });
       }
 
-      if (req_data.creator_agent_id !== req.agent.id) {
+      const isAgentOwner = req.agent && req_data.creator_agent_id && req_data.creator_agent_id === req.agent.id;
+      const isWalletOwner = req.wallet && (req_data.creator_wallet || req_data.creatorWallet) &&
+        (req_data.creator_wallet || req_data.creatorWallet).toLowerCase() === req.wallet;
+
+      if (!isAgentOwner && !isWalletOwner) {
         return res.status(403).json({ error: 'Only the creator can delete this payment request' });
       }
 
