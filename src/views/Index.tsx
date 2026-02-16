@@ -85,13 +85,14 @@ const Index = () => {
   const allRequests = data?.requests ?? [];
   const humanLinks = useMemo(() => allRequests.filter(r => !r.creatorAgentId), [allRequests]);
   const humanPaymentLinks = humanLinks.slice(0, 5);
-  const humanTransactions = useMemo(() => humanLinks.filter(r => r.status === 'PAID').slice(0, 5), [humanLinks]);
+  const allPaidLinks = useMemo(() => humanLinks.filter(r => r.status === 'PAID'), [humanLinks]);
+  const humanTransactions = useMemo(() => allPaidLinks.slice(0, 5), [allPaidLinks]);
   const pendingLinks = humanPaymentLinks.filter(l => l.status === 'PENDING').length;
 
-  // Convert received amounts to USD
+  // Convert received amounts to USD (use ALL paid links, not just the 5 shown)
   const totalReceivedUsd = useMemo(() => 
-    humanTransactions.reduce((acc, t) => acc + toUsd(parseFloat(t.amount), t.token, priceData), 0),
-    [humanTransactions, priceData]
+    allPaidLinks.reduce((acc, t) => acc + toUsd(parseFloat(t.amount), t.token, priceData), 0),
+    [allPaidLinks, priceData]
   );
 
   // Convert rewards to USD (sum individual reward entries by their fee token)
