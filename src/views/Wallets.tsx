@@ -1,7 +1,4 @@
 import { useState } from "react";
-import { SidebarProvider } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/AppSidebar";
-import { AppNavbar } from "@/components/AppNavbar";
 import { Badge } from "@/components/ui/badge";
 import { Copy, Trash2, Plus } from "lucide-react";
 import { toast } from "sonner";
@@ -42,14 +39,8 @@ const Wallets = () => {
   };
 
   return (
-    <SidebarProvider>
-      <div className="flex min-h-screen w-full bg-background">
-        <AppSidebar />
-        
-        <div className="flex-1 flex flex-col">
-          <AppNavbar />
-          
-          <main className="flex-1 p-6">
+    <>
+      <main className="flex-1 p-6">
             <div className="max-w-5xl mx-auto">
               <div className="mb-6">
                 <p className="text-sm text-muted-foreground mb-6">
@@ -126,15 +117,13 @@ const Wallets = () => {
               </div>
             </div>
           </main>
-        </div>
-      </div>
 
       <AddWalletModal
         open={isAddWalletOpen}
         onOpenChange={setIsAddWalletOpen}
         onAddWallet={handleAddWallet}
       />
-    </SidebarProvider>
+    </>
   );
 };
 

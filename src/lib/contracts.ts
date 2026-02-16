@@ -31,61 +31,61 @@ export const NETWORK_CONFIGS = {
   sepolia: {
     chainId: 11155111,
     name: 'Sepolia',
-    rpcUrl: import.meta.env.VITE_SEPOLIA_RPC_URL || 'https://sepolia.infura.io/v3/',
+    rpcUrl: process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL || 'https://sepolia.infura.io/v3/',
   },
   mainnet: {
     chainId: 1,
     name: 'Ethereum Mainnet',
-    rpcUrl: import.meta.env.VITE_MAINNET_RPC_URL || '',
+    rpcUrl: process.env.NEXT_PUBLIC_MAINNET_RPC_URL || '',
   },
   polygon: {
     chainId: 137,
     name: 'Polygon',
-    rpcUrl: import.meta.env.VITE_POLYGON_RPC_URL || 'https://polygon-rpc.com',
+    rpcUrl: process.env.NEXT_PUBLIC_POLYGON_RPC_URL || 'https://polygon-rpc.com',
   },
   base: {
     chainId: 8453,
     name: 'Base',
-    rpcUrl: import.meta.env.VITE_BASE_RPC_URL || '',
+    rpcUrl: process.env.NEXT_PUBLIC_BASE_RPC_URL || '',
   },
   bnb: {
     chainId: 56,
     name: 'BNB Chain',
-    rpcUrl: import.meta.env.VITE_BNB_RPC_URL || 'https://bsc-dataseed.binance.org/',
+    rpcUrl: process.env.NEXT_PUBLIC_BNB_RPC_URL || 'https://bsc-dataseed.binance.org/',
   },
   bnbTestnet: {
     chainId: 97,
     name: 'BNB Testnet',
-    rpcUrl: import.meta.env.VITE_BNB_TESTNET_RPC_URL || 'https://data-seed-prebsc-1-s1.binance.org:8545/',
+    rpcUrl: process.env.NEXT_PUBLIC_BNB_TESTNET_RPC_URL || 'https://data-seed-prebsc-1-s1.binance.org:8545/',
   },
 } as const;
 
 // USDC Contract Addresses per network
 export const USDC_ADDRESSES = {
   // Use your custom test USDC on Sepolia
-  sepolia: (import.meta.env.VITE_SEPOLIA_USDC_ADDRESS || '0x3402d41aa8e34e0df605c12109de2f8f4ff33a87') as `0x${string}`,
+  sepolia: (process.env.NEXT_PUBLIC_SEPOLIA_USDC_ADDRESS || '0x3402d41aa8e34e0df605c12109de2f8f4ff33a87') as `0x${string}`,
   mainnet: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48' as `0x${string}`,
   polygon: '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174' as `0x${string}`,
   base: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913' as `0x${string}`,
   // BNB Testnet USDC - you may need to deploy or find a test token
-  bnbTestnet: (import.meta.env.VITE_BNB_TESTNET_USDC_ADDRESS || '0x64544969ed7EBf5f083679233325356EbE738930') as `0x${string}`,
+  bnbTestnet: (process.env.NEXT_PUBLIC_BNB_TESTNET_USDC_ADDRESS || '0x64544969ed7EBf5f083679233325356EbE738930') as `0x${string}`,
 } as const;
 
 // USDT Contract Addresses per network
 export const USDT_ADDRESSES = {
   // Use your custom test USDT on Sepolia
-  sepolia: (import.meta.env.VITE_SEPOLIA_USDT_ADDRESS || '0xF9E0643Ba46eeaf4e1059775567f67F5c867bbfc') as `0x${string}`,
+  sepolia: (process.env.NEXT_PUBLIC_SEPOLIA_USDT_ADDRESS || '0xF9E0643Ba46eeaf4e1059775567f67F5c867bbfc') as `0x${string}`,
   mainnet: '0xdAC17F958D2ee523a2206206994597C13D831ec7' as `0x${string}`,
   polygon: '0xc2132D05D31c914a87C6611C10748AEb04B58e8F' as `0x${string}`,
   base: '0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2' as `0x${string}`,
   // BNB Testnet USDT - you may need to deploy or find a test token
-  bnbTestnet: (import.meta.env.VITE_BNB_TESTNET_USDT_ADDRESS || '0x337610d27c682E347C9cD60BD4b3b107C9d34dDd') as `0x${string}`,
+  bnbTestnet: (process.env.NEXT_PUBLIC_BNB_TESTNET_USDT_ADDRESS || '0x337610d27c682E347C9cD60BD4b3b107C9d34dDd') as `0x${string}`,
 } as const;
 
 // BNB/WBNB Contract Addresses per network (ERC20 wrapped BNB)
 export const BNB_ADDRESSES = {
   // WBNB on Sepolia
-  sepolia: (import.meta.env.VITE_SEPOLIA_BNB_ADDRESS || '0xceB2b022295a3FcdeC12ac82C2Ba21227e425720') as `0x${string}`,
+  sepolia: (process.env.NEXT_PUBLIC_SEPOLIA_BNB_ADDRESS || '0xceB2b022295a3FcdeC12ac82C2Ba21227e425720') as `0x${string}`,
   // Original BNB token on Ethereum mainnet (from Binance ICO)
   mainnet: '0xB8c77482e45F1F44dE1745F52C74426C631bDD52' as `0x${string}`,
 } as const;
@@ -93,7 +93,7 @@ export const BNB_ADDRESSES = {
 // LCX Token Contract Addresses per network
 export const LCX_ADDRESSES = {
   // LCX on Sepolia
-  sepolia: (import.meta.env.VITE_SEPOLIA_LCX_ADDRESS || '0x98d99c88D31C27C5a591Fe7F023F9DB0B37E4B3b') as `0x${string}`,
+  sepolia: (process.env.NEXT_PUBLIC_SEPOLIA_LCX_ADDRESS || '0x98d99c88D31C27C5a591Fe7F023F9DB0B37E4B3b') as `0x${string}`,
   // LCX on Ethereum mainnet
   mainnet: '0x037A54AaB062628C9Bbae1FDB1583c195585Fe41' as `0x${string}`,
   // LCX on Base mainnet

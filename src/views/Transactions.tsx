@@ -1,8 +1,5 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { SidebarProvider } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/AppSidebar";
-import { AppNavbar } from "@/components/AppNavbar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -169,14 +166,8 @@ const Transactions = () => {
   };
 
   return (
-    <SidebarProvider>
-      <div className="flex min-h-screen w-full">
-        <AppSidebar />
-        
-        <div className="flex-1 flex flex-col bg-slate-50/50">
-          <AppNavbar />
-          
-          <main className="flex-1 p-6 lg:p-8">
+    <>
+      <main className="flex-1 p-6 lg:p-8">
             <div className="max-w-6xl mx-auto">
               <div className="mb-6">
                 <p className="text-sm text-muted-foreground mb-1">History</p>
@@ -418,9 +409,7 @@ const Transactions = () => {
               )}
             </div>
           </main>
-        </div>
-      </div>
-    </SidebarProvider>
+    </>
   );
 };
 

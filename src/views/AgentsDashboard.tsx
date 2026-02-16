@@ -1,8 +1,5 @@
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { SidebarProvider } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/AppSidebar";
-import { AppNavbar } from "@/components/AppNavbar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -10,7 +7,7 @@ import {
   Bot, Users, Loader2, ExternalLink, DollarSign, Coins,
   RotateCcw, Power, Trash2, ShieldCheck, Clock, FileText, Copy, Check, AlertTriangle, Wallet
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useRouter } from "next/navigation";
 import { useAccount, useSignMessage } from "wagmi";
 import {
   getAgentByWallet, type AgentProfile,
@@ -22,7 +19,7 @@ import {
 } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
 const truncateAddress = (addr: string | null) => {
   if (!addr) return 'Not set';
@@ -41,7 +38,7 @@ const formatDate = (dateStr: string | null) => {
 };
 
 export default function AgentsDashboard() {
-  const navigate = useNavigate();
+  const router = useRouter();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { address: walletAddress } = useAccount();
@@ -76,7 +73,7 @@ export default function AgentsDashboard() {
     setLoginLoading(true);
     try {
       await walletLogin(walletAddress, async (message: string) => {
-        return await signMessageAsync({ message });
+        return await signMessageAsync({ account: walletAddress as `0x${string}`, message });
       });
       setIsLoggedIn(true);
       queryClient.invalidateQueries({ queryKey: ['agentByWallet'] });
@@ -223,14 +220,8 @@ export default function AgentsDashboard() {
   };
 
   return (
-    <SidebarProvider>
-      <div className="flex min-h-screen w-full">
-        <AppSidebar />
-
-        <div className="flex-1 flex flex-col bg-slate-50/50">
-          <AppNavbar />
-
-          <main className="flex-1 p-6 lg:p-8">
+    <>
+      <main className="flex-1 p-6 lg:p-8">
             <div className="max-w-6xl mx-auto space-y-6">
               {/* Header */}
               <div className="flex items-end justify-between">
@@ -240,7 +231,7 @@ export default function AgentsDashboard() {
                 </div>
                 <div className="flex gap-2">
                   <Button
-                    onClick={() => navigate('/logs')}
+                    onClick={() => router.push('/logs')}
                     variant="outline"
                     className="gap-2 rounded-lg"
                   >
@@ -248,7 +239,7 @@ export default function AgentsDashboard() {
                     View Logs
                   </Button>
                   <Button
-                    onClick={() => navigate('/agent')}
+                    onClick={() => router.push('/agent')}
                     variant="outline"
                     className="gap-2 rounded-lg"
                   >
@@ -467,7 +458,7 @@ export default function AgentsDashboard() {
                 <div className="bg-white rounded-xl border border-border p-6 text-center text-sm text-muted-foreground">
                   <Bot className="h-8 w-8 mx-auto mb-2 text-gray-400" />
                   <p>No agent linked to wallet <span className="font-mono">{truncateAddress(walletAddress)}</span></p>
-                  <p className="mt-1">Register an agent via the <button onClick={() => navigate('/agent')} className="text-blue-600 underline">API</button> using this wallet.</p>
+                  <p className="mt-1">Register an agent via the <button onClick={() => router.push('/agent')} className="text-blue-600 underline">API</button> using this wallet.</p>
                 </div>
               ) : null}
 
@@ -617,7 +608,7 @@ export default function AgentsDashboard() {
               {/* Quick Actions */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <button
-                  onClick={() => navigate('/agent')}
+                  onClick={() => router.push('/agent')}
                   className="group bg-blue-600 rounded-xl p-5 text-left text-white hover:bg-blue-700 transition-colors"
                 >
                   <div className="flex items-center gap-3 mb-2">
@@ -641,8 +632,6 @@ export default function AgentsDashboard() {
               </div>
             </div>
           </main>
-        </div>
-      </div>
-    </SidebarProvider>
+    </>
   );
 }

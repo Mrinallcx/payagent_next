@@ -1,10 +1,12 @@
-import { useState, useEffect, useCallback } from "react";
+"use client";
 
-const API_BASE = import.meta.env.VITE_API_URL
-  ? `${(import.meta.env.VITE_API_URL as string).replace(/\/$/, "")}/api`
+import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL
+  ? `${(process.env.NEXT_PUBLIC_API_URL as string).replace(/\/$/, "")}/api`
   : "http://localhost:3000/api";
 
-/* ─── sidebar navigation structure ─── */
 const NAV = [
   {
     label: "Getting Started",
@@ -53,7 +55,6 @@ const lcx = (text: string) => (
   <a href="https://lcx.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 font-medium hover:underline">{text}</a>
 );
 
-/* ─── reusable sub-components ─── */
 const Callout = ({ children, green, amber }: { children: React.ReactNode; green?: boolean; amber?: boolean }) => (
   <div className={`rounded-lg border px-5 py-4 my-6 text-sm leading-[1.65] text-gray-800 ${green ? "bg-emerald-50 border-emerald-200" : amber ? "bg-amber-50 border-amber-200" : "bg-blue-50/60 border-blue-200"}`}>
     {children}
@@ -108,7 +109,6 @@ const P = ({ children }: { children: React.ReactNode }) => (
   <p className="text-[15px] text-gray-600 leading-[1.7] mb-4">{children}</p>
 );
 
-/* Endpoint row */
 const EP = ({ method, path, desc }: { method: string; path: string; desc: string }) => {
   const mc = method === "POST" ? "text-green-600" : method === "DELETE" ? "text-red-600" : "text-blue-600";
   return (
@@ -120,8 +120,7 @@ const EP = ({ method, path, desc }: { method: string; path: string; desc: string
   );
 };
 
-/* ════════════════════════════════════════════ */
-export default function Docs() {
+export default function DocsPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeId, setActiveId] = useState("welcome");
 
@@ -142,10 +141,9 @@ export default function Docs() {
 
   return (
     <div className="docs-layout font-sans">
-      {/* ── SIDEBAR ── */}
       <aside className={`docs-sidebar ${sidebarOpen ? "open" : ""}`}>
         <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-200">
-          <a href="/" className="flex items-center gap-2.5">
+          <Link href="/" className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center shrink-0">
               <img src="/robot.svg" alt="PayAgent" className="w-8 h-8" />
             </div>
@@ -156,7 +154,7 @@ export default function Docs() {
               </div>
               <span className="text-[10px] text-gray-400 font-medium mt-0.5">by LCX</span>
             </div>
-          </a>
+          </Link>
         </div>
 
         <nav className="py-4">
@@ -183,34 +181,26 @@ export default function Docs() {
         </nav>
       </aside>
 
-      {/* ── MAIN ── */}
       <main className="docs-main flex-1 min-w-0" style={{ marginLeft: 280 }}>
         <div className="docs-topbar sticky top-0 z-50 bg-white/90 backdrop-blur border-b border-slate-200 px-10 h-[52px] flex items-center justify-between">
           <div className="text-[13px] text-gray-400">
-            <a href="/" className="text-gray-500 hover:text-blue-600 no-underline">PayAgent</a>
+            <Link href="/" className="text-gray-500 hover:text-blue-600 no-underline">PayAgent</Link>
             <span className="mx-1.5">/</span>
             <span>Documentation</span>
           </div>
           <div className="flex items-center gap-5 text-[13px] font-semibold">
-            <a href="/" className="text-gray-500 hover:text-blue-600 no-underline">Home</a>
-            <a href="/about" className="text-gray-500 hover:text-blue-600 no-underline">About</a>
+            <Link href="/" className="text-gray-500 hover:text-blue-600 no-underline">Home</Link>
+            <Link href="/about" className="text-gray-500 hover:text-blue-600 no-underline">About</Link>
             <a href="https://lcx.com" target="_blank" rel="noopener noreferrer" className="text-gray-500 hover:text-blue-600 no-underline">LCX</a>
           </div>
         </div>
 
         <div className="docs-content max-w-[760px] mx-auto px-10 pt-12 pb-20">
 
-          {/* ══════════════ GETTING STARTED ══════════════ */}
-
-          {/* WELCOME */}
           <section id="welcome" data-doc-section>
             <h1 className="text-[32px] font-bold text-slate-900 tracking-tight leading-[1.2] mb-2">PayAgent Documentation</h1>
-            <p className="text-[17px] text-gray-500 mb-10 leading-relaxed">
-              Crypto payments for humans and AI agents. Built by {lcx("LCX (Liberty Crypto Exchange)")}.
-            </p>
-            <Callout>
-              <strong className="text-blue-600">Core thesis:</strong> Every AI agent will need a wallet, payment rails, and financial autonomy. PayAgent is how they pay. A non-custodial payment service that allows humans and AI agents to send, receive, and automate crypto payments using stablecoins, with LCX as the network fee and reward token.
-            </Callout>
+            <p className="text-[17px] text-gray-500 mb-10 leading-relaxed">Crypto payments for humans and AI agents. Built by {lcx("LCX (Liberty Crypto Exchange)")}.</p>
+            <Callout><strong className="text-blue-600">Core thesis:</strong> Every AI agent will need a wallet, payment rails, and financial autonomy. PayAgent is how they pay. A non-custodial payment service that allows humans and AI agents to send, receive, and automate crypto payments using stablecoins, with LCX as the network fee and reward token.</Callout>
             <P>AI agents are becoming economic actors. They buy compute, pay APIs, settle micro-transactions, and transact with other agents. PayAgent is the financial infrastructure for this new economy.</P>
             <P>PayAgent is built for:</P>
             <div className="grid grid-cols-2 gap-3.5 my-6 max-[600px]:grid-cols-1">
@@ -229,7 +219,6 @@ export default function Docs() {
             </div>
           </section>
 
-          {/* QUICK SUMMARY */}
           <SectionH2 id="quick-summary">Quick Summary</SectionH2>
           <SectionH3>What PayAgent Does</SectionH3>
           <ul className="list-disc ml-5 my-2 mb-5 text-[15px] text-gray-600 leading-[1.7] space-y-1">
@@ -242,41 +231,33 @@ export default function Docs() {
           </ul>
           <SectionH3>Supported Today</SectionH3>
           <DocTable headers={["Property", "Value"]} rows={[
-            ["Network", <span>Ethereum <Badge color="green">Live</Badge></span>],
+            ["Network", <span key="net">Ethereum <Badge color="green">Live</Badge></span>],
             ["Assets (Standard)", "USDC, USDT, USAT"],
             ["Assets (Pro)", "Any ERC-20 token on Ethereum"],
             ["Fees", "Paid in LCX"],
             ["Custody", "Non-custodial"],
           ]} />
 
-          {/* KEY CONCEPTS */}
           <SectionH2 id="key-concepts">Key Concepts</SectionH2>
           <SectionH3>Humans vs AI Agents</SectionH3>
           <DocTable headers={["Role", "Description"]} rows={[
-            [<><strong>Human</strong> 👤</>, "Creates payment links manually via UI"],
-            [<><strong>AI Agent</strong> 🤖</>, "Creates and pays links autonomously via API"],
+            [<span key="h"><strong>Human</strong> 👤</span>, "Creates payment links manually via UI"],
+            [<span key="a"><strong>AI Agent</strong> 🤖</span>, "Creates and pays links autonomously via API"],
           ]} />
           <P>Both follow the same economic rules. Both earn LCX rewards.</P>
           <SectionH3>Stablecoins vs LCX</SectionH3>
-          <Callout>
-            <strong className="text-blue-600">Stablecoins</strong> move value. <strong className="text-blue-600">LCX</strong> powers the network. Stablecoins are the medium of exchange. LCX is the network fuel, used for fees, creator rewards, and economic incentives.
-          </Callout>
+          <Callout><strong className="text-blue-600">Stablecoins</strong> move value. <strong className="text-blue-600">LCX</strong> powers the network. Stablecoins are the medium of exchange. LCX is the network fuel, used for fees, creator rewards, and economic incentives.</Callout>
 
-          {/* ══════════════ PRODUCT ══════════════ */}
-
-          {/* FEES & REWARDS */}
           <SectionH2 id="fees-rewards">Fees and Rewards</SectionH2>
           <SectionH3>Standard Mode</SectionH3>
           <DocTable headers={["Property", "Value"]} rows={[
-            ["Network Fee", <strong>2 LCX</strong>], ["Creator Reward", "1 LCX"], ["Service Fee", "1 LCX"], ["Supported Assets", "USDC, USDT, USAT"],
+            ["Network Fee", <strong key="f">2 LCX</strong>], ["Creator Reward", "1 LCX"], ["Service Fee", "1 LCX"], ["Supported Assets", "USDC, USDT, USAT"],
           ]} />
           <SectionH3>Pro Mode</SectionH3>
           <DocTable headers={["Property", "Value"]} rows={[
-            ["Network Fee", <strong>4 LCX</strong>], ["Creator Reward", "2 LCX"], ["Service Fee", "2 LCX"], ["Supported Assets", "Any ERC-20 token on Ethereum"],
+            ["Network Fee", <strong key="f">4 LCX</strong>], ["Creator Reward", "2 LCX"], ["Service Fee", "2 LCX"], ["Supported Assets", "Any ERC-20 token on Ethereum"],
           ]} />
-          <Callout green>
-            <strong className="text-emerald-600">Earn LCX with every payment.</strong> Every time a payment link you created is paid, you automatically earn LCX tokens. Rewards are credited on successful settlement.
-          </Callout>
+          <Callout green><strong className="text-emerald-600">Earn LCX with every payment.</strong> Every time a payment link you created is paid, you automatically earn LCX tokens. Rewards are credited on successful settlement.</Callout>
           <SectionH3>Fee Details</SectionH3>
           <P>The payer covers the fee. Fee is paid in LCX token (preferred) or deducted from the payment token (fallback). Payer only needs the payment token + ETH for gas.</P>
           <DocTable headers={["Scenario", "Behavior"]} rows={[
@@ -287,14 +268,12 @@ export default function Docs() {
           <P>Fees are LCX-denominated, not USD-based. At current pricing: 2 LCX ≈ $0.08 (at $0.04/LCX). If a payer does not hold enough LCX, the amount is auto-sourced via Uniswap.</P>
           <P>Human payers: use <Code>GET /api/request/:id/fee?payer=0x...</Code> (public, no auth) to get fee breakdown and transfer instructions.</P>
 
-          {/* SUPPORTED ASSETS */}
           <SectionH2 id="supported-assets">Supported Assets</SectionH2>
           <SectionH3>Standard Mode <Badge color="blue">2 LCX Fee</Badge></SectionH3>
           <DocTable headers={["Asset", "Type"]} rows={[["USDC", "Stablecoin (USD)"], ["USDT", "Stablecoin (USD)"], ["USAT", "Stablecoin"]]} />
           <SectionH3>Pro Mode <Badge color="amber">4 LCX Fee</Badge></SectionH3>
           <P>Any ERC-20 token on Ethereum. Designed for advanced users, AI agents, and integrators who need flexibility beyond stablecoins.</P>
 
-          {/* FOR HUMANS */}
           <SectionH2 id="humans">For Humans</SectionH2>
           <P>Create shareable links instantly and get paid. Connect your wallet, choose an amount and asset, generate a link, and share it.</P>
           <ol className="docs-steps">
@@ -306,7 +285,6 @@ export default function Docs() {
           </ol>
           <Callout><strong className="text-blue-600">Coming soon:</strong> Full payment history with filtering, export, and detailed analytics.</Callout>
 
-          {/* FOR AI AGENTS */}
           <SectionH2 id="agents">For AI Agents, Firms, and Developers</SectionH2>
           <P>PayAgent provides programmable, automated payment rails via API. Flat, predictable fees in LCX tokens. No percentages, no hidden costs.</P>
           <ul className="list-disc ml-5 my-2 mb-5 text-[15px] text-gray-600 leading-[1.7] space-y-1">
@@ -321,13 +299,8 @@ export default function Docs() {
             <li>Settlement occurs automatically on-chain</li>
             <li>LCX rewards distributed to the creator agent</li>
           </ol>
-          <Callout>
-            <strong className="text-blue-600">Deterministic for agents.</strong> AI agents can predict costs, calculate rewards, and execute payments programmatically with zero ambiguity.
-          </Callout>
+          <Callout><strong className="text-blue-600">Deterministic for agents.</strong> AI agents can predict costs, calculate rewards, and execute payments programmatically with zero ambiguity.</Callout>
 
-          {/* ══════════════ DEVELOPERS ══════════════ */}
-
-          {/* API OVERVIEW */}
           <SectionH2 id="api">API Overview</SectionH2>
           <P>PayAgent is a crypto payment infrastructure platform for AI agents. Register your agent, get HMAC credentials, and let your agents create and pay payment links programmatically.</P>
           <div className="grid grid-cols-2 gap-3 my-6 max-[500px]:grid-cols-1">
@@ -357,14 +330,13 @@ const link = await payagent.createLink({
 
 // Returns: { linkId, url, status, fee: "2 LCX" }`}</Pre>
 
-          {/* HMAC AUTHENTICATION */}
           <SectionH2 id="hmac-auth">HMAC Authentication</SectionH2>
           <P>All API requests from agents are authenticated using HMAC-SHA256 signing. Your <Code>api_secret</Code> never leaves your environment — only the computed signature is sent over the wire.</P>
           <SectionH3>Required Headers</SectionH3>
           <DocTable headers={["Header", "Description"]} rows={[
-            [<Code>x-api-key-id</Code>, <>Public identifier — <Code>pk_live_...</Code></>],
-            [<Code>x-timestamp</Code>, "Unix epoch seconds (must be within 5 min of server time)"],
-            [<Code>x-signature</Code>, "HMAC-SHA256 hex digest of the string-to-sign"],
+            [<Code key="k">x-api-key-id</Code>, <span key="v">Public identifier — <Code>pk_live_...</Code></span>],
+            [<Code key="k2">x-timestamp</Code>, "Unix epoch seconds (must be within 5 min of server time)"],
+            [<Code key="k3">x-signature</Code>, "HMAC-SHA256 hex digest of the string-to-sign"],
           ]} />
           <SectionH3>String-to-Sign Format</SectionH3>
           <Pre>{`# Format:
@@ -388,7 +360,6 @@ echo "x-api-key-id: $KEY_ID"
 echo "x-timestamp: $TS"
 echo "x-signature: $SIG"`}</Pre>
 
-          {/* AGENT REGISTRATION */}
           <SectionH2 id="agent-register">Agent Registration</SectionH2>
           <SectionH3>Step 1: Register Your Agent</SectionH3>
           <P>Register via cURL. Complete X verification to get your HMAC credentials (<Code>api_key_id</Code> + <Code>api_secret</Code>).</P>
@@ -417,7 +388,7 @@ echo "x-signature: $SIG"`}</Pre>
 # Save both — they will NOT be shown again.`}</Pre>
 
           <SectionH3>Step 2: Verify on X (Twitter)</SectionH3>
-          <P>Post the verification challenge to X (Twitter), then call the verify endpoint with your tweet URL. On success, you'll receive your HMAC credentials.</P>
+          <P>Post the verification challenge to X (Twitter), then call the verify endpoint with your tweet URL. On success, you&apos;ll receive your HMAC credentials.</P>
           <Pre>{`# 1. Post to X (Twitter):
 #    "payagent-verify-my-agent-abc123"
 
@@ -437,16 +408,12 @@ curl -X POST ${API_BASE}/agents/verify-x \\
 #   "api_key_expires_at": "2026-02-21T...",
 #   "x_username": "yourhandle"
 # }`}</Pre>
-          <Callout amber>
-            <strong className="text-amber-700">Important:</strong> API keys expire after 10 days. Use the dashboard or <Code>POST /api/agents/rotate-key</Code> to regenerate before expiry.
-          </Callout>
+          <Callout amber><strong className="text-amber-700">Important:</strong> API keys expire after 10 days. Use the dashboard or <Code>POST /api/agents/rotate-key</Code> to regenerate before expiry.</Callout>
 
-          {/* SDK & PAYMENTS */}
           <SectionH2 id="sdk">SDK &amp; Payments</SectionH2>
           <P>Install <Code>@payagent/sdk</Code> v0.2.0+. The SDK handles HMAC signing, transaction signing, broadcasting, and verification automatically.</P>
           <SectionH3>Installation</SectionH3>
           <Pre>npm install @payagent/sdk ethers</Pre>
-
           <SectionH3>Full Implementation Example</SectionH3>
           <Pre>{`const { PayAgentClient } = require('@payagent/sdk');
 
@@ -480,7 +447,6 @@ for (const tx of result.transactions) {
 const instructions = await client.getInstructions('REQ-ABC123');
 // ... sign & broadcast yourself ...
 const verification = await client.verifyPayment('REQ-ABC123', '0xTxHash');`}</Pre>
-
           <SectionH3>Create a Payment Link (cURL)</SectionH3>
           <P><Code>network</Code> is required. Supported: <Code>sepolia</Code>, <Code>ethereum</Code>, <Code>base</Code>. All requests use HMAC signing.</P>
           <Pre>{`curl -X POST ${API_BASE}/create-link \\
@@ -504,18 +470,16 @@ const verification = await client.verifyPayment('REQ-ABC123', '0xTxHash');`}</Pr
 #   "token": "USDC",
 #   "amount": "10"
 # }`}</Pre>
-
           <SectionH3>SDK Methods Reference</SectionH3>
           <DocTable headers={["Method", "Description"]} rows={[
-            [<Code>client.payLink(linkId)</Code>, "Fetch instructions, sign, broadcast, and verify in one call"],
-            [<Code>client.createLink({"{ ... }"})</Code>, "Create a payment link (amount, network, token, description)"],
-            [<Code>client.getInstructions(linkId)</Code>, "Fetch transfer instructions only (for manual control)"],
-            [<Code>client.verifyPayment(id, txHash)</Code>, "Verify a payment by transaction hash"],
-            [<Code>client.getChains()</Code>, "List supported chains and tokens"],
-            [<Code>client.address</Code>, "Your wallet address (read-only property)"],
+            [<Code key="m1">client.payLink(linkId)</Code>, "Fetch instructions, sign, broadcast, and verify in one call"],
+            [<Code key="m2">client.createLink({"{ ... }"})</Code>, "Create a payment link (amount, network, token, description)"],
+            [<Code key="m3">client.getInstructions(linkId)</Code>, "Fetch transfer instructions only (for manual control)"],
+            [<Code key="m4">client.verifyPayment(id, txHash)</Code>, "Verify a payment by transaction hash"],
+            [<Code key="m5">client.getChains()</Code>, "List supported chains and tokens"],
+            [<Code key="m6">client.address</Code>, "Your wallet address (read-only property)"],
           ]} />
 
-          {/* AI CHAT */}
           <SectionH2 id="ai-chat">AI Chat (Natural Language)</SectionH2>
           <P>Talk to PayAgent AI (powered by Grok). It can create links, check status, and more. When creating a link, the AI will ask which chain to use.</P>
           <Pre>{`curl -X POST ${API_BASE}/chat \\
@@ -525,7 +489,6 @@ const verification = await client.verifyPayment('REQ-ABC123', '0xTxHash');`}</Pr
   -H "x-signature: <computed>" \\
   -d '{ "message": "Create a 5 USDC payment link on base" }'`}</Pre>
 
-          {/* WEBHOOKS */}
           <SectionH2 id="webhooks">Webhooks</SectionH2>
           <P>Register webhook URLs to receive real-time notifications when payment events occur.</P>
           <Pre>{`curl -X POST ${API_BASE}/webhooks \\
@@ -541,12 +504,11 @@ const verification = await client.verifyPayment('REQ-ABC123', '0xTxHash');`}</Pr
 # Events: payment.created, payment.paid, payment.expired
 # Payloads include HMAC-SHA256 signature in X-PayAgent-Signature header`}</Pre>
           <DocTable headers={["Event", "Triggered When"]} rows={[
-            [<Code>payment.created</Code>, "A new payment link is created"],
-            [<Code>payment.paid</Code>, "A payment link is settled on-chain"],
-            [<Code>payment.expired</Code>, "A payment link expires without being paid"],
+            [<Code key="e1">payment.created</Code>, "A new payment link is created"],
+            [<Code key="e2">payment.paid</Code>, "A payment link is settled on-chain"],
+            [<Code key="e3">payment.expired</Code>, "A payment link expires without being paid"],
           ]} />
 
-          {/* KEY MANAGEMENT */}
           <SectionH2 id="key-mgmt">Key Management</SectionH2>
           <P>API keys expire after <strong>10 days</strong>. Rotate, deactivate, or delete your agent. These actions require JWT authentication (wallet login) or can be done from the dashboard.</P>
           <Pre>{`# Rotate API Key (JWT required — via dashboard wallet login)
@@ -567,11 +529,8 @@ curl -X POST ${API_BASE}/agents/deactivate \\
 # Delete Agent (soft — payment history preserved)
 curl -X DELETE ${API_BASE}/agents/me \\
   -H "Authorization: Bearer <your_jwt_token>"`}</Pre>
-          <Callout>
-            <strong className="text-blue-600">Tip:</strong> Use the Agents Dashboard to manage keys with a simple click — no cURL needed. Just connect your wallet.
-          </Callout>
+          <Callout><strong className="text-blue-600">Tip:</strong> Use the Agents Dashboard to manage keys with a simple click — no cURL needed. Just connect your wallet.</Callout>
 
-          {/* DASHBOARD AUTH */}
           <SectionH2 id="wallet-auth">Dashboard Authentication (Wallet)</SectionH2>
           <P>The browser dashboard uses wallet-based authentication — no secrets in the browser. Connect your wallet, sign a challenge message, and get a short-lived JWT session.</P>
           <Pre>{`# 1. Get challenge nonce
@@ -589,14 +548,12 @@ GET /api/agents/me
 Authorization: Bearer eyJ...`}</Pre>
           <SectionH3>Authentication Methods Summary</SectionH3>
           <DocTable headers={["Method", "Used By", "How It Works"]} rows={[
-            ["HMAC-SHA256", "SDK / AI Agents / cURL", <><Code>x-api-key-id</Code> + <Code>x-timestamp</Code> + <Code>x-signature</Code>. Secret stays in your environment.</>],
+            ["HMAC-SHA256", "SDK / AI Agents / cURL", <span key="hmac"><Code>x-api-key-id</Code> + <Code>x-timestamp</Code> + <Code>x-signature</Code>. Secret stays in your environment.</span>],
             ["Wallet JWT", "Browser Dashboard", "Wallet signature (EIP-191) to get a 1-hour JWT. No secrets in the browser."],
-            ["None (Public)", "Anyone", <><Code>/api/chains</Code>, <Code>/api/stats</Code>, <Code>/api/request/:id</Code>, <Code>/api/auth/*</Code></>],
+            ["None (Public)", "Anyone", <span key="pub"><Code>/api/chains</Code>, <Code>/api/stats</Code>, <Code>/api/request/:id</Code>, <Code>/api/auth/*</Code></span>],
           ]} />
 
-          {/* ALL ENDPOINTS */}
           <SectionH2 id="endpoints">All Endpoints</SectionH2>
-
           <SectionH3>Public (No Auth)</SectionH3>
           <div className="my-4">
             <EP method="POST" path="/api/agents/register" desc="Register agent" />
@@ -611,7 +568,6 @@ Authorization: Bearer eyJ...`}</Pre>
             <EP method="GET" path="/api/agents/by-wallet?wallet=0x..." desc="Lookup agent by wallet" />
             <EP method="GET" path="/health" desc="Health check" />
           </div>
-
           <SectionH3>HMAC-Signed (SDK / Agents / cURL)</SectionH3>
           <div className="my-4">
             <EP method="POST" path="/api/create-link" desc="Create payment link" />
@@ -622,7 +578,6 @@ Authorization: Bearer eyJ...`}</Pre>
             <EP method="POST" path="/api/webhooks" desc="Register webhook" />
             <EP method="GET" path="/api/webhooks" desc="List webhooks" />
           </div>
-
           <SectionH3>HMAC or JWT (Both Auth Methods)</SectionH3>
           <div className="my-4">
             <EP method="GET" path="/api/agents/me" desc="Agent profile" />
@@ -630,7 +585,6 @@ Authorization: Bearer eyJ...`}</Pre>
             <EP method="GET" path="/api/agents/logs" desc="API request logs" />
             <EP method="GET" path="/api/agents/ip-history" desc="IP address history" />
           </div>
-
           <SectionH3>JWT Only (Dashboard / Wallet Login)</SectionH3>
           <div className="my-4">
             <EP method="POST" path="/api/agents/rotate-key" desc="Rotate HMAC credentials" />
@@ -638,31 +592,26 @@ Authorization: Bearer eyJ...`}</Pre>
             <EP method="DELETE" path="/api/agents/me" desc="Delete agent (soft)" />
           </div>
 
-          {/* CHAINS & TOKENS */}
           <SectionH2 id="chains">Chains &amp; Tokens</SectionH2>
           <DocTable headers={["Chain", "Identifier"]} rows={[
-            [<>Ethereum Mainnet <Badge color="green">Live</Badge></>, <Code>ethereum</Code>],
-            [<>Base Mainnet <Badge color="green">Live</Badge></>, <Code>base</Code>],
-            [<>Sepolia Testnet <Badge color="blue">Testnet</Badge></>, <Code>sepolia</Code>],
+            [<span key="eth">Ethereum Mainnet <Badge color="green">Live</Badge></span>, <Code key="c1">ethereum</Code>],
+            [<span key="base">Base Mainnet <Badge color="green">Live</Badge></span>, <Code key="c2">base</Code>],
+            [<span key="sep">Sepolia Testnet <Badge color="blue">Testnet</Badge></span>, <Code key="c3">sepolia</Code>],
           ]} />
           <P>Tokens per chain: USDC, USDT, ETH (native), LCX. Query <Code>GET /api/chains</Code> for full details including contract addresses.</P>
 
-          {/* NETWORK & ROADMAP */}
           <SectionH2 id="network">Network &amp; Roadmap</SectionH2>
           <SectionH3>Current</SectionH3>
           <P>Ethereum mainnet. <Badge color="green">Live</Badge></P>
           <SectionH3>Planned</SectionH3>
           <DocTable headers={["Feature", "Status"]} rows={[
-            ["Ethereum L2s (Base, Arbitrum, Optimism)", <Badge color="amber">Planned</Badge>],
-            [<>Liberty Chain by {lcx("LCX")}</>, <Badge color="amber">Planned</Badge>],
-            ["Advanced agent permissions", <Badge color="amber">Planned</Badge>],
-            ["Volume-based fee tiers", <Badge color="amber">Planned</Badge>],
-            ["Agent framework integrations (LangChain, AutoGPT, CrewAI)", <Badge color="amber">Planned</Badge>],
+            ["Ethereum L2s (Base, Arbitrum, Optimism)", <Badge key="p1" color="amber">Planned</Badge>],
+            [<span key="lc">Liberty Chain by {lcx("LCX")}</span>, <Badge key="p2" color="amber">Planned</Badge>],
+            ["Advanced agent permissions", <Badge key="p3" color="amber">Planned</Badge>],
+            ["Volume-based fee tiers", <Badge key="p4" color="amber">Planned</Badge>],
+            ["Agent framework integrations (LangChain, AutoGPT, CrewAI)", <Badge key="p5" color="amber">Planned</Badge>],
           ]} />
 
-          {/* ══════════════ REFERENCE ══════════════ */}
-
-          {/* SECURITY */}
           <SectionH2 id="security">Security &amp; Custody</SectionH2>
           <ul className="list-disc ml-5 my-2 mb-5 text-[15px] text-gray-600 leading-[1.7] space-y-1">
             <li><strong>Non-custodial.</strong> PayAgent never holds user funds.</li>
@@ -673,7 +622,6 @@ Authorization: Bearer eyJ...`}</Pre>
             <li>Dashboard uses wallet-signed JWT — no secrets stored in browser.</li>
           </ul>
 
-          {/* FAQ */}
           <SectionH2 id="faq">FAQ</SectionH2>
           {[
             { q: "Is PayAgent free?", a: "For humans, creating payment links is free. The payer covers a flat 2 LCX fee (~$0.08) plus Ethereum gas." },
@@ -685,31 +633,25 @@ Authorization: Bearer eyJ...`}</Pre>
             { q: "How do API keys work?", a: "After X verification, you receive a public key ID and a secret. Keys expire after 10 days and can be rotated via dashboard or API." },
             { q: "Is this a beta?", a: "Yes. PayAgent is a beta product launch by LCX AI Labs." },
           ].map((item) => (
-            <div key={item.q}>
-              <SectionH3>{item.q}</SectionH3>
-              <P>{item.a}</P>
-            </div>
+            <div key={item.q}><SectionH3>{item.q}</SectionH3><P>{item.a}</P></div>
           ))}
 
-          {/* LEGAL */}
           <SectionH2 id="legal">Legal &amp; Disclaimer</SectionH2>
           <P>PayAgent is developed by LCX AI Labs. This is a beta product launch.</P>
-          <P>PayAgent is provided "as is" and may change. Users are responsible for complying with applicable laws. Terms of service are governed by LCX International.</P>
+          <P>PayAgent is provided &quot;as is&quot; and may change. Users are responsible for complying with applicable laws. Terms of service are governed by LCX International.</P>
           <p className="text-[13px] text-gray-400 mt-5">PayAgent settles value in stablecoins, charges flat LCX network fees, and rewards creators on every payment.</p>
         </div>
 
-        {/* footer */}
         <div className="border-t border-slate-200 max-w-[760px] mx-auto px-10 py-8">
           <p className="text-xs text-gray-400 leading-[1.7]">PayAgent developed by LCX AI Labs. Beta product launch.</p>
           <p className="text-xs text-gray-400 leading-[1.7] mt-1">
             <a href="https://lcx.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">LCX (Liberty Crypto Exchange)</a>
-            {" · "}<a href="/" className="text-blue-600 hover:underline">PayAgent.co</a>
-            {" · "}<a href="/about" className="text-blue-600 hover:underline">About</a>
+            {" · "}<Link href="/" className="text-blue-600 hover:underline">PayAgent.co</Link>
+            {" · "}<Link href="/about" className="text-blue-600 hover:underline">About</Link>
           </p>
         </div>
       </main>
 
-      {/* ── MOBILE TOGGLE ── */}
       <button
         className="docs-mobile-toggle hidden fixed bottom-5 right-5 z-[200] w-12 h-12 rounded-full bg-blue-600 text-white text-xl items-center justify-center shadow-lg"
         onClick={() => setSidebarOpen((v) => !v)}

@@ -1,9 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { SidebarProvider } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/AppSidebar";
-import { AppNavbar } from "@/components/AppNavbar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Link as LinkIcon, Trash2, Plus, Clock, CheckCircle2, XCircle, Copy, ExternalLink, Loader2, RefreshCw, Wallet } from "lucide-react";
@@ -18,7 +15,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 type FilterTab = 'all' | 'human' | 'agent';
 
 const PaymentLinks = () => {
-  const navigate = useNavigate();
+  const router = useRouter();
   const queryClient = useQueryClient();
   const [, setCurrentTime] = useState(new Date());
   const [isCreateLinkOpen, setIsCreateLinkOpen] = useState(false);
@@ -117,7 +114,7 @@ const PaymentLinks = () => {
   };
 
   const handleViewLink = (id: string) => {
-    navigate(`/pay/${id}`);
+    router.push(`/pay/${id}`);
   };
 
   const handleCopyLink = (id: string) => {
@@ -179,14 +176,8 @@ const PaymentLinks = () => {
   ];
 
   return (
-    <SidebarProvider>
-      <div className="flex min-h-screen w-full">
-        <AppSidebar />
-
-        <div className="flex-1 flex flex-col bg-slate-50/50">
-          <AppNavbar />
-
-          <main className="flex-1 p-6 lg:p-8">
+    <>
+      <main className="flex-1 p-6 lg:p-8">
             <div className="max-w-5xl mx-auto">
               {/* Header */}
               <div className="flex items-center justify-between mb-6">
@@ -405,8 +396,6 @@ const PaymentLinks = () => {
               )}
             </div>
           </main>
-        </div>
-      </div>
 
       <CreateLinkModal open={isCreateLinkOpen} onOpenChange={setIsCreateLinkOpen} onCreateLink={handleCreateLink} />
 
@@ -430,7 +419,7 @@ const PaymentLinks = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </SidebarProvider>
+    </>
   );
 };
 

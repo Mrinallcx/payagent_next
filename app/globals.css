@@ -1,0 +1,179 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Landing page grid background */
+.landing-grid-bg::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(54, 94, 247, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(54, 94, 247, 0.025) 1px, transparent 1px);
+  background-size: 56px 56px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Fade-in on scroll */
+.fade-in-section {
+  opacity: 0;
+  transform: translateY(14px);
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+.fade-in-section.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Hero entrance */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-up {
+  animation: fadeUp 0.5s ease forwards;
+}
+
+/* Step connector line */
+.step-connector::after {
+  content: '';
+  position: absolute;
+  left: 16px;
+  top: 38px;
+  width: 2px;
+  height: calc(100% - 14px);
+  background: #BFDBFE;
+}
+
+/* ── Docs page ── */
+.docs-layout {
+  display: flex;
+  min-height: 100vh;
+}
+
+.docs-sidebar {
+  width: 280px;
+  background: #f9fafb;
+  border-right: 1px solid #e5e7eb;
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  overflow-y: auto;
+  z-index: 100;
+  transition: transform 0.25s ease;
+}
+
+.docs-sidebar::-webkit-scrollbar { width: 4px; }
+.docs-sidebar::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 4px; }
+
+@media (max-width: 860px) {
+  .docs-sidebar { transform: translateX(-100%); }
+  .docs-sidebar.open { transform: translateX(0); box-shadow: 4px 0 24px rgba(0,0,0,0.1); }
+  .docs-main { margin-left: 0 !important; }
+  .docs-content { padding: 32px 20px 80px !important; }
+  .docs-topbar { padding-left: 20px !important; padding-right: 20px !important; }
+  .docs-mobile-toggle { display: flex !important; }
+}
+
+/* Docs numbered step list */
+.docs-steps {
+  counter-reset: step;
+  list-style: none;
+  margin: 16px 0 28px;
+  padding: 0;
+}
+.docs-steps li {
+  counter-increment: step;
+  position: relative;
+  padding: 8px 0 8px 40px;
+  color: #4a5068;
+  font-size: 15px;
+}
+.docs-steps li::before {
+  content: counter(step);
+  position: absolute;
+  left: 0;
+  top: 7px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #eff6ff;
+  color: #365ef7;
+  font-size: 13px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@layer base {
+  :root {
+    /* Clean White & Brand Blue (#365EF7) Theme */
+    --background: 0 0% 100%;
+    --foreground: 222 47% 11%;
+    
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    
+    /* Primary Brand — #365EF7 */
+    --primary: 228 92% 59%;
+    --primary-foreground: 0 0% 100%;
+    
+    /* Secondary */
+    --secondary: 214 40% 96%;
+    --secondary-foreground: 222 47% 11%;
+    
+    /* Muted */
+    --muted: 214 40% 96%;
+    --muted-foreground: 215 16% 47%;
+    
+    /* Accent */
+    --accent: 214 40% 96%;
+    --accent-foreground: 222 47% 11%;
+    
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 228 92% 59%;
+    
+    --radius: 0.5rem;
+    
+    /* Sidebar */
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 222 47% 11%;
+    --sidebar-primary: 228 92% 59%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 214 40% 96%;
+    --sidebar-accent-foreground: 222 47% 11%;
+    --sidebar-border: 214 32% 91%;
+    --sidebar-ring: 228 92% 59%;
+    
+    /* Success/Warning */
+    --success: 142 76% 36%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Inter', sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Space Grotesk', sans-serif;
+  }
+}

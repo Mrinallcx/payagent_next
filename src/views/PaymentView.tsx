@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -27,9 +27,8 @@ function formatTransferError(err: unknown): string {
   return 'Transaction failed. Please try again.';
 }
 
-export default function PaymentView() {
-  const { linkId } = useParams();
-  const navigate = useNavigate();
+export default function PaymentView({ linkId }: { linkId: string }) {
+  const router = useRouter();
   const { address, isConnected, chain } = useAccount();
   const { switchChain } = useSwitchChain();
   
@@ -98,6 +97,8 @@ export default function PaymentView() {
             txHash: null,
             paidAt: null,
             creatorWallet: null,
+            creatorAgentId: null,
+            payerAgentId: null,
           };
           setPaymentRequest(request);
         } else if (response.request) {
@@ -265,14 +266,13 @@ export default function PaymentView() {
             const amountInWei = parseUnits(transfer.amount, decimals);
 
             txHash = await new Promise<string>((resolve, reject) => {
-              // @ts-expect-error - wagmi v2 type issue with writeContract
               writeContract(
                 {
                   address: tokenAddr as `0x${string}`,
                   abi: ERC20_ABI,
                   functionName: 'transfer',
                   args: [transfer.to as `0x${string}`, amountInWei],
-                },
+                } as any,
                 {
                   onSuccess: (hash: string) => resolve(hash),
                   onError: (error: Error) => reject(error),
@@ -409,7 +409,7 @@ export default function PaymentView() {
             {error || "This payment link is invalid or has expired."}
           </p>
           <Button 
-            onClick={() => navigate("/")} 
+            onClick={() => router.push("/")} 
             variant="outline"
             className="rounded-lg"
           >
@@ -445,7 +445,7 @@ export default function PaymentView() {
             <Button 
               variant="outline" 
               size="sm" 
-              onClick={() => navigate("/")} 
+              onClick={() => router.push("/")} 
               className="rounded-lg gap-1.5 hidden sm:flex text-sm"
             >
               Create Your Link
@@ -852,7 +852,7 @@ export default function PaymentView() {
 
                 <Button 
                   className="w-full h-11 text-sm font-semibold rounded-xl gap-2 bg-blue-600 hover:bg-blue-700" 
-                  onClick={() => navigate("/")}
+                  onClick={() => router.push("/")}
                 >
                   Create Your Payment Link
                   <ArrowRight className="h-4 w-4" />

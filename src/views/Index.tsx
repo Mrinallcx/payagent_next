@@ -1,9 +1,6 @@
 import { useState, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { SidebarProvider } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/AppSidebar";
-import { AppNavbar } from "@/components/AppNavbar";
 import { DashboardCard } from "@/components/DashboardCard";
 import { PaymentLinkItem } from "@/components/PaymentLinkItem";
 import { CreateLinkModal } from "@/components/CreateLinkModal";
@@ -51,7 +48,7 @@ const formatDate = (timestamp: number) => {
 
 const Index = () => {
   const [isCreateLinkOpen, setIsCreateLinkOpen] = useState(false);
-  const navigate = useNavigate();
+  const router = useRouter();
   const queryClient = useQueryClient();
   
   const { address, isConnected } = useAccount();
@@ -120,13 +117,7 @@ const Index = () => {
   };
 
   return (
-    <SidebarProvider>
-      <div className="flex min-h-screen w-full">
-        <AppSidebar />
-        
-        <div className="flex-1 flex flex-col bg-slate-50/50">
-          <AppNavbar />
-          
+    <>
           <main className="flex-1 p-6 lg:p-8">
             <div className="max-w-6xl mx-auto space-y-8">
               {/* Header */}
@@ -177,7 +168,7 @@ const Index = () => {
                     </div>
                     <div 
                       className="bg-white rounded-xl border border-border p-5 cursor-pointer hover:border-blue-200 transition-colors"
-                      onClick={() => navigate('/rewards')}
+                      onClick={() => router.push('/rewards')}
                     >
                       <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
                         <Gift className="h-3 w-3" /> Rewards
@@ -197,7 +188,7 @@ const Index = () => {
                           variant="ghost" 
                           size="sm" 
                           className="text-xs text-muted-foreground hover:text-blue-600 gap-1 h-8"
-                          onClick={() => navigate('/transactions')}
+                          onClick={() => router.push('/transactions')}
                         >
                           View All
                           <ArrowUpRight className="h-3 w-3" />
@@ -331,7 +322,7 @@ const Index = () => {
                     </button>
 
                     <button 
-                      onClick={() => navigate('/payment-links')}
+                      onClick={() => router.push('/payment-links')}
                       className="group bg-white rounded-xl p-5 text-left border border-border hover:border-blue-200 transition-colors"
                     >
                       <div className="flex items-center justify-between mb-3">
@@ -345,7 +336,7 @@ const Index = () => {
                     </button>
 
                     <button 
-                      onClick={() => navigate('/rewards')}
+                      onClick={() => router.push('/rewards')}
                       className="group bg-white rounded-xl p-5 text-left border border-border hover:border-blue-200 transition-colors"
                     >
                       <div className="flex items-center justify-between mb-3">
@@ -362,7 +353,7 @@ const Index = () => {
                   {/* Agent Quick Actions */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <button 
-                      onClick={() => navigate('/agent')}
+                      onClick={() => router.push('/agent')}
                       className="group bg-white rounded-xl p-5 text-left border border-border hover:border-blue-200 transition-colors"
                     >
                       <div className="flex items-center justify-between mb-3">
@@ -376,7 +367,7 @@ const Index = () => {
                     </button>
 
                     <button 
-                      onClick={() => navigate('/agents')}
+                      onClick={() => router.push('/agents')}
                       className="group bg-white rounded-xl p-5 text-left border border-border hover:border-blue-200 transition-colors"
                     >
                       <div className="flex items-center justify-between mb-3">
@@ -393,15 +384,12 @@ const Index = () => {
               )}
             </div>
           </main>
-        </div>
-      </div>
-      
       <CreateLinkModal 
         open={isCreateLinkOpen} 
         onOpenChange={setIsCreateLinkOpen}
         onCreateLink={handleLinkCreated}
       />
-    </SidebarProvider>
+    </>
   );
 };
 

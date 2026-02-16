@@ -1,8 +1,5 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { SidebarProvider } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/AppSidebar";
-import { AppNavbar } from "@/components/AppNavbar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,7 +8,7 @@ import {
 import {
   FileText, Globe, ChevronLeft, ChevronRight, Loader2, ArrowLeft, Shield, Wallet
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useRouter } from "next/navigation";
 import { useAccount, useSignMessage } from "wagmi";
 import {
   getAgentLogs, getAgentIpHistory,
@@ -39,7 +36,7 @@ const statusColor = (code: number | null) => {
 };
 
 export default function AgentLogs() {
-  const navigate = useNavigate();
+  const router = useRouter();
   const { toast } = useToast();
   const { address: walletAddress } = useAccount();
   const { signMessageAsync } = useSignMessage();
@@ -67,12 +64,12 @@ export default function AgentLogs() {
     setLoginLoading(true);
     try {
       await walletLogin(walletAddress, async (message: string) => {
-        return await signMessageAsync({ message });
+        return await signMessageAsync({ account: walletAddress as `0x${string}`, message });
       });
       setIsLoggedIn(true);
       toast({ title: 'Signed in', description: 'Authenticated via wallet signature.' });
     } catch (err: any) {
-      toast({ title: 'Login failed', description: err.message, variant: 'destructive' });
+      toast({ title: 'Login failed', description: err.message || 'Unknown error', variant: 'destructive' });
     } finally {
       setLoginLoading(false);
     }
@@ -95,19 +92,13 @@ export default function AgentLogs() {
   const totalPages = logsData ? Math.ceil(logsData.total / limit) : 0;
 
   return (
-    <SidebarProvider>
-      <div className="flex min-h-screen w-full">
-        <AppSidebar />
-
-        <div className="flex-1 flex flex-col bg-slate-50/50">
-          <AppNavbar />
-
-          <main className="flex-1 p-6 lg:p-8">
+    <>
+      <main className="flex-1 p-6 lg:p-8">
             <div className="max-w-6xl mx-auto space-y-6">
               {/* Header */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <Button variant="ghost" size="sm" onClick={() => navigate('/agents')} className="gap-1">
+                  <Button variant="ghost" size="sm" onClick={() => router.push('/agents')} className="gap-1">
                     <ArrowLeft className="h-4 w-4" /> Back
                   </Button>
                   <div>
@@ -277,8 +268,6 @@ export default function AgentLogs() {
               )}
             </div>
           </main>
-        </div>
-      </div>
-    </SidebarProvider>
+    </>
   );
 }

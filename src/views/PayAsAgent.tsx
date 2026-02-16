@@ -4,8 +4,8 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Bot, Copy, ArrowLeft, Code2, Key, Webhook, MessageSquare, ExternalLink, Shield, Wallet } from "lucide-react";
 
-const API_BASE = import.meta.env.VITE_API_URL
-  ? `${(import.meta.env.VITE_API_URL as string).replace(/\/$/, '')}/api`
+const API_BASE = process.env.NEXT_PUBLIC_API_URL
+  ? `${(process.env.NEXT_PUBLIC_API_URL as string).replace(/\/$/, '')}/api`
   : "http://localhost:3000/api";
 
 export default function PayAsAgent() {

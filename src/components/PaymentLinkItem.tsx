@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useRouter } from "next/navigation";
 import { useAccount } from "wagmi";
 import {
   DropdownMenu,
@@ -36,7 +36,7 @@ interface PaymentLinkItemProps {
 export function PaymentLinkItem({ id, amount, token, status, link, onDelete }: PaymentLinkItemProps) {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const navigate = useNavigate();
+  const router = useRouter();
   const { address } = useAccount();
 
   const handleCopy = () => {
@@ -45,7 +45,7 @@ export function PaymentLinkItem({ id, amount, token, status, link, onDelete }: P
   };
 
   const handleOpenLink = () => {
-    navigate(`/pay/${id}`);
+    router.push(`/pay/${id}`);
   };
 
   const handleRemoveLink = async () => {
